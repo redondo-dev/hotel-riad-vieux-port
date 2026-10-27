@@ -1,0 +1,24 @@
+# Dépendances
+node_modules/
+
+# Constructions et caches
+dist/
+.angular/
+coverage/
+*.tsbuildinfo
+
+# Variables d'environnement : jamais de secret dans le dépôt
+.env
+.env.*
+!.env.example
+
+# Journaux
+*.log
+npm-debug.log*
+
+# Systèmes et éditeurs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
