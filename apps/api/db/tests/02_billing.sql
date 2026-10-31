@@ -23,15 +23,35 @@ SELECT pg_temp.expect_equal('Un numéro pris par une création annulée est réu
 SELECT pg_temp.expect_equal('Les avoirs ont leur propre suite',
   next_invoice_number('AV', 2027::smallint), 'AV-2027-000001');
 
--- Issuing an invoice (number FA-2027-000003, obtained above).
-INSERT INTO invoices (id, number, type, reservation_id, issued_at, bill_to_name, bill_to_address,
+-- Issuing an invoice. The number is assigned by the database (migration 0008): the next one
+-- of the series for the year of issue, Paris time.
+CREATE FUNCTION pg_temp.expected_next_number(p_series text) RETURNS text
+LANGUAGE sql AS $$
+  SELECT p_series || '-' || y || '-' || lpad((coalesce(
+           (SELECT last_number FROM invoice_sequences WHERE series = p_series AND year = y), 0)
+           + 1)::text, 6, '0')
+  FROM (SELECT extract(year FROM now() AT TIME ZONE 'Europe/Paris')::smallint AS y) AS t
+$$;
+CREATE TEMP TABLE expected_numbers AS
+  SELECT pg_temp.expected_next_number('FA') AS first_invoice;
+
+SELECT pg_temp.expect_error('Insérer une facture avec un numéro choisi est refusé (QA-01)', $$
+  INSERT INTO invoices (number, type, reservation_id, bill_to_name, bill_to_address,
+                        total_excl_tax_cents, total_vat_cents, total_incl_tax_cents)
+  VALUES ('FA-2027-000500', 'invoice', '00000000-0000-0000-0000-0000000000a2', 'X', '{}', 0, 0, 0)
+$$, '23000');
+
+INSERT INTO invoices (id, type, reservation_id, issued_at, bill_to_name, bill_to_address,
                       total_excl_tax_cents, total_vat_cents, tourist_tax_cents, total_incl_tax_cents)
-VALUES ('00000000-0000-0000-0000-0000000000f1', 'FA-2027-000003', 'invoice',
+VALUES ('00000000-0000-0000-0000-0000000000f1', 'invoice',
         '00000000-0000-0000-0000-0000000000a2', '2000-01-01', 'Test Facture', '{"city": "Lyon"}',
         17273, 1727, 0, 19000);
 
+SELECT pg_temp.expect_equal('La base attribue le numéro suivant de la série FA de l''année',
+  (SELECT number FROM invoices WHERE id = '00000000-0000-0000-0000-0000000000f1'),
+  (SELECT first_invoice FROM expected_numbers));
 SELECT pg_temp.expect_equal('La date d''émission est imposée par la base (pas 2000-01-01)',
-  (SELECT issued_at FROM invoices WHERE number = 'FA-2027-000003'), now());
+  (SELECT issued_at FROM invoices WHERE id = '00000000-0000-0000-0000-0000000000f1'), now());
 
 SELECT pg_temp.expect_ok('Lignes ajoutées dans la transaction d''émission', $$
   INSERT INTO invoice_lines (invoice_id, position, label, quantity, unit_price_incl_tax_cents,
@@ -42,14 +62,14 @@ $$);
 
 SELECT pg_temp.expect_error('Modifier le montant d''une facture émise est refusé',
   $$UPDATE invoices SET total_incl_tax_cents = 1, total_excl_tax_cents = 1, total_vat_cents = 0
-    WHERE number = 'FA-2027-000003'$$, '23000');
+    WHERE id = '00000000-0000-0000-0000-0000000000f1'$$, '23000');
 SELECT pg_temp.expect_error('Changer le destinataire d''une facture émise est refusé',
-  $$UPDATE invoices SET bill_to_name = 'Autre' WHERE number = 'FA-2027-000003'$$, '23000');
+  $$UPDATE invoices SET bill_to_name = 'Autre' WHERE id = '00000000-0000-0000-0000-0000000000f1'$$, '23000');
 SELECT pg_temp.expect_ok('Renseigner l''emplacement du PDF et la date d''envoi reste possible',
-  $$UPDATE invoices SET pdf_storage_key = 'invoices/FA-2027-000003.pdf', emailed_at = now()
-    WHERE number = 'FA-2027-000003'$$);
+  $$UPDATE invoices SET pdf_storage_key = 'invoices/f1.pdf', emailed_at = now()
+    WHERE id = '00000000-0000-0000-0000-0000000000f1'$$);
 SELECT pg_temp.expect_error('Supprimer une facture est refusé',
-  $$DELETE FROM invoices WHERE number = 'FA-2027-000003'$$, '23000');
+  $$DELETE FROM invoices WHERE id = '00000000-0000-0000-0000-0000000000f1'$$, '23000');
 SELECT pg_temp.expect_error('Vider la table des factures (TRUNCATE) est refusé',
   $$TRUNCATE invoices CASCADE$$, '23000');
 SELECT pg_temp.expect_error('Modifier une ligne de facture est refusé',
@@ -59,31 +79,40 @@ SELECT pg_temp.expect_error('Supprimer une ligne de facture est refusé',
   $$DELETE FROM invoice_lines WHERE invoice_id = '00000000-0000-0000-0000-0000000000f1'$$, '23000');
 
 SELECT pg_temp.expect_error('Totaux incohérents refusés', $$
-  INSERT INTO invoices (number, type, reservation_id, bill_to_name, bill_to_address,
+  INSERT INTO invoices (type, reservation_id, bill_to_name, bill_to_address,
                         total_excl_tax_cents, total_vat_cents, total_incl_tax_cents)
-  VALUES ('FA-2027-000099', 'invoice', '00000000-0000-0000-0000-0000000000a2', 'X', '{}', 100, 10, 999)
+  VALUES ('invoice', '00000000-0000-0000-0000-0000000000a2', 'X', '{}', 100, 10, 999)
 $$, '23514');
 SELECT pg_temp.expect_error('Avoir sans facture d''origine refusé', $$
-  INSERT INTO invoices (number, type, reservation_id, bill_to_name, bill_to_address,
+  INSERT INTO invoices (type, reservation_id, bill_to_name, bill_to_address,
                         total_excl_tax_cents, total_vat_cents, total_incl_tax_cents)
-  VALUES ('AV-2027-000099', 'credit_note', '00000000-0000-0000-0000-0000000000a2', 'X', '{}', 0, 0, 0)
+  VALUES ('credit_note', '00000000-0000-0000-0000-0000000000a2', 'X', '{}', 0, 0, 0)
 $$, '23514');
-SELECT pg_temp.expect_error('Facture numérotée dans la série des avoirs refusée', $$
-  INSERT INTO invoices (number, type, reservation_id, bill_to_name, bill_to_address,
-                        total_excl_tax_cents, total_vat_cents, total_incl_tax_cents)
-  VALUES ('AV-2027-000098', 'invoice', '00000000-0000-0000-0000-0000000000a2', 'X', '{}', 0, 0, 0)
-$$, '23514');
+
+CREATE TEMP TABLE expected_credit_note AS SELECT pg_temp.expected_next_number('AV') AS number;
 SELECT pg_temp.expect_ok('Avoir rattaché à la facture d''origine accepté', $$
-  INSERT INTO invoices (number, type, reservation_id, credited_invoice_id, bill_to_name,
+  INSERT INTO invoices (id, type, reservation_id, credited_invoice_id, bill_to_name,
                         bill_to_address, total_excl_tax_cents, total_vat_cents, total_incl_tax_cents)
-  VALUES ('AV-2027-000001', 'credit_note', '00000000-0000-0000-0000-0000000000a2',
-          '00000000-0000-0000-0000-0000000000f1', 'Test Facture', '{}', 17273, 1727, 19000)
+  VALUES ('00000000-0000-0000-0000-0000000000f2', 'credit_note',
+          '00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-0000000000f1',
+          'Test Facture', '{}', 17273, 1727, 19000)
 $$);
-SELECT pg_temp.expect_error('Numéro de facture en double refusé', $$
-  INSERT INTO invoices (number, type, reservation_id, bill_to_name, bill_to_address,
-                        total_excl_tax_cents, total_vat_cents, total_incl_tax_cents)
-  VALUES ('FA-2027-000003', 'invoice', '00000000-0000-0000-0000-0000000000a2', 'X', '{}', 0, 0, 0)
-$$, '23505');
+SELECT pg_temp.expect_equal('Un avoir prend le numéro suivant de la série AV',
+  (SELECT number FROM invoices WHERE id = '00000000-0000-0000-0000-0000000000f2'),
+  (SELECT number FROM expected_credit_note));
+
+CREATE TEMP TABLE expected_second_invoice AS SELECT pg_temp.expected_next_number('FA') AS number;
+INSERT INTO invoices (id, type, reservation_id, bill_to_name, bill_to_address,
+                      total_excl_tax_cents, total_vat_cents, total_incl_tax_cents)
+VALUES ('00000000-0000-0000-0000-0000000000f3', 'invoice', '00000000-0000-0000-0000-0000000000a2',
+        'Test Facture', '{}', 0, 0, 0);
+SELECT pg_temp.expect_equal('Les créations refusées n''ont consommé aucun numéro (pas de trou)',
+  (SELECT number FROM invoices WHERE id = '00000000-0000-0000-0000-0000000000f3'),
+  (SELECT number FROM expected_second_invoice));
+SELECT pg_temp.expect_equal('Deux factures successives ont des numéros consécutifs',
+  (SELECT substr(number, 9)::int FROM invoices WHERE id = '00000000-0000-0000-0000-0000000000f3')
+  - (SELECT substr(number, 9)::int FROM invoices WHERE id = '00000000-0000-0000-0000-0000000000f1'),
+  1);
 
 -- Payments.
 INSERT INTO payments (id, reservation_id, kind, method, amount_cents, status)

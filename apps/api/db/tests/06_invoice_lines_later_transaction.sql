@@ -9,10 +9,9 @@ INSERT INTO reservations (id, reference, customer_id, source, check_in, check_ou
                           rate_plan, total_amount_cents)
 VALUES ('00000000-0000-0000-0000-0000000000a6', 'TESTLIN1', '00000000-0000-0000-0000-0000000000c6',
         'desk', '2027-04-01', '2027-04-02', 'checked_out', 'non_refundable', 9500);
-INSERT INTO invoices (id, number, type, reservation_id, bill_to_name, bill_to_address,
+INSERT INTO invoices (id, type, reservation_id, bill_to_name, bill_to_address,
                       total_excl_tax_cents, total_vat_cents, total_incl_tax_cents)
-VALUES ('00000000-0000-0000-0000-0000000000f6', next_invoice_number('FA', 2028::smallint),
-        'invoice', '00000000-0000-0000-0000-0000000000a6', 'Test Lignes', '{}', 8636, 864, 9500);
+VALUES ('00000000-0000-0000-0000-0000000000f6', 'invoice', '00000000-0000-0000-0000-0000000000a6', 'Test Lignes', '{}', 8636, 864, 9500);
 COMMIT;
 
 BEGIN;

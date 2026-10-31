@@ -19,6 +19,7 @@ Sequelize sert à lire et écrire les données, jamais à créer ou modifier les
 | `0005_billing`      | Paiements, numérotation, factures et avoirs, lignes de facture                  |
 | `0006_maintenance`  | Pannes, photos, historique, mises hors service                                  |
 | `0007_technical`    | Journal des actions sensibles, messages de contact, idempotence, webhooks       |
+| `0008_invoice_numbering` | Numéro de facture attribué par la base elle-même (audit QA-01)             |
 
 ### Garanties assurées par la base elle-même
 
@@ -27,7 +28,9 @@ Sequelize sert à lire et écrire les données, jamais à créer ou modifier les
   même jour sont autorisés.
 - Les dates et l'état « actif » des chambres réservées sont recopiés automatiquement de la
   réservation : ils ne peuvent pas diverger. Une annulation libère la chambre.
-- Les factures sont numérotées sans trou ; une facture émise, ses lignes, un paiement réussi
+- Les factures sont numérotées sans trou **par la base elle-même** : l'application insère une
+  facture sans numéro (en fournir un est refusé) et reçoit le suivant de la série (`FA` facture,
+  `AV` avoir) pour l'année d'émission, heure de Paris. Une facture émise, ses lignes, un paiement réussi
   et une prestation facturée ne sont ni modifiables ni supprimables.
 - Le journal des actions sensibles est en ajout seul ; seules les entrées de plus d'un an
   peuvent être purgées.
