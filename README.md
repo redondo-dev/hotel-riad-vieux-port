@@ -7,15 +7,16 @@ Projet portfolio : l'hôtel, ses tarifs et ses avis sont fictifs.
 
 Un seul dépôt réunit toutes les parties du projet (espaces de travail npm) :
 
-| Dossier | Rôle | Technologie |
-| --- | --- | --- |
-| `apps/api` | API REST et tâches de fond | Node.js, Express, TypeScript, PostgreSQL |
-| `apps/web-public` | Site public et réservation en ligne | Angular (rendu côté serveur) |
-| `apps/web-admin` | Outil de gestion interne | Angular |
-| `packages/shared` | Types et règles de validation communs | TypeScript, Zod |
-| `docs` | Documentation du dépôt | Markdown |
+| Dossier           | Rôle                                  | Technologie                              |
+| ----------------- | ------------------------------------- | ---------------------------------------- |
+| `apps/api`        | API REST et tâches de fond            | Node.js, Express, TypeScript, PostgreSQL |
+| `apps/web-public` | Site public et réservation en ligne   | Angular (rendu côté serveur)             |
+| `apps/web-admin`  | Outil de gestion interne              | Angular                                  |
+| `packages/shared` | Types et règles de validation communs | TypeScript, Zod                          |
+| `docs`            | Documentation du dépôt                | Markdown                                 |
 
-> Étape 1.1 : seul le socle est en place. Les applications sont encore vides.
+> État : le site public affiche la page d'accueil et la recherche de séjour, alimentées par
+> des **données fictives**. Aucun serveur n'est encore branché : rien n'est réservé ni enregistré.
 
 ## Prérequis
 
@@ -47,15 +48,25 @@ Ne jamais committer `.env` : il contient des secrets.
 
 À lancer depuis la racine du dépôt :
 
-| Commande | Effet |
-| --- | --- |
-| `npm run lint` | Détecte les erreurs dans le code (ESLint) |
-| `npm run lint:fix` | Corrige automatiquement ce qui peut l'être |
-| `npm run format` | Met en forme tous les fichiers (Prettier) |
-| `npm run format:check` | Vérifie la mise en forme sans rien modifier |
-| `npm run typecheck` | Vérifie les types TypeScript de chaque partie |
-| `npm run test` | Lance les tests de chaque partie |
-| `npm run check` | Lint + mise en forme + types : à lancer avant d'ouvrir une demande de fusion |
+| Commande                  | Effet                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `npm run lint`            | Détecte les erreurs dans le code (ESLint)                                    |
+| `npm run lint:fix`        | Corrige automatiquement ce qui peut l'être                                   |
+| `npm run format`          | Met en forme tous les fichiers (Prettier)                                    |
+| `npm run format:check`    | Vérifie la mise en forme sans rien modifier                                  |
+| `npm run typecheck`       | Vérifie les types TypeScript de chaque partie                                |
+| `npm run test`            | Lance les tests de chaque partie                                             |
+| `npm run check`           | Lint + mise en forme + types : à lancer avant d'ouvrir une demande de fusion |
+| `npm run start:public`    | Lance le site public en français sur http://localhost:4200/fr/               |
+| `npm run start:public:en` | Lance le site public en anglais                                              |
+
+### Site public : langues
+
+Le site est compilé une fois par langue (internationalisation intégrée d'Angular) :
+`/fr/…` et `/en/…`. Le serveur de développement n'affiche qu'une langue à la fois, d'où les
+deux commandes ci-dessus. Les traductions anglaises sont dans
+`apps/web-public/src/locale/messages.en.json` ; toute traduction manquante fait échouer la
+compilation, pour ne jamais publier une page à moitié traduite.
 
 ## Branches et contributions
 
