@@ -1,0 +1,141 @@
+<div class="flex flex-col gap-1.5">
+  <span class="field-label" [id]="fieldId() + '-label'" i18n="@@guests.label">Voyageurs</span>
+  <button
+    #trigger
+    type="button"
+    class="field-control text-left"
+    [id]="fieldId()"
+    aria-haspopup="dialog"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-labelledby]="fieldId() + '-label ' + fieldId()"
+    [attr.aria-describedby]="describedBy()"
+    [attr.aria-invalid]="invalid() || null"
+    (click)="open()"
+  >
+    <lucide-icon [img]="icons.users" [size]="20" class="shrink-0 text-port" aria-hidden="true" />
+    <span class="truncate">{{ summary() }}</span>
+  </button>
+</div>
+
+<dialog
+  #dialog
+  class="dialog-panel sm:w-[min(30rem,calc(100vw_-_2rem))]"
+  [attr.aria-labelledby]="fieldId() + '-title'"
+  (close)="onClosed()"
+  (click)="onDialogClick($event)"
+>
+  <div class="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
+    <h2
+      class="font-display text-h3-m font-semibold"
+      [id]="fieldId() + '-title'"
+      i18n="@@guests.dialogTitle"
+    >
+      Chambres et voyageurs
+    </h2>
+    <button
+      type="button"
+      class="btn-icon"
+      i18n-aria-label="@@common.close"
+      aria-label="Fermer"
+      (click)="close()"
+    >
+      <lucide-icon [img]="icons.close" [size]="24" aria-hidden="true" />
+    </button>
+  </div>
+
+  <div class="flex flex-1 flex-col gap-6 overflow-y-auto px-5 py-4">
+    @for (room of rooms(); track $index; let roomIndex = $index) {
+      <fieldset class="flex flex-col gap-4 border-b border-line pb-6 last-of-type:border-b-0">
+        <legend class="mb-3 font-semibold">{{ roomTitle(roomIndex) }}</legend>
+
+        <rvp-counter
+          [labelId]="fieldId() + '-room' + roomIndex + '-adults'"
+          [label]="adultsLabel"
+          [decrementLabel]="removeAdultLabel"
+          [incrementLabel]="addAdultLabel"
+          [min]="limits.minAdults"
+          [max]="limits.maxAdults"
+          [value]="room.adults"
+          (valueChange)="setAdults(roomIndex, $event)"
+        />
+        <rvp-counter
+          [labelId]="fieldId() + '-room' + roomIndex + '-children'"
+          [label]="childrenLabel"
+          [decrementLabel]="removeChildLabel"
+          [incrementLabel]="addChildLabel"
+          [min]="0"
+          [max]="limits.maxChildren"
+          [value]="room.childrenAges.length"
+          (valueChange)="setChildrenCount(roomIndex, $event)"
+        />
+
+        @for (age of room.childrenAges; track $index; let childIndex = $index) {
+          <div class="flex flex-col gap-1.5">
+            <label class="field-label" [for]="childAgeId(roomIndex, childIndex)">{{
+              childAgeLabel(childIndex)
+            }}</label>
+            <select
+              #ageSelect
+              class="field-control"
+              [id]="childAgeId(roomIndex, childIndex)"
+              [attr.aria-invalid]="hasAgeError(roomIndex, childIndex) || null"
+              [attr.aria-describedby]="
+                hasAgeError(roomIndex, childIndex)
+                  ? childAgeId(roomIndex, childIndex) + '-error'
+                  : null
+              "
+              (change)="setChildAge(roomIndex, childIndex, ageSelect.value)"
+            >
+              <option value="" [selected]="age === null" i18n="@@guests.chooseAge">
+                Choisir l'âge
+              </option>
+              @for (option of ageOptions; track option.age) {
+                <option [value]="option.age" [selected]="age === option.age">
+                  {{ option.label }}
+                </option>
+              }
+            </select>
+            @if (hasAgeError(roomIndex, childIndex)) {
+              <p
+                class="field-error"
+                [id]="childAgeId(roomIndex, childIndex) + '-error'"
+                i18n="@@guests.ageRequired"
+              >
+                Indiquez l'âge de l'enfant : il détermine le tarif applicable.
+              </p>
+            }
+          </div>
+        }
+
+        @if (roomError(roomIndex); as message) {
+          <p class="field-error" role="alert">{{ message }}</p>
+        }
+
+        @if (rooms().length > 1) {
+          <button type="button" class="btn-quiet self-start" (click)="removeRoom(roomIndex)">
+            <lucide-icon [img]="icons.remove" [size]="18" aria-hidden="true" />
+            <span>{{ removeRoomLabel(roomIndex) }}</span>
+          </button>
+        }
+      </fieldset>
+    }
+
+    @if (rooms().length < limits.maxRooms) {
+      <button type="button" class="btn-secondary self-start" (click)="addRoom()">
+        <lucide-icon [img]="icons.add" [size]="18" aria-hidden="true" />
+        <span i18n="@@guests.addRoom">Ajouter une chambre</span>
+      </button>
+    }
+
+    <p class="text-sm text-muted" i18n="@@guests.capacityHint">
+      Nos chambres accueillent jusqu'à 4 personnes. Les bébés de moins de 2 ans dorment dans un lit
+      bébé gratuit et ne sont pas comptés.
+    </p>
+  </div>
+
+  <div class="flex justify-end border-t border-line px-5 py-4">
+    <button type="button" class="btn-primary-compact" (click)="close()" i18n="@@common.done">
+      Valider
+    </button>
+  </div>
+</dialog>
