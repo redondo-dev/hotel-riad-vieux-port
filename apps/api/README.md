@@ -10,16 +10,16 @@ exécutées par [Umzug](https://github.com/sequelize/umzug), l'outil de migratio
 Sequelize sert à lire et écrire les données, jamais à créer ou modifier les tables
 (`sequelize.sync()` est proscrit).
 
-| Migration           | Contenu                                                                         |
-| ------------------- | ------------------------------------------------------------------------------- |
-| `0001_foundations`  | Extensions `btree_gist` et `citext`, fonctions utilitaires                      |
-| `0002_identity`     | Personnel, réinitialisation des mots de passe, sessions, paramètres de l'hôtel  |
-| `0003_catalog`      | Catégories, photos, chambres, saisons et événements, fermetures, prestations    |
-| `0004_reservations` | Clients, réservations, chambres réservées, prix par nuit, prestations du séjour |
-| `0005_billing`      | Paiements, numérotation, factures et avoirs, lignes de facture                  |
-| `0006_maintenance`  | Pannes, photos, historique, mises hors service                                  |
-| `0007_technical`    | Journal des actions sensibles, messages de contact, idempotence, webhooks       |
-| `0008_invoice_numbering` | Numéro de facture attribué par la base elle-même (audit QA-01)             |
+| Migration                | Contenu                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| `0001_foundations`       | Extensions `btree_gist` et `citext`, fonctions utilitaires                      |
+| `0002_identity`          | Personnel, réinitialisation des mots de passe, sessions, paramètres de l'hôtel  |
+| `0003_catalog`           | Catégories, photos, chambres, saisons et événements, fermetures, prestations    |
+| `0004_reservations`      | Clients, réservations, chambres réservées, prix par nuit, prestations du séjour |
+| `0005_billing`           | Paiements, numérotation, factures et avoirs, lignes de facture                  |
+| `0006_maintenance`       | Pannes, photos, historique, mises hors service                                  |
+| `0007_technical`         | Journal des actions sensibles, messages de contact, idempotence, webhooks       |
+| `0008_invoice_numbering` | Numéro de facture attribué par la base elle-même (audit QA-01)                  |
 
 ### Garanties assurées par la base elle-même
 
