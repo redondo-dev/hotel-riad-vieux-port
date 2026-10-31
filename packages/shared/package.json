@@ -1,5 +1,14 @@
 {
   "name": "@riad/shared",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "description": "Types et règles métier partagés entre l'API et les applications Angular",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
 }

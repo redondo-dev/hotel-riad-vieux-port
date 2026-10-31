@@ -1,0 +1,86 @@
+<form
+  class="rounded-xl bg-white p-4 text-ink shadow-dialog ring-1 ring-line sm:p-6"
+  novalidate
+  [attr.aria-labelledby]="idPrefix() + '-title'"
+  (submit)="submit($event)"
+>
+  @if (headingLevel() === 2) {
+    <h2 class="sr-only" [id]="idPrefix() + '-title'" i18n="@@search.title">Rechercher un séjour</h2>
+  } @else {
+    <h3 class="sr-only" [id]="idPrefix() + '-title'" i18n="@@search.title">Rechercher un séjour</h3>
+  }
+
+  @if (errors().length > 0) {
+    <div
+      #errorSummary
+      tabindex="-1"
+      class="mb-5 rounded-lg border-l-4 border-danger bg-danger-pale p-4"
+      [attr.aria-labelledby]="idPrefix() + '-errors-title'"
+    >
+      <p class="flex items-center gap-2 font-semibold" [id]="idPrefix() + '-errors-title'">
+        <lucide-icon [img]="icons.alert" [size]="20" class="text-danger" aria-hidden="true" />
+        <span>{{ errorTitle() }}</span>
+      </p>
+      <ul class="mt-2 flex flex-col gap-1 pl-7">
+        @for (error of errors(); track $index) {
+          <li>
+            <button
+              type="button"
+              class="text-left text-sm underline underline-offset-2"
+              (click)="focusFieldOf(error)"
+            >
+              {{ message(error) }}
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  <div class="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_auto] lg:items-start">
+    <div>
+      <rvp-date-range-field
+        [fieldId]="idPrefix() + '-dates'"
+        [today]="today"
+        [lastSelectableDate]="lastSelectableDate"
+        [(checkIn)]="checkIn"
+        [(checkOut)]="checkOut"
+        [invalid]="dateErrors().length > 0"
+        [describedBy]="dateErrors().length > 0 ? idPrefix() + '-dates-error' : null"
+      />
+      @if (dateErrors().length > 0) {
+        <div class="field-error" [id]="idPrefix() + '-dates-error'">
+          @for (error of dateErrors(); track $index) {
+            <p>{{ message(error) }}</p>
+          }
+        </div>
+      }
+    </div>
+
+    <div>
+      <rvp-guests-picker
+        [fieldId]="idPrefix() + '-guests'"
+        [(rooms)]="rooms"
+        [errors]="guestErrors()"
+        [invalid]="guestErrors().length > 0"
+        [describedBy]="guestErrors().length > 0 ? idPrefix() + '-guests-error' : null"
+      />
+      @if (guestErrors().length > 0) {
+        <div class="field-error" [id]="idPrefix() + '-guests-error'">
+          @for (error of guestErrors(); track $index) {
+            <p>{{ message(error) }}</p>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- The empty line aligns the button with the fields under their labels on large screens. -->
+    <div class="flex flex-col gap-1.5">
+      <span class="hidden text-sm lg:block" aria-hidden="true">&nbsp;</span>
+      <button type="submit" class="btn-primary w-full lg:w-auto">
+        <lucide-icon [img]="icons.search" [size]="20" aria-hidden="true" />
+        <span i18n="@@search.submit">Rechercher</span>
+      </button>
+    </div>
+  </div>
+</form>

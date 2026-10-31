@@ -1,0 +1,174 @@
+/*
+ * Design system of the public site (UI/UX specification, section 3).
+ * Tailwind v4 is configured in CSS: the tokens below generate the utilities
+ * (`bg-port`, `text-clay`, `text-h1`, `shadow-card`…). Tailwind v4 does not support Sass,
+ * so global styles are plain CSS; components use utility classes.
+ */
+@import 'tailwindcss';
+
+@source './app';
+
+@theme {
+  /* Colours — every text colour below meets WCAG AA contrast on white */
+  --color-port: #1f4e6b;
+  --color-port-dark: #163a50;
+  --color-clay: #b4552f;
+  --color-clay-dark: #933f1f;
+  --color-clay-pale: #f3ded3;
+  --color-riad: #2f5d50;
+  --color-sand: #fbf8f3;
+  --color-stone: #efe8dc;
+  --color-ink: #1c2430;
+  --color-muted: #4f5b67;
+  --color-line: #e3ddd2;
+  --color-field: #8a8f96;
+  --color-success: #2e7d4f;
+  --color-success-pale: #e3f1e8;
+  --color-warning: #a35f00;
+  --color-warning-pale: #fcefd2;
+  --color-danger: #b3261e;
+  --color-danger-pale: #f8e1df;
+  --color-info-pale: #dce8f2;
+
+  /* Typography — fonts are self-hosted (Fontsource), no call to Google servers */
+  --font-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text-h1: 2.75rem;
+  --text-h1--line-height: 3.25rem;
+  --text-h1-m: 2rem;
+  --text-h1-m--line-height: 2.5rem;
+  --text-h2: 2rem;
+  --text-h2--line-height: 2.5rem;
+  --text-h2-m: 1.625rem;
+  --text-h2-m--line-height: 2.125rem;
+  --text-h3: 1.5rem;
+  --text-h3--line-height: 2rem;
+  --text-h3-m: 1.3125rem;
+  --text-h3-m--line-height: 1.75rem;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.75rem;
+
+  /* Elevation */
+  --shadow-card: 0 1px 2px rgb(28 36 48 / 0.08);
+  --shadow-pop: 0 4px 12px rgb(28 36 48 / 0.1);
+  --shadow-dialog: 0 12px 32px rgb(28 36 48 / 0.16);
+}
+
+@layer base {
+  html {
+    /* Keeps anchored sections and focused elements clear of the sticky header (WCAG 2.4.11). */
+    scroll-padding-top: 6rem;
+  }
+
+  body {
+    @apply bg-sand font-sans text-body text-ink antialiased;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-port);
+    outline-offset: 2px;
+  }
+
+  .on-dark :focus-visible {
+    outline-color: #fff;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-[75rem] px-4 sm:px-8;
+  }
+
+  .skip-link {
+    @apply absolute top-3 left-3 z-50 -translate-y-24 rounded-lg bg-port px-4 py-3 font-semibold text-white focus:translate-y-0;
+  }
+
+  .section-title {
+    @apply font-display text-h2-m font-semibold text-ink sm:text-h2;
+  }
+
+  /* Buttons: one primary action per screen (terracotta), 44 px minimum touch target */
+  .btn-primary {
+    @apply inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-clay px-6 font-semibold text-white transition-colors hover:bg-clay-dark;
+  }
+
+  .btn-primary-compact {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-clay px-4 text-sm font-semibold text-white transition-colors hover:bg-clay-dark;
+  }
+
+  .btn-secondary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-port px-5 font-semibold text-port transition-colors hover:bg-info-pale;
+  }
+
+  .btn-quiet {
+    @apply inline-flex min-h-11 items-center gap-2 rounded-lg px-3 font-medium text-port underline-offset-4 hover:underline;
+  }
+
+  .btn-icon {
+    @apply inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-ink transition-colors hover:bg-stone aria-disabled:cursor-not-allowed aria-disabled:opacity-45 aria-disabled:hover:bg-transparent;
+  }
+
+  /* Form fields: visible label above, 48 px high, error linked to the field */
+  .field-label {
+    @apply text-sm font-semibold text-ink;
+  }
+
+  .field-control {
+    @apply flex h-12 w-full items-center gap-3 rounded-sm border border-field bg-white px-4 text-base text-ink aria-invalid:border-2 aria-invalid:border-danger;
+  }
+
+  .field-error {
+    @apply mt-1.5 text-sm font-medium text-danger;
+  }
+
+  /* Dialogs: full screen on phones, centred card from 640 px */
+  .dialog-panel {
+    @apply m-0 h-dvh max-h-none w-full max-w-none flex-col bg-white p-0 text-ink shadow-dialog sm:m-auto sm:h-auto sm:max-h-[90dvh] sm:rounded-xl;
+  }
+
+  .dialog-panel[open] {
+    display: flex;
+  }
+
+  .dialog-panel::backdrop {
+    background: rgb(28 36 48 / 0.55);
+  }
+
+  /* Lucide icons draw outlines; this fills one (rating stars). The rule targets the <svg>
+     itself because its fill="none" attribute is not overridden by an inherited colour. */
+  .icon-filled svg {
+    fill: currentColor;
+  }
+
+  /* Calendar days */
+  .day {
+    @apply inline-flex size-11 items-center justify-center rounded-lg text-base text-ink tabular-nums hover:bg-stone;
+  }
+
+  .day-today {
+    @apply font-bold underline decoration-2 underline-offset-4;
+  }
+
+  .day-in-range {
+    @apply rounded-none bg-info-pale hover:bg-info-pale;
+  }
+
+  .day-endpoint {
+    @apply bg-port font-semibold text-white hover:bg-port-dark;
+  }
+
+  .day-unavailable {
+    @apply cursor-not-allowed text-field line-through hover:bg-transparent;
+  }
+}

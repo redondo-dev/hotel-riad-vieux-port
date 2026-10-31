@@ -11,6 +11,7 @@ export default tseslint.config(
       '**/dist/**',
       '**/coverage/**',
       '**/.angular/**',
+      '**/out-tsc/**',
       '**/*.d.ts',
     ],
   },
@@ -27,6 +28,8 @@ export default tseslint.config(
       // Les journaux passent par le logger (Pino), jamais par console.
       'no-console': 'error',
       eqeqeq: ['error', 'always'],
+      // Angular components are classes carried by their decorator, sometimes without members.
+      '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
     },
   },
   // Désactive les règles de mise en forme, laissées à Prettier.

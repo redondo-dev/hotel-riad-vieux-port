@@ -1,0 +1,209 @@
+<!-- 1. Hero: photo, title, and the search form overlapping its bottom edge on large screens -->
+<section class="on-dark relative isolate" aria-labelledby="home-title">
+  <rvp-photo tone="dark" class="absolute inset-0 -z-20" [alt]="heroAlt" />
+  <div
+    class="absolute inset-0 -z-10 bg-linear-to-t from-ink/85 via-ink/45 to-ink/10"
+    aria-hidden="true"
+  ></div>
+  <div
+    class="container-page flex min-h-[55svh] flex-col justify-end gap-4 pt-24 pb-10 lg:min-h-[70svh] lg:pb-28"
+  >
+    <h1
+      id="home-title"
+      class="max-w-3xl font-display text-h1-m font-semibold text-white sm:text-h1"
+      i18n="@@home.hero.title"
+    >
+      Votre hôtel au cœur du Vieux-Port
+    </h1>
+    <p class="max-w-2xl text-lg text-white/90" i18n="@@home.hero.subtitle">
+      Des chambres calmes à deux pas du port, une réception ouverte jour et nuit et le meilleur de
+      Marseille à pied.
+    </p>
+  </div>
+</section>
+
+<div [id]="searchAnchor" class="container-page relative z-10 -mt-6 lg:-mt-20">
+  <rvp-stay-search idPrefix="search" />
+</div>
+
+<!-- 2. Reassurance: only commitments that are true under the validated rules -->
+<section
+  class="container-page mt-12"
+  i18n-aria-label="@@home.reassurance.label"
+  aria-label="Nos engagements"
+>
+  <ul class="grid gap-4 sm:grid-cols-3">
+    <li class="flex items-center gap-3 rounded-xl bg-white p-4 shadow-card ring-1 ring-line">
+      <lucide-icon
+        [img]="icons.reception"
+        [size]="24"
+        class="shrink-0 text-riad"
+        aria-hidden="true"
+      />
+      <span class="font-medium" i18n="@@home.reassurance.reception">Réception 24 h/24</span>
+    </li>
+    <li class="flex items-center gap-3 rounded-xl bg-white p-4 shadow-card ring-1 ring-line">
+      <lucide-icon
+        [img]="icons.cancellation"
+        [size]="24"
+        class="shrink-0 text-riad"
+        aria-hidden="true"
+      />
+      <span class="font-medium" i18n="@@home.reassurance.cancellation"
+        >Annulation gratuite jusqu'à 48 h (tarif flexible)</span
+      >
+    </li>
+    <li class="flex items-center gap-3 rounded-xl bg-white p-4 shadow-card ring-1 ring-line">
+      <lucide-icon
+        [img]="icons.payment"
+        [size]="24"
+        class="shrink-0 text-riad"
+        aria-hidden="true"
+      />
+      <span class="font-medium" i18n="@@home.reassurance.payment">Paiement sécurisé</span>
+    </li>
+  </ul>
+</section>
+
+<!-- 3. Room categories: horizontal scroll on phones and tablets, grid from 1024 px -->
+<section class="container-page mt-20" aria-labelledby="home-rooms-title">
+  <h2 id="home-rooms-title" class="section-title" i18n="@@home.rooms.title">Nos chambres</h2>
+  <p class="mt-2 max-w-2xl text-muted" i18n="@@home.rooms.intro">
+    Cinq catégories, de la chambre individuelle à la suite avec vue sur le port.
+  </p>
+  <div
+    class="-mx-4 mt-8 overflow-x-auto px-4 pb-4 sm:-mx-8 sm:px-8 lg:mx-0 lg:overflow-visible lg:px-0"
+    role="region"
+    tabindex="0"
+    [attr.aria-label]="roomsListLabel"
+  >
+    <ul class="flex snap-x snap-mandatory gap-4 lg:grid lg:grid-cols-3 lg:gap-6">
+      @for (category of categories; track category.code) {
+        <li class="w-[85%] shrink-0 snap-start sm:w-[45%] lg:w-auto">
+          <rvp-room-card [category]="category" />
+        </li>
+      }
+    </ul>
+  </div>
+</section>
+
+<!-- 4. The hotel in brief -->
+<section
+  class="container-page mt-20 grid items-center gap-8 lg:grid-cols-2"
+  aria-labelledby="home-about-title"
+>
+  <rvp-photo class="aspect-[4/3] rounded-xl" [alt]="aboutAlt" />
+  <div>
+    <h2 id="home-about-title" class="section-title" i18n="@@home.about.title">
+      Un riad au bord de la Méditerranée
+    </h2>
+    <p class="mt-4 max-w-xl text-body">{{ aboutText }}</p>
+  </div>
+</section>
+
+<!-- 5. Services: no invented price; the breakfast price is the validated one -->
+<section class="mt-20 bg-stone py-16" aria-labelledby="home-services-title">
+  <div class="container-page">
+    <h2 id="home-services-title" class="section-title" i18n="@@home.services.title">
+      Services et équipements
+    </h2>
+    <ul class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      @for (service of services; track service.code) {
+        <li class="flex gap-4 rounded-xl bg-white p-5 shadow-card">
+          <lucide-icon
+            [img]="service.icon"
+            [size]="24"
+            class="mt-0.5 shrink-0 text-riad"
+            aria-hidden="true"
+          />
+          <div>
+            <h3 class="font-semibold">{{ service.name }}</h3>
+            <p class="mt-1 text-sm text-muted">{{ service.detail }}</p>
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+</section>
+
+<!-- 6. Neighbourhood -->
+<section
+  class="container-page mt-20 grid items-center gap-8 lg:grid-cols-2"
+  aria-labelledby="home-area-title"
+>
+  <div class="lg:order-2">
+    <rvp-photo class="aspect-[4/3] rounded-xl" [alt]="neighbourhoodAlt" />
+  </div>
+  <div class="lg:order-1">
+    <h2 id="home-area-title" class="section-title" i18n="@@home.neighbourhood.title">
+      Le Vieux-Port à vos pieds
+    </h2>
+    <p class="mt-4 max-w-xl" i18n="@@home.neighbourhood.text">
+      Le Panier, le Mucem et les navettes maritimes sont accessibles à pied. Le métro Vieux-Port
+      vous emmène à la gare Saint-Charles en quelques minutes.
+    </p>
+  </div>
+</section>
+
+<!-- 7. Reviews: fictional, and said so clearly -->
+<section class="container-page mt-20" aria-labelledby="home-reviews-title">
+  <h2 id="home-reviews-title" class="section-title" i18n="@@home.reviews.title">
+    Avis de nos hôtes
+  </h2>
+  <p
+    class="mt-4 inline-flex rounded-lg bg-warning-pale px-4 py-2 text-sm font-medium ring-1 ring-warning/40"
+    i18n="@@home.reviews.demoNotice"
+  >
+    Avis de démonstration : ces avis sont fictifs et ne proviennent pas de clients réels.
+  </p>
+  <ul class="mt-8 grid gap-6 md:grid-cols-3">
+    @for (review of reviews; track review.id) {
+      <li>
+        <figure
+          class="flex h-full flex-col gap-4 rounded-xl bg-white p-6 shadow-card ring-1 ring-line"
+        >
+          <p
+            class="flex gap-0.5 text-clay"
+            role="img"
+            [attr.aria-label]="ratingLabel(review.rating)"
+          >
+            @for (star of stars; track star) {
+              <lucide-icon
+                [img]="icons.star"
+                [size]="18"
+                [class.icon-filled]="star <= review.rating"
+                [class.opacity-30]="star > review.rating"
+                aria-hidden="true"
+              />
+            }
+          </p>
+          <blockquote class="flex-1">
+            <p>{{ review.text }}</p>
+          </blockquote>
+          <figcaption class="text-sm text-muted">
+            <span class="font-semibold text-ink">{{ review.author }}</span> ·
+            {{ reviewStay(review.categoryName) }}
+          </figcaption>
+        </figure>
+      </li>
+    }
+  </ul>
+</section>
+
+<!-- 8. Final call to action -->
+<section class="container-page mt-20" aria-labelledby="home-cta-title">
+  <div
+    class="flex flex-col items-start gap-4 rounded-xl bg-clay-pale p-8 sm:flex-row sm:items-center sm:justify-between"
+  >
+    <h2
+      id="home-cta-title"
+      class="font-display text-h3-m font-semibold sm:text-h3"
+      i18n="@@home.cta.title"
+    >
+      Prêt à réserver ?
+    </h2>
+    <a class="btn-primary" routerLink="/" [fragment]="searchAnchor" i18n="@@home.cta.button"
+      >Choisir mes dates</a
+    >
+  </div>
+</section>
