@@ -39,6 +39,24 @@ Sequelize sert à lire et écrire les données, jamais à créer ou modifier les
 Ces règles de facturation reprennent RM-21 : **elles restent à confirmer par un
 expert-comptable** avant toute utilisation réelle.
 
+### Contrôles confiés à l'API
+
+La base n'empêche pas les cas suivants : l'API doit les refuser, et **chacun doit avoir son
+test automatisé** dans le module qui l'implémente (audit QA, sondes P1 à P9).
+
+| Sonde | Cas à refuser                                                            | Module      |
+| ----- | ------------------------------------------------------------------------ | ----------- |
+| P1    | Plus de personnes que la capacité de la catégorie                        | Réservation |
+| P3    | Attribution d'une chambre désactivée                                     | Réservation |
+| P4    | Attribution d'une chambre hors service sur les nuits concernées          | Réservation |
+| P6    | Remboursement rattaché au paiement d'une autre réservation               | Paiements   |
+| P7    | Remboursements cumulés supérieurs au paiement (`REFUND_EXCEEDS_PAYMENT`) | Paiements   |
+| P8    | Avoir d'une réservation corrigeant la facture d'une autre réservation    | Facturation |
+| P9    | Facture dont la somme des lignes diffère du total                        | Facturation |
+
+Le module API devra aussi ajouter les en-têtes de sécurité et la liste des hôtes autorisés au
+serveur de rendu du site public, et vérifier que l'API importe correctement `packages/shared`.
+
 ## Commandes
 
 À lancer depuis la racine du dépôt. Les variables sont lues dans le fichier `.env` racine.
