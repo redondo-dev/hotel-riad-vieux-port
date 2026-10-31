@@ -41,8 +41,8 @@
     <div>
       <rvp-date-range-field
         [fieldId]="idPrefix() + '-dates'"
-        [today]="today"
-        [lastSelectableDate]="lastSelectableDate"
+        [timeZone]="timeZone"
+        [selectableDays]="selectableDays"
         [(checkIn)]="checkIn"
         [(checkOut)]="checkOut"
         [invalid]="dateErrors().length > 0"

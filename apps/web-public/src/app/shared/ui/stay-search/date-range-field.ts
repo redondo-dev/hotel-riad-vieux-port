@@ -8,11 +8,19 @@ import {
   inject,
   Injector,
   input,
+  linkedSignal,
   model,
   signal,
   viewChild,
 } from '@angular/core';
-import { addMonths, daysBetween, startOfMonth, type IsoDate } from '@riad/shared';
+import {
+  addDays,
+  addMonths,
+  daysBetween,
+  nowInTimeZone,
+  startOfMonth,
+  type IsoDate,
+} from '@riad/shared';
 import { CalendarDays, ChevronLeft, ChevronRight, LucideAngularModule, X } from 'lucide-angular';
 import { nightsLabel } from '../../../core/i18n/counts';
 import { formatDate } from '../../../core/i18n/format';
@@ -41,9 +49,13 @@ import {
 })
 export class DateRangeField {
   readonly fieldId = input.required<string>();
-  readonly today = input.required<IsoDate>();
-  /** Last date that can be clicked; business limits are checked by the search form. */
-  readonly lastSelectableDate = input.required<IsoDate>();
+  /** Time zone of the hotel: "today" is the hotel's date, not the visitor's. */
+  readonly timeZone = input.required<string>();
+  /**
+   * Number of days after today that can still be clicked; business limits are checked by the
+   * search form.
+   */
+  readonly selectableDays = input.required<number>();
   readonly invalid = input(false);
   readonly describedBy = input<string | null>(null);
   readonly checkIn = model<IsoDate | null>(null);
@@ -62,6 +74,11 @@ export class DateRangeField {
     next: ChevronRight,
   };
   protected readonly weekdays = weekdayNames(INTL_LOCALE[this.locale]);
+  /** The hotel's date, read again each time the calendar opens (audit QA-06). */
+  protected readonly today = linkedSignal(() => nowInTimeZone(this.timeZone()).date);
+  protected readonly lastSelectableDate = computed(() =>
+    addDays(this.today(), this.selectableDays()),
+  );
   protected readonly isOpen = signal(false);
   protected readonly monthsShown = signal(1);
   protected readonly viewStart = signal<IsoDate | null>(null);
@@ -145,6 +162,8 @@ export class DateRangeField {
   }
 
   protected open(): void {
+    // A page left open past midnight must not offer yesterday.
+    this.today.set(nowInTimeZone(this.timeZone()).date);
     const start = this.checkIn() ?? this.today();
     this.focusDate.set(start);
     this.viewStart.set(startOfMonth(start));
