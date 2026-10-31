@@ -1,0 +1,55 @@
+openapi: 3.1.0
+info:
+  title: API de l'Hôtel Riad Vieux-Port
+  version: 0.1.0
+  description: |
+    API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
+
+    **État : aucun point d'accès n'est encore implémenté.** Ce fichier ne décrit que ce qui
+    existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
+    La spécification complète validée figure dans le dossier d'architecture (section 5).
+
+    Conventions communes : JSON, champs en camelCase, dates `AAAA-MM-JJ`, montants en
+    centimes d'euro, erreurs au format RFC 9457 (schéma `Problem` ci-dessous).
+servers:
+  - url: /api/v1
+paths: {}
+components:
+  schemas:
+    Problem:
+      type: object
+      description: Erreur au format RFC 9457, sans détail technique interne.
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://api.riad-vieux-port.example/errors/availability-changed
+        title:
+          type: string
+          example: Chambres plus disponibles
+        status:
+          type: integer
+          example: 409
+        code:
+          type: string
+          description: Code d'erreur métier stable, utilisable par les applications.
+          example: AVAILABILITY_CHANGED
+        detail:
+          type: string
+          example: Il ne reste plus de chambre Double supérieure du 12 au 15 mai.
+        errors:
+          type: array
+          description: Erreurs de validation, champ par champ.
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field:
+                type: string
+                example: rooms[0].adults
+              message:
+                type: string
+        traceId:
+          type: string
+          description: Identifiant reliant l'erreur au journal du serveur.

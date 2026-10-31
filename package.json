@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=22.12.0",
+    "node": ">=22.18.0",
     "npm": ">=10"
   },
   "scripts": {
@@ -23,6 +23,11 @@
     "check": "npm run lint && npm run format:check && npm run typecheck",
     "start:public": "npm run start --workspace=@riad/web-public",
     "start:public:en": "npm run start:en --workspace=@riad/web-public",
+    "db:migrate": "npm run db:migrate --workspace=@riad/api",
+    "db:rollback": "npm run db:rollback --workspace=@riad/api",
+    "db:status": "npm run db:status --workspace=@riad/api",
+    "db:seed:demo": "npm run db:seed:demo --workspace=@riad/api",
+    "db:test:sql": "npm run db:test:sql --workspace=@riad/api",
     "prepare": "husky"
   },
   "devDependencies": {
