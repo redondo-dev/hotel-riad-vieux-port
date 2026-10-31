@@ -10,6 +10,7 @@
 # Connection: standard libpq variables (PGHOST, PGPORT, PGUSER, PGPASSWORD).
 # The user must be allowed to create databases. Usage: npm run db:test:sql
 set -euo pipefail
+export LC_COLLATE=C  # glob order = byte order, the same on every machine
 
 here="$(cd "$(dirname "$0")" && pwd)"
 db_dir="$(dirname "$here")"
@@ -25,14 +26,19 @@ step() { printf '\n== %s\n' "$1"; }
 cleanup() { psql_admin -c "DROP DATABASE IF EXISTS $test_db WITH (FORCE)" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
+# Files are listed with globs, which Bash expands in alphabetical order and which stay intact when
+# the project path contains spaces (audit QA-02).
 apply_up() {
-  for file in $(ls "$db_dir"/migrations/*.up.sql | sort); do
+  for file in "$db_dir"/migrations/*.up.sql; do
     psql_quiet --single-transaction -f "$file"
     echo "   appliquée : $(basename "$file")"
   done
 }
 apply_down() {
-  for file in $(ls "$db_dir"/migrations/*.down.sql | sort -r); do
+  local files=("$db_dir"/migrations/*.down.sql)
+  local i
+  for ((i = ${#files[@]} - 1; i >= 0; i--)); do
+    file="${files[i]}"
     psql_quiet --single-transaction -f "$file"
     echo "   annulée   : $(basename "$file")"
   done
@@ -51,7 +57,7 @@ echo "   tables créées : $(count_tables)"
 
 step "2. Données de démonstration, chargées deux fois (idempotence)"
 for run in 1 2; do
-  for file in $(ls "$db_dir"/seeds/demo/*.sql | sort); do
+  for file in "$db_dir"/seeds/demo/*.sql; do
     psql_quiet --single-transaction -f "$file"
   done
   echo "   passage $run : $(psql_test -tAc 'SELECT count(*) FROM rooms') chambres"
@@ -59,7 +65,7 @@ done
 
 step "3. Tests des contraintes"
 passed=0
-for file in $(ls "$here"/[0-9]*.sql | sort); do
+for file in "$here"/[0-9]*.sql; do
   echo "-- $(basename "$file")"
   output="$(cd "$here" && psql_test -f "$file" 2>&1)" || { echo "$output"; exit 1; }
   echo "$output" | sed -n 's/.*NOTICE:  \(OK .*\)/   \1/p'
