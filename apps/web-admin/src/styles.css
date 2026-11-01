@@ -1,0 +1,131 @@
+/*
+ * Design system of the staff tool (UI/UX specification, sections 3 and 5): the same colours and
+ * text font as the public site, denser, on a light grey background with a dark slate sidebar.
+ */
+@import 'tailwindcss';
+
+@source './app';
+
+@theme {
+  /* Shared colours — every text colour meets WCAG AA contrast on white */
+  --color-port: #1f4e6b;
+  --color-port-dark: #163a50;
+  --color-clay: #b4552f;
+  --color-clay-dark: #933f1f;
+  --color-riad: #2f5d50;
+  --color-ink: #1c2430;
+  --color-muted: #4f5b67;
+  --color-line: #e3ddd2;
+  --color-field: #8a8f96;
+  --color-success: #2e7d4f;
+  --color-success-pale: #e3f1e8;
+  --color-warning: #a35f00;
+  --color-warning-pale: #fcefd2;
+  --color-danger: #b3261e;
+  --color-danger-pale: #f8e1df;
+  --color-info-pale: #dce8f2;
+
+  /* Staff tool */
+  --color-mist: #f4f5f7;
+  --color-slate-nav: #1f2a36;
+  --color-slate-nav-hover: #2b3846;
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(28 36 48 / 0.08);
+  --shadow-pop: 0 4px 12px rgb(28 36 48 / 0.1);
+  --shadow-dialog: 0 12px 32px rgb(28 36 48 / 0.16);
+}
+
+@layer base {
+  body {
+    @apply bg-mist font-sans text-base text-ink antialiased;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-port);
+    outline-offset: 2px;
+  }
+
+  .on-dark :focus-visible {
+    outline-color: #fff;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .skip-link {
+    @apply absolute top-3 left-3 z-50 -translate-y-24 rounded-lg bg-port px-4 py-3 font-semibold text-white focus:translate-y-0;
+  }
+
+  .page-title {
+    @apply text-2xl font-semibold text-ink;
+  }
+
+  .card {
+    @apply rounded-xl border border-line bg-white shadow-card;
+  }
+
+  /* Buttons: 44 px minimum touch target */
+  .btn-primary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-port px-5 font-semibold text-white transition-colors hover:bg-port-dark disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-port bg-white px-4 font-semibold text-port transition-colors hover:bg-info-pale disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-danger px-5 font-semibold text-white transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-quiet {
+    @apply inline-flex min-h-11 items-center gap-2 rounded-lg px-3 font-medium text-port underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline;
+  }
+
+  .btn-icon {
+    @apply inline-flex size-11 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-black/5;
+  }
+
+  /* Form fields: visible label above, error linked to the field */
+  .field-label {
+    @apply text-sm font-semibold text-ink;
+  }
+
+  .field-control {
+    @apply h-11 w-full rounded-md border border-field bg-white px-3 text-base text-ink aria-invalid:border-2 aria-invalid:border-danger;
+  }
+
+  .field-error {
+    @apply mt-1.5 text-sm font-medium text-danger;
+  }
+
+  .alert-error {
+    @apply flex items-start gap-3 rounded-lg border border-danger/30 bg-danger-pale p-4 text-sm text-ink;
+  }
+
+  .alert-success {
+    @apply flex items-start gap-3 rounded-lg border border-success/30 bg-success-pale p-4 text-sm text-ink;
+  }
+
+  .alert-info {
+    @apply flex items-start gap-3 rounded-lg border border-port/20 bg-info-pale p-4 text-sm text-ink;
+  }
+
+  /* Dialogs: centred card */
+  .dialog-panel {
+    @apply m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-white p-0 text-ink shadow-dialog;
+  }
+
+  .dialog-panel::backdrop {
+    background: rgb(28 36 48 / 0.55);
+  }
+}
