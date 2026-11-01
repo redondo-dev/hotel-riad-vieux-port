@@ -59,7 +59,12 @@ const app = createApp({
   },
 });
 
-const server = app.listen(env.API_PORT, () => {
+// Express 5 also calls this function when listening fails (port taken…): the error is then
+// handled by server.on('error') below, and « API démarrée » must not be written.
+const server = app.listen(env.API_PORT, (error?: Error) => {
+  if (error !== undefined) {
+    return;
+  }
   logger.info(
     {
       port: env.API_PORT,
