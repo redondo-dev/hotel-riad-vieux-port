@@ -1,8 +1,8 @@
 # API — Hôtel Riad Vieux-Port
 
-État : **module 2, socle du serveur HTTP**. La base de données (module 1) et la couche HTTP
-commune sont en place ; seul le contrôle de santé `GET /api/v1/health` est exposé. Aucune route
-métier n'existe encore.
+État : **module 3, comptes du personnel**. La base de données (module 1), la couche HTTP
+commune (module 2) et l'identité du personnel sont en place : connexion, sessions, mots de
+passe et gestion des comptes, sous `/api/v1/admin`. Aucune route de réservation n'existe encore.
 
 ## Serveur HTTP
 
@@ -29,11 +29,37 @@ Organisation (dossier d'architecture, section 7) : `src/app.ts` assemble l'appli
 `src/shared/domain/errors.ts` les erreurs métier. Les modules métier ajouteront leurs routes
 dans `src/modules/<module>/http`.
 
+## Comptes du personnel (`/api/v1/admin`)
+
+Routes détaillées dans `openapi/openapi.yaml`. Règles appliquées :
+
+| Sujet            | Règle                                                                                                                                          |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mot de passe     | 12 caractères minimum, haché avec Argon2id ; jamais choisi par la direction pour quelqu'un d'autre                                             |
+| Connexion        | Même réponse quelle que soit la cause d'échec ; blocage 15 min après 5 échecs ; 10 échecs / 15 min par IP et par compte                        |
+| Session          | Côté serveur (table `user_sessions`) ; cookie `riad.sid` HttpOnly, SameSite=Strict, Secure en production ; nouvelle session à chaque connexion |
+| Durée            | Déconnexion après 30 min d'inactivité et 12 h au maximum                                                                                       |
+| CSRF             | En-tête `X-CSRF-Token` (jeton reçu à la connexion) exigé sur toute requête qui modifie des données                                             |
+| Liens par e-mail | Usage unique, seule l'empreinte SHA-256 est stockée ; 30 min (oubli) ou 48 h (nouveau compte)                                                  |
+| Comptes          | Direction uniquement ; pas de suppression (désactivation) ; jamais sans compte de direction actif                                              |
+| Effet immédiat   | Désactivation, changement de rôle ou de mot de passe : les sessions concernées sont fermées                                                    |
+| Journal          | Connexions, échecs, blocages, mots de passe et gestion des comptes inscrits dans `audit_logs`                                                  |
+
+**E-mails en développement :** aucun e-mail n'est envoyé. Chaque message est écrit dans le
+dossier `outbox/` à la racine du dépôt (ignoré par Git) : ouvrez le fichier pour suivre le lien.
+Le service d'envoi réel (Brevo) sera branché à la phase 6 ; d'ici là, l'API refuse de démarrer
+en production.
+
+**Premier compte :** `npm run db:seed:demo` (portfolio, `DEMO_MODE=true`) crée un compte par
+rôle, dont `direction@riad-vieux-port.example`, avec le mot de passe `DEMO_USER_PASSWORD`.
+
 ### Tests
 
 `npm run test` (depuis `apps/api` ou la racine) lance les tests unitaires et d'intégration. Les
 tests qui ont besoin de PostgreSQL utilisent **uniquement** `TEST_DATABASE_URL`, une base dédiée
-dont le nom doit contenir « test » ; sans cette variable, ils sont affichés comme ignorés.
+dont le nom doit contenir « test » et différente de `DATABASE_URL` ; sans cette variable, ils
+sont affichés comme ignorés. Avant chaque lancement, le schéma de cette base est reconstruit par
+les migrations (annulation complète puis réapplication) : **ses données sont effacées**.
 
 ## Base de données
 
