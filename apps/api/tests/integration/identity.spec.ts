@@ -415,4 +415,27 @@ describe.skipIf(!hasTestDatabase)('staff identity', () => {
       expect(JSON.stringify(response.body).includes('argon2')).toBe(false);
     });
   });
+
+  describe('demo accounts (portfolio)', () => {
+    it('does not exist outside the demo mode', async () => {
+      const response = await request(harness.app()).get(`${ADMIN}/demo`);
+      expect(response.status).toBe(404);
+      expect(response.body.code).toBe('NOT_FOUND');
+    });
+
+    it('lists the four demo accounts and their password in demo mode', async () => {
+      const response = await request(harness.app({ demoPassword: 'Mot-De-Passe-Demo' })).get(
+        `${ADMIN}/demo`,
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.body.password).toBe('Mot-De-Passe-Demo');
+      expect(response.body.accounts.map((account: { role: string }) => account.role)).toEqual([
+        'direction',
+        'reception',
+        'housekeeping',
+        'technician',
+      ]);
+    });
+  });
 });

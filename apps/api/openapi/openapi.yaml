@@ -46,6 +46,36 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /admin/demo:
+    get:
+      operationId: getDemoAccounts
+      summary: Comptes de démonstration (portfolio uniquement)
+      description: |
+        Uniquement si `DEMO_MODE=true` : les 4 comptes de démonstration et leur mot de passe,
+        affichés sur la page de connexion de l'outil de gestion. Sinon 404, comme une route
+        inexistante. Jamais activé pour un hôtel réel.
+      tags: [Personnel]
+      responses:
+        '200':
+          description: Démonstration active.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [password, accounts]
+                properties:
+                  password: { type: string }
+                  accounts:
+                    type: array
+                    items:
+                      type: object
+                      required: [email, firstName, lastName, role]
+                      properties:
+                        email: { type: string, format: email }
+                        firstName: { type: string }
+                        lastName: { type: string }
+                        role: { $ref: '#/components/schemas/Role' }
+        '404': { $ref: '#/components/responses/Problem' }
   /admin/session:
     post:
       operationId: logIn

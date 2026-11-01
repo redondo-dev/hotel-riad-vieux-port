@@ -2,6 +2,7 @@ import express, { type Express, Router } from 'express';
 import type { Logger } from 'pino';
 import type { Sequelize } from 'sequelize';
 import { IdentityService } from './modules/identity/application/identity-service.ts';
+import { demoRouter } from './modules/identity/http/demo-routes.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
 import { UserRepository } from './modules/identity/infrastructure/user-repository.ts';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.ts';
@@ -39,6 +40,11 @@ export interface AdminDependencies {
   mailer: Mailer;
   /** Address of the staff tool, for the links sent by e-mail. */
   adminAppUrl: string;
+  /**
+   * Password of the demo accounts, shown on the login page. Set ONLY when DEMO_MODE=true
+   * (portfolio); undefined for a real hotel, and GET /admin/demo then answers 404.
+   */
+  demoPassword?: string | undefined;
 }
 
 /**
@@ -55,6 +61,8 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
     logger,
   });
   const router = Router();
+  // Before the sessions: this route never needs one.
+  router.use(demoRouter(deps.demoPassword));
   router.use(
     staffSessions({
       store: deps.sessionStore,
