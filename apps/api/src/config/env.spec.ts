@@ -60,6 +60,26 @@ describe('loadEnv', () => {
     );
   });
 
+  it('requires the session secret and the staff tool address in production', () => {
+    const message = errorOf({
+      ...base,
+      NODE_ENV: 'production',
+      API_ALLOWED_ORIGINS: 'https://gestion.riad-vieux-port.example',
+      ADMIN_APP_URL: 'http://gestion.riad-vieux-port.example',
+    });
+    expect(message.includes('SESSION_SECRET est obligatoire en production')).toBe(true);
+    expect(message.includes('ADMIN_APP_URL doit utiliser https en production')).toBe(true);
+  });
+
+  it('refuses a session secret shorter than 32 characters', () => {
+    expect(errorOf({ ...base, SESSION_SECRET: 'trop-court' }).includes('SESSION_SECRET')).toBe(
+      true,
+    );
+    expect(loadEnv({ ...base, SESSION_SECRET: 'x'.repeat(32) }).SESSION_SECRET).toBe(
+      'x'.repeat(32),
+    );
+  });
+
   it('never repeats a secret value in its error message', () => {
     const message = errorOf({ DATABASE_URL: 'mysql://user:s3cret@host/db' });
     expect(message.includes('DATABASE_URL')).toBe(true);

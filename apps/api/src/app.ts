@@ -1,10 +1,16 @@
 import express, { type Express, Router } from 'express';
 import type { Logger } from 'pino';
+import type { Sequelize } from 'sequelize';
+import { IdentityService } from './modules/identity/application/identity-service.ts';
+import { identityRouter } from './modules/identity/http/identity-routes.ts';
+import { UserRepository } from './modules/identity/infrastructure/user-repository.ts';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.ts';
 import { type DatabaseCheck, healthRouter } from './shared/http/health.ts';
 import { GLOBAL_RATE_LIMIT, type RateLimitRule, rateLimiter } from './shared/http/rate-limit.ts';
 import { requestContext } from './shared/http/request-context.ts';
 import { corsPolicy, jsonBody, securityHeaders } from './shared/http/security.ts';
+import { type SessionStore, staffSessions } from './shared/http/session.ts';
+import type { Mailer } from './shared/infrastructure/mailer.ts';
 
 /** Prefix of every route of the API, version included. */
 export const API_PREFIX = '/api/v1';
@@ -20,6 +26,44 @@ export interface AppDependencies {
   globalRateLimit?: RateLimitRule;
   /** Adds the routes of the business modules under API_PREFIX. */
   mountRoutes?: (api: Router) => void;
+  /** Staff part of the API (/admin); left out by the tests of the common HTTP layer. */
+  admin?: AdminDependencies;
+}
+
+export interface AdminDependencies {
+  sequelize: Sequelize;
+  sessionStore: SessionStore;
+  sessionSecret: string;
+  /** True in production: session cookie sent over HTTPS only. */
+  secureCookies: boolean;
+  mailer: Mailer;
+  /** Address of the staff tool, for the links sent by e-mail. */
+  adminAppUrl: string;
+}
+
+/**
+ * Staff part of the API: sessions exist only here, never on the public routes. Later modules
+ * add their staff routes to this router.
+ */
+function adminRouter(deps: AdminDependencies, logger: Logger): Router {
+  const users = new UserRepository(deps.sequelize);
+  const identity = new IdentityService({
+    sequelize: deps.sequelize,
+    users,
+    mailer: deps.mailer,
+    adminAppUrl: deps.adminAppUrl,
+    logger,
+  });
+  const router = Router();
+  router.use(
+    staffSessions({
+      store: deps.sessionStore,
+      secret: deps.sessionSecret,
+      secureCookies: deps.secureCookies,
+    }),
+  );
+  router.use(identityRouter(identity, (id) => users.findActiveStaff(id)));
+  return router;
 }
 
 /**
@@ -44,6 +88,9 @@ export function createApp(deps: AppDependencies): Express {
 
   const api = Router();
   api.use(healthRouter(deps.checkDatabase, deps.logger));
+  if (deps.admin !== undefined) {
+    api.use('/admin', adminRouter(deps.admin, deps.logger));
+  }
   deps.mountRoutes?.(api);
   app.use(API_PREFIX, api);
 

@@ -91,16 +91,43 @@ const EnvSchema = z
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
+
+    /**
+     * Signs the staff session cookies. Random, at least 32 characters, different in each
+     * environment. Required to start the HTTP server (not for the database commands).
+     */
+    SESSION_SECRET: emptyAsMissing(
+      z.string().min(32, 'doit contenir au moins 32 caractères').optional(),
+    ),
+    /**
+     * Address of the staff tool, used to build the links sent by e-mail (password set-up and
+     * reset). Defaults to the local staff tool in development.
+     */
+    ADMIN_APP_URL: emptyAsMissing(
+      z.url({ protocol: /^https?$/, error: 'doit être une adresse http(s) valide' }).optional(),
+    ),
   })
   .superRefine((env, ctx) => {
-    if (env.NODE_ENV === 'production' && env.API_ALLOWED_ORIGINS.length === 0) {
+    if (env.NODE_ENV !== 'production') {
+      return;
+    }
+    for (const name of ['API_ALLOWED_ORIGINS', 'SESSION_SECRET', 'ADMIN_APP_URL'] as const) {
+      const value = env[name];
+      if (value === undefined || (Array.isArray(value) && value.length === 0)) {
+        ctx.addIssue({ code: 'custom', path: [name], message: 'est obligatoire en production' });
+      }
+    }
+    if (env.ADMIN_APP_URL?.startsWith('http:') === true) {
       ctx.addIssue({
         code: 'custom',
-        path: ['API_ALLOWED_ORIGINS'],
-        message: 'est obligatoire en production',
+        path: ['ADMIN_APP_URL'],
+        message: 'doit utiliser https en production',
       });
     }
   });
+
+/** Staff tool served by `ng serve` in development (port reserved in API_ALLOWED_ORIGINS). */
+export const DEFAULT_ADMIN_APP_URL = 'http://localhost:4300';
 
 export type Env = z.infer<typeof EnvSchema>;
 

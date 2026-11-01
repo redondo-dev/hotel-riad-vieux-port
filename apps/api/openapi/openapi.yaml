@@ -5,7 +5,7 @@ info:
   description: |
     API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
 
-    **État : seul le contrôle de santé est implémenté.** Ce fichier ne décrit que ce qui
+    **État : contrôle de santé et comptes du personnel implémentés.** Ce fichier ne décrit que ce qui
     existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
     La spécification complète validée figure dans le dossier d'architecture (section 5).
 
@@ -46,8 +46,278 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /admin/session:
+    post:
+      operationId: logIn
+      summary: Connexion du personnel
+      description: |
+        Ouvre une nouvelle session (cookie `riad.sid`, HttpOnly, SameSite=Strict). Après
+        5 mots de passe erronés, le compte est bloqué 15 minutes ; au plus 10 échecs par
+        15 minutes par adresse IP et par compte (429). Réponse identique quelle que soit la cause
+        de l'échec.
+      tags: [Personnel]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, maxLength: 128 }
+      responses:
+        '200':
+          description: Connecté.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionView' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: getSession
+      summary: Compte connecté et jeton anti-CSRF
+      tags: [Personnel]
+      security: [{ staffSession: [] }]
+      responses:
+        '200':
+          description: Session valide.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionView' }
+        '401': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: logOut
+      summary: Déconnexion
+      tags: [Personnel]
+      security: [{ staffSession: [], csrfToken: [] }]
+      responses:
+        '204': { description: Session fermée. }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/session/password:
+    post:
+      operationId: changeOwnPassword
+      summary: Changer son mot de passe
+      description: Les autres sessions du compte sont fermées.
+      tags: [Personnel]
+      security: [{ staffSession: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { $ref: '#/components/schemas/NewPassword' }
+      responses:
+        '204': { description: Mot de passe changé. }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/password-reset:
+    post:
+      operationId: requestPasswordReset
+      summary: Demander un lien de réinitialisation
+      description: |
+        Réponse identique que l'adresse existe ou non. Le lien, valable 30 minutes, est envoyé
+        par e-mail ; 5 demandes par heure et par adresse IP au maximum.
+      tags: [Personnel]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '202': { description: Demande prise en compte. }
+        '429': { $ref: '#/components/responses/Problem' }
+  /admin/password-reset/confirm:
+    post:
+      operationId: confirmPasswordReset
+      summary: Choisir un nouveau mot de passe avec le lien reçu
+      description: Lien à usage unique ; toutes les sessions du compte sont fermées.
+      tags: [Personnel]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, newPassword]
+              properties:
+                token: { type: string }
+                newPassword: { $ref: '#/components/schemas/NewPassword' }
+      responses:
+        '204': { description: Mot de passe défini. }
+        '400': { $ref: '#/components/responses/Problem' }
+  /admin/users:
+    get:
+      operationId: listUsers
+      summary: Lister les comptes (direction)
+      tags: [Comptes]
+      security: [{ staffSession: [] }]
+      responses:
+        '200':
+          description: Comptes du personnel.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+                    items: { $ref: '#/components/schemas/UserSummary' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createUser
+      summary: Créer un compte (direction)
+      description: |
+        Aucun mot de passe n'est choisi par la direction : la personne reçoit un lien, valable
+        48 heures, pour le définir. `invitationSent` vaut false si l'e-mail n'a pas pu partir.
+      tags: [Comptes]
+      security: [{ staffSession: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, firstName, lastName, role]
+              properties:
+                email: { type: string, format: email }
+                firstName: { type: string, maxLength: 100 }
+                lastName: { type: string, maxLength: 100 }
+                role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '201':
+          description: Compte créé.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, invitationSent]
+                properties:
+                  user: { $ref: '#/components/schemas/UserSummary' }
+                  invitationSent: { type: boolean }
+        '400': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /admin/users/{id}:
+    patch:
+      operationId: updateUser
+      summary: Modifier, désactiver ou réactiver un compte (direction)
+      description: |
+        Un changement de rôle ou une désactivation ferme les sessions du compte. Refusé (409)
+        sur son propre compte (`CANNOT_REMOVE_OWN_ACCESS`) ou pour le dernier compte de
+        direction actif (`LAST_MANAGER_ACCOUNT`). Aucune suppression de compte.
+      tags: [Comptes]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                firstName: { type: string, maxLength: 100 }
+                lastName: { type: string, maxLength: 100 }
+                role: { $ref: '#/components/schemas/Role' }
+                isActive: { type: boolean }
+      responses:
+        '200':
+          description: Compte modifié.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/UserSummary' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /admin/users/{id}/password-reset:
+    post:
+      operationId: sendUserResetLink
+      summary: Envoyer un lien de réinitialisation à un employé (direction)
+      tags: [Comptes]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '202': { description: Lien envoyé. }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
 components:
+  securitySchemes:
+    staffSession:
+      type: apiKey
+      in: cookie
+      name: riad.sid
+      description: Session du personnel ; déconnexion après 30 min d'inactivité ou 12 h.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Jeton reçu à la connexion, exigé sur toute requête qui modifie des données.
+  responses:
+    Problem:
+      description: Erreur au format RFC 9457.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
   schemas:
+    Role:
+      type: string
+      enum: [direction, reception, housekeeping, technician]
+    NewPassword:
+      type: string
+      minLength: 12
+      maxLength: 128
+    StaffUser:
+      type: object
+      required: [id, email, firstName, lastName, role]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        firstName: { type: string }
+        lastName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+    SessionView:
+      type: object
+      required: [user, csrfToken]
+      properties:
+        user: { $ref: '#/components/schemas/StaffUser' }
+        csrfToken:
+          type: string
+          description: À renvoyer dans l'en-tête X-CSRF-Token des requêtes qui modifient.
+    UserSummary:
+      allOf:
+        - $ref: '#/components/schemas/StaffUser'
+        - type: object
+          required: [isActive, createdAt]
+          properties:
+            isActive: { type: boolean }
+            lastLoginAt: { type: [string, 'null'], format: date-time }
+            createdAt: { type: string, format: date-time }
     Problem:
       type: object
       description: Erreur au format RFC 9457, sans détail technique interne.

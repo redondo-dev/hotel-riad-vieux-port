@@ -9,6 +9,8 @@ export interface RateLimitRule {
   limit: number;
   /** What is counted; by default the visitor's IP address. */
   key?: (req: Request) => string;
+  /** Count only the failed requests (status 400 or more), for example the wrong logins. */
+  skipSuccessfulRequests?: boolean;
 }
 
 /**
@@ -27,6 +29,7 @@ export function rateLimiter(rule: RateLimitRule): RequestHandler {
     limit: rule.limit,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
+    skipSuccessfulRequests: rule.skipSuccessfulRequests ?? false,
     ...(rule.key === undefined ? {} : { keyGenerator: rule.key }),
     handler: (_req, _res, next) => {
       next(new TooManyRequestsError());
