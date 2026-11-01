@@ -22,7 +22,7 @@ export interface StaffUser {
   role: Role;
 }
 
-export type MenuIcon = 'home' | 'catalog' | 'users';
+export type MenuIcon = 'home' | 'housekeeping' | 'catalog' | 'users';
 
 export interface MenuItem {
   path: string;
@@ -33,11 +33,17 @@ export interface MenuItem {
 
 /**
  * Sections of the sidebar, in display order. Only the sections that really exist are listed:
- * the others (dashboard, planning, housekeeping, incidents…) are added with their module.
+ * the others (dashboard, planning, incidents…) are added with their module.
  * « Mon compte » and « Se déconnecter » sit at the bottom of the sidebar for everyone.
  */
 export const MENU: readonly MenuItem[] = [
   { path: '/accueil', label: 'Accueil', icon: 'home', roles: ROLES },
+  {
+    path: '/menage',
+    label: 'Ménage',
+    icon: 'housekeeping',
+    roles: ['direction', 'reception', 'housekeeping'],
+  },
   { path: '/catalogue', label: 'Catalogue', icon: 'catalog', roles: ['direction', 'reception'] },
   { path: '/utilisateurs', label: 'Utilisateurs', icon: 'users', roles: ['direction'] },
 ];
@@ -47,11 +53,12 @@ export function menuFor(role: Role): MenuItem[] {
 }
 
 /**
- * Screen shown right after login. Temporary: the provisional home page for every role, until
- * the dashboard (management), « Aujourd'hui » (reception), housekeeping and incidents exist.
+ * Screen shown right after login: the housekeeping board for the housekeeping staff, the
+ * provisional home page for the others until the dashboard (management), « Aujourd'hui »
+ * (reception) and incidents (technicians) exist.
  */
-export function landingFor(_role: Role): string {
-  return '/accueil';
+export function landingFor(role: Role): string {
+  return role === 'housekeeping' ? '/menage' : '/accueil';
 }
 
 export function isRole(value: unknown): value is Role {
