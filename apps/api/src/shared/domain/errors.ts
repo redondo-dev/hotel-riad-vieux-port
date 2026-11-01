@@ -78,3 +78,42 @@ export class ForbiddenOriginError extends AppError {
     });
   }
 }
+
+export class ConflictError extends AppError {
+  constructor(code: string, title: string, detail: string) {
+    super({ status: 409, code, title, detail });
+  }
+}
+
+export class AuthenticationRequiredError extends AppError {
+  constructor() {
+    super({
+      status: 401,
+      code: 'AUTHENTICATION_REQUIRED',
+      title: 'Connexion requise',
+      detail: 'Votre session a expiré ou vous n’êtes pas connecté. Connectez-vous pour continuer.',
+    });
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor() {
+    super({
+      status: 403,
+      code: 'FORBIDDEN',
+      title: 'Accès refusé',
+      detail: 'Votre rôle ne permet pas cette action.',
+    });
+  }
+}
+
+export class CsrfTokenError extends AppError {
+  constructor() {
+    super({
+      status: 403,
+      code: 'CSRF_TOKEN_INVALID',
+      title: 'Requête refusée',
+      detail: 'Le jeton de sécurité est absent ou invalide. Rechargez la page puis réessayez.',
+    });
+  }
+}
