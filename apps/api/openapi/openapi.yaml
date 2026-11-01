@@ -5,7 +5,7 @@ info:
   description: |
     API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
 
-    **État : contrôle de santé et comptes du personnel implémentés.** Ce fichier ne décrit que ce qui
+    **État : contrôle de santé, comptes du personnel et catalogue public implémentés.** Ce fichier ne décrit que ce qui
     existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
     La spécification complète validée figure dans le dossier d'architecture (section 5).
 
@@ -46,6 +46,73 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /public/hotel:
+    get:
+      operationId: getPublicHotel
+      summary: Informations de l'hôtel
+      description: |
+        Nom, adresse, contact, horaires et règles de réservation en ligne. Réponse publique,
+        sans session, que les caches peuvent garder 5 minutes
+        (`Cache-Control: public, max-age=300`).
+      tags: [Catalogue public]
+      responses:
+        '200':
+          description: Informations de l'hôtel.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicHotel' }
+        '503':
+          description: L'hôtel n'est pas encore configuré (code `HOTEL_NOT_CONFIGURED`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /public/room-categories:
+    get:
+      operationId: listPublicRoomCategories
+      summary: Catégories de chambres réservables
+      description: |
+        Catégories actives ayant au moins une chambre active, dans l'ordre d'affichage, textes en
+        français et en anglais. `fromPriceCents` est le prix le plus bas d'une nuit réservable en
+        ligne à partir d'aujourd'hui (saisons et événements compris), au tarif non remboursable.
+        Mise en cache publique de 5 minutes.
+      tags: [Catalogue public]
+      responses:
+        '200':
+          description: Catégories réservables.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/PublicRoomCategory' }
+        '503':
+          description: L'hôtel n'est pas encore configuré (code `HOTEL_NOT_CONFIGURED`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /public/services:
+    get:
+      operationId: listPublicServices
+      summary: Options réservables en ligne
+      description: |
+        Options actives que le client peut ajouter à sa réservation en ligne (petit-déjeuner, lit
+        bébé…), avec leur prix TTC. Mise en cache publique de 5 minutes.
+      tags: [Catalogue public]
+      responses:
+        '200':
+          description: Options réservables en ligne.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/PublicService' }
   /admin/session:
     post:
       operationId: logIn
@@ -285,6 +352,107 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
   schemas:
+    LocalizedText:
+      type: object
+      required: [fr, en]
+      properties:
+        fr: { type: string }
+        en: { type: string }
+    PublicHotel:
+      type: object
+      required:
+        - name
+        - address
+        - phone
+        - email
+        - checkInFrom
+        - checkOutBefore
+        - timeZone
+        - bookingRules
+      properties:
+        name: { type: string, example: Hôtel Riad Vieux-Port }
+        address:
+          type: string
+          description: Adresse postale, identique dans toutes les langues.
+        phone:
+          type: object
+          required: [display, international]
+          properties:
+            display: { type: string, example: 04 65 71 00 00 }
+            international: { type: string, example: '+33465710000' }
+        email: { type: string, format: email }
+        checkInFrom: { type: string, pattern: '^\d{2}:\d{2}$', example: '15:00' }
+        checkOutBefore: { type: string, pattern: '^\d{2}:\d{2}$', example: '12:00' }
+        timeZone: { type: string, example: Europe/Paris }
+        bookingRules:
+          type: object
+          required:
+            - maxStayNights
+            - bookingHorizonDays
+            - sameDayCutoffMinutes
+            - nonRefundableDiscountPercent
+            - freeCancellationHours
+          properties:
+            maxStayNights: { type: integer, example: 30 }
+            bookingHorizonDays: { type: integer, example: 365 }
+            sameDayCutoffMinutes:
+              type: integer
+              description: Heure limite d'une arrivée le jour même, en minutes après minuit.
+              example: 1380
+            nonRefundableDiscountPercent: { type: number, example: 10 }
+            freeCancellationHours: { type: integer, example: 48 }
+    PublicRoomCategory:
+      type: object
+      required:
+        - code
+        - name
+        - description
+        - beds
+        - maxOccupancy
+        - baseOccupancy
+        - areaSqm
+        - roomCount
+        - amenities
+        - basePriceCents
+        - extraAdultCents
+        - extraChildCents
+        - fromPriceCents
+      properties:
+        code: { type: string, example: double-standard }
+        name: { $ref: '#/components/schemas/LocalizedText' }
+        description: { $ref: '#/components/schemas/LocalizedText' }
+        beds: { $ref: '#/components/schemas/LocalizedText' }
+        maxOccupancy: { type: integer, example: 2 }
+        baseOccupancy:
+          type: integer
+          description: Nombre de personnes comprises dans le prix.
+          example: 2
+        areaSqm: { type: integer, example: 18 }
+        roomCount: { type: integer, example: 40 }
+        amenities:
+          type: array
+          items: { type: string }
+          example: [wifi, air-conditioning, shower]
+        basePriceCents:
+          type: integer
+          description: Prix d'une nuit au tarif flexible, hors saison et événement.
+          example: 9500
+        extraAdultCents: { type: integer, example: 2500 }
+        extraChildCents: { type: integer, example: 1500 }
+        fromPriceCents:
+          type: integer
+          description: Prix « à partir de » d'une nuit, tarif non remboursable.
+          example: 8550
+    PublicService:
+      type: object
+      required: [code, name, unitPriceCents, pricingUnit]
+      properties:
+        code: { type: string, example: breakfast }
+        name: { $ref: '#/components/schemas/LocalizedText' }
+        unitPriceCents: { type: integer, example: 1400 }
+        pricingUnit:
+          type: string
+          enum: [per_person_night, per_night, per_stay, per_unit]
     Role:
       type: string
       enum: [direction, reception, housekeeping, technician]

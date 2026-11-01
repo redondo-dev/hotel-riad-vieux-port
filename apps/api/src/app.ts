@@ -1,6 +1,10 @@
 import express, { type Express, Router } from 'express';
 import type { Logger } from 'pino';
 import type { Sequelize } from 'sequelize';
+import { PublicCatalog } from './modules/catalog/application/public-catalog.ts';
+import { hotelToday } from './modules/catalog/domain/pricing.ts';
+import { publicCatalogRouter } from './modules/catalog/http/public-catalog-routes.ts';
+import { CatalogRepository } from './modules/catalog/infrastructure/catalog-repository.ts';
 import { IdentityService } from './modules/identity/application/identity-service.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
 import { UserRepository } from './modules/identity/infrastructure/user-repository.ts';
@@ -28,6 +32,14 @@ export interface AppDependencies {
   mountRoutes?: (api: Router) => void;
   /** Staff part of the API (/admin); left out by the tests of the common HTTP layer. */
   admin?: AdminDependencies;
+  /** Public part of the API (/public); left out by the tests of the common HTTP layer. */
+  public?: PublicDependencies;
+}
+
+export interface PublicDependencies {
+  sequelize: Sequelize;
+  /** Current day at the hotel, « YYYY-MM-DD »; the tests fix it. Default: the real clock. */
+  today?: () => string;
 }
 
 export interface AdminDependencies {
@@ -66,6 +78,17 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   return router;
 }
 
+/** Public part of the API: no session, read-only catalogue for the public site. */
+function publicRouter(deps: PublicDependencies): Router {
+  const catalog = new PublicCatalog(
+    new CatalogRepository(deps.sequelize),
+    deps.today ?? (() => hotelToday()),
+  );
+  const router = Router();
+  router.use(publicCatalogRouter(catalog));
+  return router;
+}
+
 /**
  * Builds the Express application (architecture, section 7). The order matters:
  *  1. trace identifier and request log, so that every response, even an error, has one;
@@ -90,6 +113,9 @@ export function createApp(deps: AppDependencies): Express {
   api.use(healthRouter(deps.checkDatabase, deps.logger));
   if (deps.admin !== undefined) {
     api.use('/admin', adminRouter(deps.admin, deps.logger));
+  }
+  if (deps.public !== undefined) {
+    api.use('/public', publicRouter(deps.public));
   }
   deps.mountRoutes?.(api);
   app.use(API_PREFIX, api);

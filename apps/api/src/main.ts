@@ -56,6 +56,7 @@ const app = createApp({
     mailer: createMailer(),
     adminAppUrl: env.ADMIN_APP_URL ?? DEFAULT_ADMIN_APP_URL,
   },
+  public: { sequelize },
 });
 
 // Express 5 also calls this function when listening fails (port taken…): the error is then
