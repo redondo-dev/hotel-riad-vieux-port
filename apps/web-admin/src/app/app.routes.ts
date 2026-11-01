@@ -40,6 +40,46 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home-page').then((m) => m.HomePage),
       },
       {
+        path: 'catalogue',
+        data: { heading: 'Catalogue', roles: ['direction', 'reception'] },
+        canActivate: [roleGuard],
+        loadComponent: () =>
+          import('./features/catalog/catalog-layout').then((m) => m.CatalogLayout),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'categories' },
+          {
+            path: 'categories',
+            title: `Catégories · ${TITLE}`,
+            loadComponent: () =>
+              import('./features/catalog/categories-page').then((m) => m.CategoriesPage),
+          },
+          {
+            path: 'categories/:id',
+            title: `Modifier une catégorie · ${TITLE}`,
+            data: { roles: ['direction'] },
+            canActivate: [roleGuard],
+            loadComponent: () =>
+              import('./features/catalog/category-edit-page').then((m) => m.CategoryEditPage),
+          },
+          {
+            path: 'chambres',
+            title: `Chambres · ${TITLE}`,
+            loadComponent: () => import('./features/catalog/rooms-page').then((m) => m.RoomsPage),
+          },
+          {
+            path: 'tarifs',
+            title: `Tarifs · ${TITLE}`,
+            loadComponent: () => import('./features/catalog/rates-page').then((m) => m.RatesPage),
+          },
+          {
+            path: 'services',
+            title: `Services · ${TITLE}`,
+            loadComponent: () =>
+              import('./features/catalog/services-page').then((m) => m.ServicesPage),
+          },
+        ],
+      },
+      {
         path: 'utilisateurs',
         title: `Utilisateurs · ${TITLE}`,
         data: { heading: 'Utilisateurs', roles: ['direction'] },

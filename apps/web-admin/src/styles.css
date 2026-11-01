@@ -108,6 +108,19 @@
     @apply mt-1.5 text-sm font-medium text-danger;
   }
 
+  /* Status badges (active / inactive…) */
+  .badge-ok {
+    @apply rounded-full bg-success-pale px-2 py-0.5 font-medium whitespace-nowrap text-success;
+  }
+
+  .badge-off {
+    @apply rounded-full bg-danger-pale px-2 py-0.5 font-medium whitespace-nowrap text-danger;
+  }
+
+  .badge-neutral {
+    @apply rounded-full bg-mist px-2 py-0.5 font-medium whitespace-nowrap text-muted;
+  }
+
   .alert-error {
     @apply flex items-start gap-3 rounded-lg border border-danger/30 bg-danger-pale p-4 text-sm text-ink;
   }

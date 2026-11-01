@@ -10,6 +10,7 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import {
+  LucideBed,
   LucideCircleUserRound,
   LucideHouse,
   LucideLogOut,
@@ -61,6 +62,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
     RouterLinkActive,
     ZelligeStar,
     LucideHouse,
+    LucideBed,
     LucideUsers,
     LucideCircleUserRound,
     LucideLogOut,
@@ -119,6 +121,9 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
                   @switch (item.icon) {
                     @case ('home') {
                       <svg lucideHouse class="shrink-0"></svg>
+                    }
+                    @case ('catalog') {
+                      <svg lucideBed class="shrink-0"></svg>
                     }
                     @case ('users') {
                       <svg lucideUsers class="shrink-0"></svg>

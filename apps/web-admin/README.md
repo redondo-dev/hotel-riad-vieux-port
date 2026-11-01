@@ -22,17 +22,24 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 
 ## Contenu actuel
 
-| Écran                                                         | Accès          |
-| ------------------------------------------------------------- | -------------- |
-| Connexion, mot de passe oublié                                | Sans session   |
-| Choisir un mot de passe (lien e-mail)                         | Sans session   |
-| Accueil (provisoire)                                          | Tous les rôles |
-| Mon compte : informations, mot de passe                       | Tous les rôles |
-| Utilisateurs : inviter, modifier, désactiver, envoyer un lien | Direction      |
+| Écran                                                         | Accès                |
+| ------------------------------------------------------------- | -------------------- |
+| Connexion, mot de passe oublié                                | Sans session         |
+| Choisir un mot de passe (lien e-mail)                         | Sans session         |
+| Accueil (provisoire)                                          | Tous les rôles       |
+| Mon compte : informations, mot de passe                       | Tous les rôles       |
+| Catalogue : catégories, chambres, tarifs, services (lecture)  | Direction, réception |
+| Catalogue : modifier catégories, chambres, périodes, services | Direction            |
+| Catalogue : fermer ou rouvrir une catégorie à la vente        | Direction, réception |
+| Utilisateurs : inviter, modifier, désactiver, envoyer un lien | Direction            |
 
 Le menu n'affiche que les rubriques autorisées au rôle ; l'API vérifie les mêmes droits. Les
 rubriques du quotidien (planning, arrivées et départs, ménage, pannes, tableau de bord) seront
 ajoutées avec leurs modules.
+
+Dans le catalogue, les prix se saisissent en euros (« 95 » ou « 95,50 ») et les périodes par
+leur première et leur dernière nuit, incluses. Rien ne se supprime sauf les périodes de tarif et
+les fermetures de vente : une catégorie, une chambre ou un service se désactive.
 
 ## Sécurité côté navigateur
 
@@ -45,4 +52,5 @@ ajoutées avec leurs modules.
 ## Tests
 
 `npm run test --workspace=@riad/web-admin` : règles des rôles, du menu, du retour après
-connexion, des mots de passe et des garde-fous de la gestion des comptes.
+connexion, des mots de passe, des garde-fous de la gestion des comptes, et lecture des montants,
+pourcentages et dates du catalogue.
