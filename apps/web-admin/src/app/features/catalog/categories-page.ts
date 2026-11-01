@@ -34,7 +34,9 @@ import { type Category, canEditCatalog, formatEuros } from './catalog-model';
       </p>
       <div class="card overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <caption class="sr-only">Catégories de chambres</caption>
+          <caption class="sr-only">
+            Catégories de chambres
+          </caption>
           <thead class="border-b border-line text-muted">
             <tr>
               <th scope="col" class="px-4 py-3 font-semibold">Catégorie</th>

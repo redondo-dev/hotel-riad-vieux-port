@@ -62,7 +62,9 @@ interface Draft {
       <p class="mb-4 text-muted">Prix TTC. Une modification ne touche que les prochaines ventes.</p>
       <div class="card overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <caption class="sr-only">Services et options</caption>
+          <caption class="sr-only">
+            Services et options
+          </caption>
           <thead class="border-b border-line text-muted">
             <tr>
               <th scope="col" class="px-4 py-3 font-semibold">Service</th>

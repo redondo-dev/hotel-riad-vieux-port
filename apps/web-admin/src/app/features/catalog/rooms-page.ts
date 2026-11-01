@@ -98,7 +98,9 @@ interface Draft {
       </p>
       <div class="card overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <caption class="sr-only">Chambres de l’hôtel</caption>
+          <caption class="sr-only">
+            Chambres de l’hôtel
+          </caption>
           <thead class="border-b border-line text-muted">
             <tr>
               <th scope="col" class="px-4 py-3 font-semibold">Numéro</th>
@@ -241,8 +243,8 @@ interface Draft {
           </h2>
           @if (room.isActive) {
             <p>
-              Elle ne sera plus proposée à la vente ni attribuée. Son historique est conservé :
-              vous pourrez la réactiver.
+              Elle ne sera plus proposée à la vente ni attribuée. Son historique est conservé : vous
+              pourrez la réactiver.
             </p>
           } @else {
             <p>Elle sera de nouveau proposée à la vente.</p>
