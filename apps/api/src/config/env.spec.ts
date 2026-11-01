@@ -53,6 +53,13 @@ describe('loadEnv', () => {
     expect(errorOf({ ...base, TRUST_PROXY: '-1' }).includes('TRUST_PROXY')).toBe(true);
   });
 
+  it('treats an empty optional variable as not set, as written in .env.example', () => {
+    expect(loadEnv({ ...base, DEMO_USER_PASSWORD: '' }).DEMO_USER_PASSWORD).toBe(undefined);
+    expect(errorOf({ ...base, DEMO_USER_PASSWORD: 'court' }).includes('DEMO_USER_PASSWORD')).toBe(
+      true,
+    );
+  });
+
   it('never repeats a secret value in its error message', () => {
     const message = errorOf({ DATABASE_URL: 'mysql://user:s3cret@host/db' });
     expect(message.includes('DATABASE_URL')).toBe(true);

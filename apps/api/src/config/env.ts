@@ -12,6 +12,13 @@ const booleanFlag = z
   .transform((value) => value === 'true');
 
 /**
+ * « NAME= » with nothing after it (as in .env.example) means « not set », not « empty value ».
+ */
+function emptyAsMissing<T extends z.ZodType>(schema: T) {
+  return z.preprocess((value) => (value === '' ? undefined : value), schema);
+}
+
+/**
  * Comma-separated list of origins allowed to call the API from a browser (CORS), for example
  * « https://riad-vieux-port.example,https://gestion.riad-vieux-port.example ». Each entry must
  * be a bare origin: scheme, host and optional port, without path. No wildcard is accepted.
@@ -57,7 +64,9 @@ const EnvSchema = z
     /** Enables the fictional demo data (portfolio). Never set for a real hotel. */
     DEMO_MODE: booleanFlag,
     /** Password of the demo staff accounts; required only to create them. */
-    DEMO_USER_PASSWORD: z.string().min(12, 'doit contenir au moins 12 caractères').optional(),
+    DEMO_USER_PASSWORD: emptyAsMissing(
+      z.string().min(12, 'doit contenir au moins 12 caractères').optional(),
+    ),
 
     /** Port the HTTP server listens on. */
     API_PORT: z.coerce
