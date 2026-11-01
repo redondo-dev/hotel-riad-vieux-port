@@ -5,8 +5,8 @@ info:
   description: |
     API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
 
-    **État : contrôle de santé, comptes du personnel, catalogue (public et gestion) et
-    ménage implémentés.** Ce fichier ne décrit que ce qui
+    **État : contrôle de santé, comptes du personnel, catalogue (public et gestion), ménage
+    et pannes implémentés.** Ce fichier ne décrit que ce qui
     existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
     La spécification complète validée figure dans le dossier d'architecture (section 5).
 
@@ -763,6 +763,200 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
+  /admin/incidents:
+    get:
+      operationId: listIncidents
+      summary: Pannes
+      description: |
+        Pannes non clôturées (toutes avec `includeClosed=true`), les urgentes d'abord puis les
+        plus récentes. 200 au maximum. Tous les rôles du personnel ; jamais mis en cache.
+      tags: [Pannes]
+      security: [{ staffSession: [] }]
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/IncidentStatus' } }
+        - { name: priority, in: query, schema: { $ref: '#/components/schemas/IncidentPriority' } }
+        - { name: roomId, in: query, schema: { type: string, format: uuid } }
+        - name: mine
+          in: query
+          description: '« true » : seulement les pannes assignées à la personne connectée.'
+          schema: { type: string, enum: ['true', 'false'] }
+        - { name: includeClosed, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: Pannes.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Incident' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: reportIncident
+      summary: Signaler une panne
+      description: |
+        Une chambre ou un lieu est obligatoire. « Chambre inutilisable » (`blocksRoom`, chambre
+        seulement) la retire de la vente aussitôt, même si elle est réservée. Tous les rôles.
+      tags: [Pannes]
+      security: [{ staffSession: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewIncident' }
+      responses:
+        '201':
+          description: Panne enregistrée, avec son historique.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/incidents/technicians:
+    get:
+      operationId: listTechnicians
+      summary: Techniciens actifs (direction, réception)
+      description: |
+        Pour choisir à qui assigner une panne.
+      tags: [Pannes]
+      security: [{ staffSession: [] }]
+      responses:
+        '200':
+          description: Techniciens actifs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/PersonName' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/incidents/{id}:
+    get:
+      operationId: getIncident
+      summary: Une panne et son historique
+      description: |
+        Tous les rôles du personnel.
+      tags: [Pannes]
+      security: [{ staffSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: La panne et son historique.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/incidents/{id}/status:
+    post:
+      operationId: changeIncidentStatus
+      summary: Changer l'état d'une panne
+      description: |
+        Technique : signalée → en cours → résolue. Direction : tout, dont clôturer une panne
+        résolue ou la rouvrir (résolue → en cours). Résolue : la chambre revient à la vente ;
+        rouverte : elle est de nouveau bloquée. Changement inexistant : 409
+        `INCIDENT_TRANSITION_INVALID` ; rôle non autorisé : 403.
+      tags: [Pannes]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/IncidentStatus' }
+                comment: { type: [string, 'null'], maxLength: 4000 }
+      responses:
+        '200':
+          description: La panne et son historique.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /admin/incidents/{id}/assignment:
+    post:
+      operationId: assignIncident
+      summary: Assigner une panne (direction, réception)
+      description: |
+        À un technicien actif (sinon 400) et/ou à un prestataire externe nommé en texte. Panne
+        clôturée : 409 `INCIDENT_CLOSED`.
+      tags: [Pannes]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [assignedTo]
+              properties:
+                assignedTo: { type: [string, 'null'], format: uuid }
+                externalContractor: { type: [string, 'null'], maxLength: 120 }
+      responses:
+        '200':
+          description: La panne et son historique.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /admin/incidents/{id}/comments:
+    post:
+      operationId: commentIncident
+      summary: Commenter une panne
+      description: |
+        Ajoute un commentaire à l'historique. Tous les rôles ; panne clôturée : 409
+        `INCIDENT_CLOSED`.
+      tags: [Pannes]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [comment]
+              properties:
+                comment: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        '201':
+          description: La panne et son historique.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
 components:
   securitySchemes:
     staffSession:
@@ -794,6 +988,105 @@ components:
       properties:
         fr: { type: string }
         en: { type: string }
+    IncidentStatus:
+      type: string
+      enum: [reported, in_progress, resolved, closed]
+      description: Signalée, en cours, résolue, clôturée.
+    IncidentPriority:
+      type: string
+      enum: [urgent, normal, low]
+    PersonName:
+      type: object
+      required: [id, firstName, lastName]
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string }
+        lastName: { type: string }
+    Incident:
+      type: object
+      required:
+        - id
+        - reference
+        - room
+        - location
+        - title
+        - description
+        - priority
+        - status
+        - blocksRoom
+        - roomBlocked
+        - reportedAt
+        - reportedBy
+        - assignedTo
+        - externalContractor
+        - resolvedAt
+        - closedAt
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string, example: INC-000042 }
+        room:
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [id, number]
+              properties:
+                id: { type: string, format: uuid }
+                number: { type: string }
+        location: { type: [string, 'null'] }
+        title: { type: string }
+        description: { type: string }
+        priority: { $ref: '#/components/schemas/IncidentPriority' }
+        status: { $ref: '#/components/schemas/IncidentStatus' }
+        blocksRoom: { type: boolean, description: Chambre déclarée inutilisable. }
+        roomBlocked: { type: boolean, description: Chambre hors vente à cause de cette panne. }
+        reportedAt: { type: string, format: date-time }
+        reportedBy: { $ref: '#/components/schemas/PersonName' }
+        assignedTo:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/PersonName'
+        externalContractor: { type: [string, 'null'] }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+    IncidentDetail:
+      allOf:
+        - $ref: '#/components/schemas/Incident'
+        - type: object
+          required: [events]
+          properties:
+            events:
+              type: array
+              items:
+                type: object
+                required: [id, type, fromStatus, toStatus, comment, actor, createdAt]
+                properties:
+                  id: { type: string }
+                  type: { type: string, enum: [status_change, assignment, comment] }
+                  fromStatus:
+                    oneOf:
+                      - type: 'null'
+                      - $ref: '#/components/schemas/IncidentStatus'
+                  toStatus:
+                    oneOf:
+                      - type: 'null'
+                      - $ref: '#/components/schemas/IncidentStatus'
+                  comment: { type: [string, 'null'] }
+                  actor:
+                    oneOf:
+                      - type: 'null'
+                      - $ref: '#/components/schemas/PersonName'
+                  createdAt: { type: string, format: date-time }
+    NewIncident:
+      type: object
+      additionalProperties: false
+      required: [title, description, priority]
+      properties:
+        roomId: { type: [string, 'null'], format: uuid }
+        location: { type: [string, 'null'], maxLength: 120 }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, minLength: 1, maxLength: 4000 }
+        priority: { $ref: '#/components/schemas/IncidentPriority' }
+        blocksRoom: { type: boolean, default: false }
     HousekeepingStatus:
       type: string
       enum: [clean, dirty]

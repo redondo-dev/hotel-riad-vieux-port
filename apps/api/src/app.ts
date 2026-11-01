@@ -9,6 +9,8 @@ import { publicCatalogRouter } from './modules/catalog/http/public-catalog-route
 import { CatalogRepository } from './modules/catalog/infrastructure/catalog-repository.ts';
 import { HousekeepingService } from './modules/housekeeping/application/housekeeping-service.ts';
 import { housekeepingRouter } from './modules/housekeeping/http/housekeeping-routes.ts';
+import { IncidentService } from './modules/incidents/application/incident-service.ts';
+import { incidentRouter } from './modules/incidents/http/incident-routes.ts';
 import { IdentityService } from './modules/identity/application/identity-service.ts';
 import { requireStaff } from './modules/identity/http/guards.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
@@ -84,9 +86,11 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   const findActiveStaff = (id: string) => users.findActiveStaff(id);
   router.use(identityRouter(identity, findActiveStaff));
   const staff = requireStaff(findActiveStaff);
-  const catalog = new CatalogAdmin(deps.sequelize, deps.today ?? (() => hotelToday()));
+  const today = deps.today ?? (() => hotelToday());
+  const catalog = new CatalogAdmin(deps.sequelize, today);
   router.use('/catalog', catalogAdminRouter(catalog, staff));
   router.use('/housekeeping', housekeepingRouter(new HousekeepingService(deps.sequelize), staff));
+  router.use('/incidents', incidentRouter(new IncidentService(deps.sequelize, today), staff));
   return router;
 }
 
