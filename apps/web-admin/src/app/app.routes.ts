@@ -40,6 +40,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home-page').then((m) => m.HomePage),
       },
       {
+        path: 'menage',
+        title: `Ménage · ${TITLE}`,
+        data: { heading: 'Ménage', roles: ['direction', 'reception', 'housekeeping'] },
+        canActivate: [roleGuard],
+        loadComponent: () =>
+          import('./features/housekeeping/housekeeping-page').then((m) => m.HousekeepingPage),
+      },
+      {
         path: 'catalogue',
         data: { heading: 'Catalogue', roles: ['direction', 'reception'] },
         canActivate: [roleGuard],

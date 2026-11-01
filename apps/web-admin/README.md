@@ -22,20 +22,23 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 
 ## Contenu actuel
 
-| Écran                                                         | Accès                |
-| ------------------------------------------------------------- | -------------------- |
-| Connexion, mot de passe oublié                                | Sans session         |
-| Choisir un mot de passe (lien e-mail)                         | Sans session         |
-| Accueil (provisoire)                                          | Tous les rôles       |
-| Mon compte : informations, mot de passe                       | Tous les rôles       |
-| Catalogue : catégories, chambres, tarifs, services (lecture)  | Direction, réception |
-| Catalogue : modifier catégories, chambres, périodes, services | Direction            |
-| Catalogue : fermer ou rouvrir une catégorie à la vente        | Direction, réception |
-| Utilisateurs : inviter, modifier, désactiver, envoyer un lien | Direction            |
+| Écran                                                         | Accès                        |
+| ------------------------------------------------------------- | ---------------------------- |
+| Connexion, mot de passe oublié                                | Sans session                 |
+| Choisir un mot de passe (lien e-mail)                         | Sans session                 |
+| Accueil (provisoire)                                          | Tous les rôles               |
+| Mon compte : informations, mot de passe                       | Tous les rôles               |
+| Ménage : état des chambres par étage ; propre ou à nettoyer   | Direction, ménage            |
+| Ménage : signaler une chambre à nettoyer                      | Direction, réception, ménage |
+| Catalogue : catégories, chambres, tarifs, services (lecture)  | Direction, réception         |
+| Catalogue : modifier catégories, chambres, périodes, services | Direction                    |
+| Catalogue : fermer ou rouvrir une catégorie à la vente        | Direction, réception         |
+| Utilisateurs : inviter, modifier, désactiver, envoyer un lien | Direction                    |
 
 Le menu n'affiche que les rubriques autorisées au rôle ; l'API vérifie les mêmes droits. Les
-rubriques du quotidien (planning, arrivées et départs, ménage, pannes, tableau de bord) seront
-ajoutées avec leurs modules.
+rubriques du quotidien (planning, arrivées et départs, pannes, tableau de bord) seront
+ajoutées avec leurs modules. Le rôle ménage arrive directement sur l'écran Ménage, pensé
+d'abord pour le téléphone.
 
 Dans le catalogue, les prix se saisissent en euros (« 95 » ou « 95,50 ») et les périodes par
 leur première et leur dernière nuit, incluses. Rien ne se supprime sauf les périodes de tarif et
@@ -53,4 +56,4 @@ les fermetures de vente : une catégorie, une chambre ou un service se désactiv
 
 `npm run test --workspace=@riad/web-admin` : règles des rôles, du menu, du retour après
 connexion, des mots de passe, des garde-fous de la gestion des comptes, et lecture des montants,
-pourcentages et dates du catalogue.
+pourcentages et dates du catalogue, droits et regroupement par étage du ménage.

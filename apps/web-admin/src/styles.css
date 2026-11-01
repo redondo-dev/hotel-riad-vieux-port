@@ -121,6 +121,20 @@
     @apply rounded-full bg-mist px-2 py-0.5 font-medium whitespace-nowrap text-muted;
   }
 
+  /* Housekeeping tiles: clean (green) or to be cleaned (orange), readable outdoors */
+  .tile-clean {
+    @apply border-success/40 bg-success-pale text-success;
+  }
+
+  .tile-dirty {
+    @apply border-warning/50 bg-warning-pale text-warning;
+  }
+
+  /* A tile this role cannot change: greyed, with a dashed border */
+  .tile-locked {
+    @apply border-dashed opacity-50 grayscale;
+  }
+
   .alert-error {
     @apply flex items-start gap-3 rounded-lg border border-danger/30 bg-danger-pale p-4 text-sm text-ink;
   }

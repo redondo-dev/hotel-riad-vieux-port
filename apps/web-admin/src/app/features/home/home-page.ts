@@ -17,7 +17,7 @@ import { SessionService } from '../../core/auth/session.service';
       <p class="mt-1 text-muted">Vous êtes connecté avec le rôle {{ roleLabel() }}.</p>
       <p class="mt-4">
         L’outil de gestion s’enrichit module par module. Les écrans du quotidien (planning, arrivées
-        et départs, ménage, pannes, tableau de bord) apparaîtront dans le menu dès qu’ils seront
+        et départs, pannes, tableau de bord) apparaîtront dans le menu dès qu’ils seront
         disponibles.
       </p>
       <ul class="mt-4 flex flex-wrap gap-3">

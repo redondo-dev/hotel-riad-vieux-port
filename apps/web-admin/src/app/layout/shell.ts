@@ -17,6 +17,7 @@ import {
   LucideMenu,
   LucidePanelLeftClose,
   LucidePanelLeftOpen,
+  LucideSparkles,
   LucideUsers,
   LucideX,
 } from '@lucide/angular';
@@ -63,6 +64,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
     ZelligeStar,
     LucideHouse,
     LucideBed,
+    LucideSparkles,
     LucideUsers,
     LucideCircleUserRound,
     LucideLogOut,
@@ -121,6 +123,9 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
                   @switch (item.icon) {
                     @case ('home') {
                       <svg lucideHouse class="shrink-0"></svg>
+                    }
+                    @case ('housekeeping') {
+                      <svg lucideSparkles class="shrink-0"></svg>
                     }
                     @case ('catalog') {
                       <svg lucideBed class="shrink-0"></svg>
