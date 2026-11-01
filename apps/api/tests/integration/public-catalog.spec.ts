@@ -175,7 +175,11 @@ describe.skipIf(!hasTestDatabase)('public catalogue', () => {
 
       expect(response.status).toBe(200);
       expect(response.headers['cache-control']).toBe('public, max-age=300');
-      const items = response.body.items as CategoryBody[];
+      const all = response.body.items as CategoryBody[];
+      // No internal identifier leaves the API.
+      expect(all.some((item) => 'id' in item)).toBe(false);
+      // Other test files may add their own categories: only this file's ones are checked.
+      const items = all.filter((item) => item.code.startsWith('test-'));
       // Inactive category and category without an active room are not shown.
       expect(items.map((item) => item.code)).toEqual(['test-vue-port', 'test-patio']);
       expect(items[0]).toEqual({
@@ -198,8 +202,6 @@ describe.skipIf(!hasTestDatabase)('public catalogue', () => {
       // Only the season applies: 8 000 + 20 % = 9 600, then -10 %.
       expect(items[1]?.fromPriceCents).toBe(8640);
       expect(items[1]?.roomCount).toBe(1);
-      // No internal identifier leaves the API.
-      expect(items.some((item) => 'id' in item)).toBe(false);
     });
 
     it('GET /services lists only the active options that can be booked online', async () => {
@@ -207,16 +209,16 @@ describe.skipIf(!hasTestDatabase)('public catalogue', () => {
 
       expect(response.status).toBe(200);
       expect(response.headers['cache-control']).toBe('public, max-age=300');
-      expect(response.body).toEqual({
-        items: [
-          {
-            code: 'test-petit-dejeuner',
-            name: { fr: 'Petit-déjeuner', en: 'Breakfast' },
-            unitPriceCents: 1400,
-            pricingUnit: 'per_person_night',
-          },
-        ],
-      });
+      const all = response.body.items as { code: string }[];
+      const items = all.filter((item) => item.code.startsWith('test-'));
+      expect(items).toEqual([
+        {
+          code: 'test-petit-dejeuner',
+          name: { fr: 'Petit-déjeuner', en: 'Breakfast' },
+          unitPriceCents: 1400,
+          pricingUnit: 'per_person_night',
+        },
+      ]);
     });
 
     it('refuses any other method on these addresses', async () => {

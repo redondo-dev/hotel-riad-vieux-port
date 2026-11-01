@@ -1,11 +1,14 @@
 import express, { type Express, Router } from 'express';
 import type { Logger } from 'pino';
 import type { Sequelize } from 'sequelize';
+import { CatalogAdmin } from './modules/catalog/application/catalog-admin.ts';
 import { PublicCatalog } from './modules/catalog/application/public-catalog.ts';
 import { hotelToday } from './modules/catalog/domain/pricing.ts';
+import { catalogAdminRouter } from './modules/catalog/http/catalog-admin-routes.ts';
 import { publicCatalogRouter } from './modules/catalog/http/public-catalog-routes.ts';
 import { CatalogRepository } from './modules/catalog/infrastructure/catalog-repository.ts';
 import { IdentityService } from './modules/identity/application/identity-service.ts';
+import { requireStaff } from './modules/identity/http/guards.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
 import { UserRepository } from './modules/identity/infrastructure/user-repository.ts';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.ts';
@@ -51,6 +54,8 @@ export interface AdminDependencies {
   mailer: Mailer;
   /** Address of the staff tool, for the links sent by e-mail. */
   adminAppUrl: string;
+  /** Current day at the hotel, « YYYY-MM-DD »; the tests fix it. Default: the real clock. */
+  today?: () => string;
 }
 
 /**
@@ -74,7 +79,10 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
       secureCookies: deps.secureCookies,
     }),
   );
-  router.use(identityRouter(identity, (id) => users.findActiveStaff(id)));
+  const findActiveStaff = (id: string) => users.findActiveStaff(id);
+  router.use(identityRouter(identity, findActiveStaff));
+  const catalog = new CatalogAdmin(deps.sequelize, deps.today ?? (() => hotelToday()));
+  router.use('/catalog', catalogAdminRouter(catalog, requireStaff(findActiveStaff)));
   return router;
 }
 

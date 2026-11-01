@@ -5,7 +5,8 @@ info:
   description: |
     API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
 
-    **État : contrôle de santé, comptes du personnel et catalogue public implémentés.** Ce fichier ne décrit que ce qui
+    **État : contrôle de santé, comptes du personnel et catalogue (public et gestion)
+    implémentés.** Ce fichier ne décrit que ce qui
     existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
     La spécification complète validée figure dans le dossier d'architecture (section 5).
 
@@ -333,6 +334,329 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/categories:
+    get:
+      operationId: listCatalogCategories
+      summary: Catégories (gestion)
+      description: |
+        Toutes les catégories, inactives comprises, avec le nombre de chambres (toutes et actives).
+        Direction et réception ; jamais mis en cache.
+      tags: [Catalogue]
+      security: [{ staffSession: [] }]
+      responses:
+        '200':
+          description: Liste (direction, réception).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/CategoryAdmin' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/categories/{id}:
+    patch:
+      operationId: updateCatalogCategory
+      summary: Modifier une catégorie (direction)
+      description: |
+        Textes (français ET anglais), prix, capacité, équipements, ordre d'affichage, activation.
+        Le code ne change jamais (il figure dans les adresses du site). Une modification de prix ne
+        touche que les futures réservations. Inscrit au journal d'audit (avant → après).
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoryChanges' }
+      responses:
+        '200':
+          description: Modifié.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryAdmin' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/rooms:
+    get:
+      operationId: listCatalogRooms
+      summary: Chambres (gestion)
+      description: |
+        Toutes les chambres, triées par étage puis numéro. Direction et réception.
+      tags: [Catalogue]
+      security: [{ staffSession: [] }]
+      parameters:
+        - { name: categoryId, in: query, schema: { type: string, format: uuid } }
+        - { name: floor, in: query, schema: { type: integer, minimum: -5, maximum: 50 } }
+        - { name: isActive, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: Liste (direction, réception).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/RoomAdmin' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCatalogRoom
+      summary: Ajouter une chambre (direction)
+      description: |
+        Numéro déjà utilisé : 409 `ROOM_NUMBER_TAKEN`.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewRoom' }
+      responses:
+        '201':
+          description: Créé.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoomAdmin' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/rooms/{id}:
+    patch:
+      operationId: updateCatalogRoom
+      summary: Modifier une chambre (direction)
+      description: |
+        Numéro, étage, catégorie, activation. Aucune suppression : une chambre se désactive.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoomChanges' }
+      responses:
+        '200':
+          description: Modifié.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoomAdmin' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/rate-periods:
+    get:
+      operationId: listCatalogRatePeriods
+      summary: Saisons et événements
+      description: |
+        Périodes en cours et à venir ; toutes avec `includePast=true`. Direction et réception.
+      tags: [Catalogue]
+      security: [{ staffSession: [] }]
+      parameters:
+        - { name: includePast, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: Liste (direction, réception).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/RatePeriod' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCatalogRatePeriod
+      summary: Ajouter une saison ou un événement (direction)
+      description: |
+        Nuits données par la première et la dernière, incluses. Deux périodes du même type et
+        de la même portée (toutes catégories, ou la même catégorie) ne peuvent pas partager une
+        nuit : 409 `RATE_PERIOD_OVERLAP`. Un événement l'emporte sur une saison.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewRatePeriod' }
+      responses:
+        '201':
+          description: Créé.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RatePeriod' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/rate-periods/{id}:
+    patch:
+      operationId: updateCatalogRatePeriod
+      summary: Modifier une période (direction)
+      description: |
+        Mêmes règles que la création.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RatePeriodChanges' }
+      responses:
+        '200':
+          description: Modifié.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RatePeriod' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteCatalogRatePeriod
+      summary: Supprimer une période (direction)
+      description: |
+        Les valeurs supprimées restent lisibles dans le journal d'audit.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Supprimé.
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/sales-closures:
+    get:
+      operationId: listCatalogSalesClosures
+      summary: Fermetures de vente
+      description: |
+        Fermetures en cours et à venir. Direction et réception.
+      tags: [Catalogue]
+      security: [{ staffSession: [] }]
+      responses:
+        '200':
+          description: Liste (direction, réception).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/SalesClosure' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCatalogSalesClosure
+      summary: Fermer une catégorie à la vente (direction, réception)
+      description: |
+        Ferme une catégorie à la vente en ligne et au comptoir sur des nuits données (incluses).
+        Refusé si la dernière nuit est passée.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewSalesClosure' }
+      responses:
+        '201':
+          description: Créé.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SalesClosure' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/sales-closures/{id}:
+    delete:
+      operationId: deleteCatalogSalesClosure
+      summary: Rouvrir à la vente (direction, réception)
+      description: |
+        Supprime la fermeture ; inscrit au journal d'audit.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Supprimé.
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/services:
+    get:
+      operationId: listCatalogServices
+      summary: Services et options (gestion)
+      description: |
+        Tous les services, inactifs compris, avec le taux de TVA. Direction et réception.
+      tags: [Catalogue]
+      security: [{ staffSession: [] }]
+      responses:
+        '200':
+          description: Liste (direction, réception).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ServiceAdmin' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/services/{id}:
+    patch:
+      operationId: updateCatalogService
+      summary: Modifier un service (direction)
+      description: |
+        Nom, prix TTC, unité de prix, TVA, réservable en ligne, activation. Le code ne change
+        pas.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServiceChanges' }
+      responses:
+        '200':
+          description: Modifié.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceAdmin' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
 components:
   securitySchemes:
     staffSession:
@@ -345,6 +669,12 @@ components:
       in: header
       name: X-CSRF-Token
       description: Jeton reçu à la connexion, exigé sur toute requête qui modifie des données.
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
   responses:
     Problem:
       description: Erreur au format RFC 9457.
@@ -358,6 +688,226 @@ components:
       properties:
         fr: { type: string }
         en: { type: string }
+    Amenity:
+      type: string
+      enum:
+        - wifi
+        - air-conditioning
+        - tv
+        - safe
+        - hair-dryer
+        - shower
+        - bathtub
+        - sitting-area
+        - port-view
+    Night:
+      type: string
+      format: date
+      description: Nuit désignée par le jour où elle commence (AAAA-MM-JJ).
+    CategoryAdmin:
+      type: object
+      required:
+        - id
+        - code
+        - name
+        - description
+        - beds
+        - areaSqm
+        - maxOccupancy
+        - baseOccupancy
+        - basePriceCents
+        - extraAdultCents
+        - extraChildCents
+        - amenities
+        - sortOrder
+        - isActive
+        - roomCount
+        - activeRoomCount
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { $ref: '#/components/schemas/LocalizedText' }
+        description: { $ref: '#/components/schemas/LocalizedText' }
+        beds: { $ref: '#/components/schemas/LocalizedText' }
+        areaSqm: { type: integer }
+        maxOccupancy: { type: integer }
+        baseOccupancy: { type: integer }
+        basePriceCents: { type: integer }
+        extraAdultCents: { type: integer }
+        extraChildCents: { type: integer }
+        amenities: { type: array, items: { $ref: '#/components/schemas/Amenity' } }
+        sortOrder: { type: integer }
+        isActive: { type: boolean }
+        roomCount: { type: integer }
+        activeRoomCount: { type: integer }
+    CategoryChanges:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { $ref: '#/components/schemas/LocalizedText' }
+        description: { $ref: '#/components/schemas/LocalizedText' }
+        beds: { $ref: '#/components/schemas/LocalizedText' }
+        areaSqm: { type: integer, minimum: 1, maximum: 500 }
+        maxOccupancy: { type: integer, minimum: 1, maximum: 10 }
+        baseOccupancy:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Jamais plus que maxOccupancy.
+        basePriceCents: { type: integer, minimum: 1, maximum: 1000000 }
+        extraAdultCents: { type: integer, minimum: 0, maximum: 1000000 }
+        extraChildCents: { type: integer, minimum: 0, maximum: 1000000 }
+        amenities: { type: array, items: { $ref: '#/components/schemas/Amenity' } }
+        sortOrder: { type: integer, minimum: 0, maximum: 999 }
+        isActive: { type: boolean }
+    RoomAdmin:
+      type: object
+      required:
+        - id
+        - number
+        - floor
+        - categoryId
+        - categoryCode
+        - categoryName
+        - housekeepingStatus
+        - isActive
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: string, example: '214' }
+        floor: { type: integer }
+        categoryId: { type: string, format: uuid }
+        categoryCode: { type: string }
+        categoryName: { type: string }
+        housekeepingStatus: { type: string, enum: [clean, dirty] }
+        isActive: { type: boolean }
+    NewRoom:
+      type: object
+      additionalProperties: false
+      required: [number, floor, categoryId]
+      properties:
+        number: { type: string, pattern: '^[0-9A-Za-z-]{1,10}$' }
+        floor: { type: integer, minimum: -5, maximum: 50 }
+        categoryId: { type: string, format: uuid }
+        isActive: { type: boolean, default: true }
+    RoomChanges:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        number: { type: string, pattern: '^[0-9A-Za-z-]{1,10}$' }
+        floor: { type: integer, minimum: -5, maximum: 50 }
+        categoryId: { type: string, format: uuid }
+        isActive: { type: boolean }
+    RatePeriod:
+      type: object
+      required:
+        - id
+        - name
+        - kind
+        - firstNight
+        - lastNight
+        - adjustmentPct
+        - categoryId
+        - categoryCode
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        kind: { type: string, enum: [season, event] }
+        firstNight: { $ref: '#/components/schemas/Night' }
+        lastNight: { $ref: '#/components/schemas/Night' }
+        adjustmentPct: { type: number, description: 'Pourcentage ajouté au prix de base.' }
+        categoryId: { type: [string, 'null'], format: uuid, description: 'null : toutes.' }
+        categoryCode: { type: [string, 'null'] }
+    NewRatePeriod:
+      type: object
+      additionalProperties: false
+      required: [name, kind, firstNight, lastNight, adjustmentPct, categoryId]
+      properties:
+        name: { type: string, maxLength: 120 }
+        kind: { type: string, enum: [season, event] }
+        firstNight: { $ref: '#/components/schemas/Night' }
+        lastNight: { $ref: '#/components/schemas/Night' }
+        adjustmentPct: { type: number, minimum: -100, maximum: 1000 }
+        categoryId: { type: [string, 'null'], format: uuid }
+    RatePeriodChanges:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, maxLength: 120 }
+        kind: { type: string, enum: [season, event] }
+        firstNight: { $ref: '#/components/schemas/Night' }
+        lastNight: { $ref: '#/components/schemas/Night' }
+        adjustmentPct: { type: number, minimum: -100, maximum: 1000 }
+        categoryId: { type: [string, 'null'], format: uuid }
+    SalesClosure:
+      type: object
+      required:
+        - id
+        - categoryId
+        - categoryCode
+        - firstNight
+        - lastNight
+        - reason
+        - createdAt
+        - createdBy
+      properties:
+        id: { type: string, format: uuid }
+        categoryId: { type: string, format: uuid }
+        categoryCode: { type: string }
+        firstNight: { $ref: '#/components/schemas/Night' }
+        lastNight: { $ref: '#/components/schemas/Night' }
+        reason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          oneOf:
+            - type: 'null'
+            - type: object
+              required: [firstName, lastName]
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+    NewSalesClosure:
+      type: object
+      additionalProperties: false
+      required: [categoryId, firstNight, lastNight]
+      properties:
+        categoryId: { type: string, format: uuid }
+        firstNight: { $ref: '#/components/schemas/Night' }
+        lastNight: { $ref: '#/components/schemas/Night' }
+        reason: { type: [string, 'null'], maxLength: 300 }
+    ServiceAdmin:
+      type: object
+      required:
+        - id
+        - code
+        - name
+        - unitPriceCents
+        - pricingUnit
+        - vatRate
+        - bookableOnline
+        - isActive
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { $ref: '#/components/schemas/LocalizedText' }
+        unitPriceCents: { type: integer }
+        pricingUnit: { type: string, enum: [per_person_night, per_night, per_stay, per_unit] }
+        vatRate: { type: number, example: 10 }
+        bookableOnline: { type: boolean }
+        isActive: { type: boolean }
+    ServiceChanges:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { $ref: '#/components/schemas/LocalizedText' }
+        unitPriceCents: { type: integer, minimum: 0, maximum: 1000000 }
+        pricingUnit: { type: string, enum: [per_person_night, per_night, per_stay, per_unit] }
+        vatRate: { type: number, minimum: 0, maximum: 100 }
+        bookableOnline: { type: boolean }
+        isActive: { type: boolean }
     PublicHotel:
       type: object
       required:

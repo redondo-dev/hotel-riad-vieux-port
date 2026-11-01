@@ -2,7 +2,8 @@
 
 État : **module 5, catalogue (en cours)**. La base de données (module 1), la couche HTTP
 commune (module 2) et l'identité du personnel (module 3) sont en place, ainsi que la lecture
-publique du catalogue sous `/api/v1/public`. Aucune route de réservation n'existe encore.
+publique du catalogue (`/api/v1/public`) et sa gestion par le personnel
+(`/api/v1/admin/catalog`). Aucune route de réservation n'existe encore.
 
 ## Serveur HTTP
 
@@ -47,6 +48,22 @@ Trois routes en lecture seule, sans session, pour le site public : `GET /hotel`,
 Le calcul du prix d'une nuit (`src/modules/catalog/domain/pricing.ts`) servira aussi aux devis
 de réservation : une seule règle de tarif pour tout l'hôtel. Les jours sont comptés à l'heure
 de Marseille (`Europe/Paris`).
+
+## Gestion du catalogue (`/api/v1/admin/catalog`)
+
+Catégories, chambres, saisons et événements, fermetures de vente et services (détail dans
+`openapi/openapi.yaml`). Session du personnel et jeton anti-CSRF obligatoires.
+
+| Sujet       | Règle                                                                                                             |
+| ----------- | ----------------------------------------------------------------------------------------------------------------- |
+| Droits      | Direction : tout ; réception : lecture et fermetures de vente ; ménage et technique : aucun accès                 |
+| Suppression | Jamais pour une catégorie, une chambre ou un service (désactivation) ; possible pour une période ou une fermeture |
+| Code        | Le code d'une catégorie ou d'un service ne change jamais : il figure dans les adresses du site                    |
+| Langues     | Nom, description et lits obligatoires en français et en anglais                                                   |
+| Nuits       | Données par la première et la dernière nuit, incluses ; une période dure au plus 1 100 nuits                      |
+| Conflits    | Numéro de chambre déjà pris : 409 `ROOM_NUMBER_TAKEN` ; périodes en chevauchement : 409 `RATE_PERIOD_OVERLAP`     |
+| Prix        | Un changement ne touche que les futures réservations : chaque réservation garde le prix de ses nuits              |
+| Journal     | Chaque modification est inscrite dans `audit_logs` (qui, quoi, avant → après), dans la même transaction           |
 
 ## Comptes du personnel (`/api/v1/admin`)
 
