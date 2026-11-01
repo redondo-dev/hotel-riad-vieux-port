@@ -5,15 +5,47 @@ info:
   description: |
     API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
 
-    **État : aucun point d'accès n'est encore implémenté.** Ce fichier ne décrit que ce qui
+    **État : seul le contrôle de santé est implémenté.** Ce fichier ne décrit que ce qui
     existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
     La spécification complète validée figure dans le dossier d'architecture (section 5).
 
     Conventions communes : JSON, champs en camelCase, dates `AAAA-MM-JJ`, montants en
     centimes d'euro, erreurs au format RFC 9457 (schéma `Problem` ci-dessous).
+
+    Toute réponse porte l'en-tête `X-Trace-Id`, identifiant à communiquer en cas de problème.
+    Erreurs communes à toutes les routes : 400 `MALFORMED_JSON` ou `VALIDATION_FAILED`,
+    403 `ORIGIN_NOT_ALLOWED` (site non autorisé), 404 `NOT_FOUND`, 413 `PAYLOAD_TOO_LARGE`
+    (corps de plus de 100 Ko), 429 `TOO_MANY_REQUESTS` (plus de 300 requêtes par minute et par
+    adresse IP), 500 `INTERNAL_ERROR`.
 servers:
   - url: /api/v1
-paths: {}
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Contrôle de santé
+      description: |
+        Utilisé par l'hébergeur et la surveillance. Répond 200 si l'API et la base de données
+        répondent, 503 sinon. Aucun détail interne n'est jamais renvoyé.
+      tags: [Technique]
+      responses:
+        '200':
+          description: L'API et la base de données répondent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+        '503':
+          description: La base de données ne répond pas (code `SERVICE_UNAVAILABLE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 components:
   schemas:
     Problem:
