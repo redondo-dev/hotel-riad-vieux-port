@@ -5,18 +5,41 @@
  * which restarts on every change). Variables are read from the root .env file in development and
  * from the hosting's console in production.
  */
+import { join } from 'node:path';
+import pg from 'pg';
 import { createApp } from './app.ts';
 import { describeDatabase } from './config/database-url.ts';
-import { loadEnv } from './config/env.ts';
+import { DEFAULT_ADMIN_APP_URL, loadEnv } from './config/env.ts';
+import { createSessionStore } from './shared/http/session.ts';
 import { createSequelize } from './shared/infrastructure/database.ts';
 import { createLogger } from './shared/infrastructure/logger.ts';
+import { type Mailer, outboxMailer } from './shared/infrastructure/mailer.ts';
 
 /** Time left to the requests in progress when the hosting asks the API to stop. */
 const SHUTDOWN_GRACE_MS = 10_000;
 
+/** Development e-mails land here (repository root, ignored by Git). */
+const OUTBOX_DIR = join(import.meta.dirname, '..', '..', '..', 'outbox');
+
 const env = loadEnv();
+if (env.SESSION_SECRET === undefined) {
+  throw new Error(
+    'SESSION_SECRET est obligatoire pour démarrer l’API (32 caractères minimum) : voir .env.example.',
+  );
+}
 const logger = createLogger({ level: env.LOG_LEVEL, pretty: env.NODE_ENV === 'development' });
+
+function createMailer(): Mailer {
+  if (env.NODE_ENV === 'production') {
+    // The outbox writes secret links to disk: never in production. Brevo arrives in phase 6.
+    throw new Error('Aucun service d’envoi d’e-mails n’est configuré pour la production.');
+  }
+  logger.info({ outbox: OUTBOX_DIR }, 'e-mails écrits dans le dossier outbox (développement)');
+  return outboxMailer(OUTBOX_DIR);
+}
+
 const sequelize = createSequelize(env.DATABASE_URL);
+const sessionPool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 5 });
 
 const app = createApp({
   logger,
@@ -24,6 +47,14 @@ const app = createApp({
   trustProxy: env.TRUST_PROXY,
   checkDatabase: async () => {
     await sequelize.authenticate({ logging: false });
+  },
+  admin: {
+    sequelize,
+    sessionStore: createSessionStore(sessionPool, logger),
+    sessionSecret: env.SESSION_SECRET,
+    secureCookies: env.NODE_ENV === 'production',
+    mailer: createMailer(),
+    adminAppUrl: env.ADMIN_APP_URL ?? DEFAULT_ADMIN_APP_URL,
   },
 });
 
@@ -58,8 +89,7 @@ function shutdown(signal: string): void {
     process.exit(1);
   }, SHUTDOWN_GRACE_MS).unref();
   server.close((error) => {
-    sequelize
-      .close()
+    Promise.all([sequelize.close(), sessionPool.end()])
       .catch((closeError: unknown) => {
         logger.error({ err: closeError }, 'fermeture de la base de données en erreur');
       })
