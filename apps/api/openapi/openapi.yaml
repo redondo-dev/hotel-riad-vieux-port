@@ -817,6 +817,35 @@ paths:
         '400': { $ref: '#/components/responses/Problem' }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
+  /admin/incidents/rooms:
+    get:
+      operationId: listIncidentRooms
+      summary: Chambres actives (formulaire de signalement)
+      description: |
+        Numéro et étage des chambres actives, pour choisir la chambre d'une panne. Tous les
+        rôles du personnel.
+      tags: [Pannes]
+      security: [{ staffSession: [] }]
+      responses:
+        '200':
+          description: Chambres actives.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, number, floor]
+                      properties:
+                        id: { type: string, format: uuid }
+                        number: { type: string }
+                        floor: { type: integer }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
   /admin/incidents/technicians:
     get:
       operationId: listTechnicians

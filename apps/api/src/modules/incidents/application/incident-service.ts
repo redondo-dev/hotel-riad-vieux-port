@@ -101,6 +101,10 @@ export class IncidentService {
     return this.#repository.list(filter);
   }
 
+  rooms(): Promise<{ id: string; number: string; floor: number }[]> {
+    return this.#repository.activeRooms();
+  }
+
   technicians(): Promise<PersonName[]> {
     return this.#repository.technicians();
   }

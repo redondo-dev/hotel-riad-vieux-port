@@ -271,6 +271,14 @@ export class IncidentRepository {
     return rows.length > 0;
   }
 
+  /** Active rooms, for the report form (every staff member may report an incident). */
+  activeRooms(): Promise<{ id: string; number: string; floor: number }[]> {
+    return this.#select<{ id: string; number: string; floor: number }>(
+      'SELECT id, number, floor FROM rooms WHERE is_active ORDER BY floor, number',
+      [],
+    );
+  }
+
   /** Active technicians, for the assignment list. */
   technicians(): Promise<PersonName[]> {
     return this.#select<PersonName>(

@@ -172,6 +172,14 @@ describe.skipIf(!hasTestDatabase)('incidents', () => {
     it('requires a staff session', async () => {
       expect((await request(app).get(INCIDENTS)).status).toBe(401);
     });
+
+    it('lists the active rooms for the report form, to every role', async () => {
+      const response = await technician.agent.get(`${INCIDENTS}/rooms`);
+      expect(response.status).toBe(200);
+      const numbers = (response.body.items as { number: string }[]).map((item) => item.number);
+      expect(numbers).toContain('P601');
+      expect(numbers).toContain('P602');
+    });
   });
 
   describe('changes of state', () => {
