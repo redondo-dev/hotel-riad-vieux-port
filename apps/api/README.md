@@ -1,8 +1,8 @@
 # API — Hôtel Riad Vieux-Port
 
-État : **module 3, comptes du personnel**. La base de données (module 1), la couche HTTP
-commune (module 2) et l'identité du personnel sont en place : connexion, sessions, mots de
-passe et gestion des comptes, sous `/api/v1/admin`. Aucune route de réservation n'existe encore.
+État : **module 5, catalogue (en cours)**. La base de données (module 1), la couche HTTP
+commune (module 2) et l'identité du personnel (module 3) sont en place, ainsi que la lecture
+publique du catalogue sous `/api/v1/public`. Aucune route de réservation n'existe encore.
 
 ## Serveur HTTP
 
@@ -28,6 +28,25 @@ Organisation (dossier d'architecture, section 7) : `src/app.ts` assemble l'appli
 `src/main.ts` la démarre, `src/shared/http` contient les éléments communs à toutes les routes,
 `src/shared/domain/errors.ts` les erreurs métier. Les modules métier ajouteront leurs routes
 dans `src/modules/<module>/http`.
+
+## Catalogue public (`/api/v1/public`)
+
+Trois routes en lecture seule, sans session, pour le site public : `GET /hotel`,
+`GET /room-categories` et `GET /services` (détail dans `openapi/openapi.yaml`).
+
+| Sujet         | Règle                                                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Contenu       | Rien d'interne : ni identifiant technique, ni numéro de chambre, ni taux de TVA                                         |
+| Catégories    | Seules les catégories actives ayant au moins une chambre active ; textes en français et en anglais                      |
+| Prix « dès »  | Nuit la moins chère réservable en ligne à partir d'aujourd'hui (saisons et événements compris), tarif non remboursable  |
+| Tarifs        | Un événement l'emporte sur une saison ; une période propre à la catégorie l'emporte sur une période commune             |
+| Services      | Seules les options actives réservables en ligne (petit-déjeuner, lit bébé…) ; les atouts de l'hôtel restent sur le site |
+| Cache         | `Cache-Control: public, max-age=300` : un changement de prix apparaît sur le site en 5 minutes au plus                  |
+| Non configuré | Sans paramètres de l'hôtel, réponse 503 `HOTEL_NOT_CONFIGURED`                                                          |
+
+Le calcul du prix d'une nuit (`src/modules/catalog/domain/pricing.ts`) servira aussi aux devis
+de réservation : une seule règle de tarif pour tout l'hôtel. Les jours sont comptés à l'heure
+de Marseille (`Europe/Paris`).
 
 ## Comptes du personnel (`/api/v1/admin`)
 
