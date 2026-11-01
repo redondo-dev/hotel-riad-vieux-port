@@ -35,7 +35,7 @@ export class IdentityHarness {
   }
 
   /** A NEW application each time: its rate-limit counters start from zero. */
-  app(options: { demoPassword?: string } = {}): ReturnType<typeof createApp> {
+  app(): ReturnType<typeof createApp> {
     const logger = createLogger({ level: 'silent', pretty: false });
     return createApp({
       logger,
@@ -53,7 +53,6 @@ export class IdentityHarness {
           },
         },
         adminAppUrl: ADMIN_APP_URL,
-        demoPassword: options.demoPassword,
       },
     });
   }

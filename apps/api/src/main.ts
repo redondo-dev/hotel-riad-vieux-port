@@ -55,7 +55,6 @@ const app = createApp({
     secureCookies: env.NODE_ENV === 'production',
     mailer: createMailer(),
     adminAppUrl: env.ADMIN_APP_URL ?? DEFAULT_ADMIN_APP_URL,
-    demoPassword: env.DEMO_MODE ? env.DEMO_USER_PASSWORD : undefined,
   },
 });
 

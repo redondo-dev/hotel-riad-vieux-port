@@ -14,9 +14,8 @@ npm run start:admin   # http://localhost:4300
 En développement, le serveur Angular relaie `/api` vers l'API (`proxy.conf.json`) : navigateur,
 outil et API forment un seul site, le cookie de session circule sans réglage particulier.
 
-**Comptes de démonstration :** avec `DEMO_MODE=true` et `npm run db:seed:demo`, la page de
-connexion liste les 4 comptes (un par rôle) et leur mot de passe. Hors démonstration, rien n'est
-affiché.
+**Comptes de démonstration :** avec `DEMO_MODE=true`, `npm run db:seed:demo` crée un compte
+par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page de connexion.
 
 **E-mails :** les liens « mot de passe oublié » et « invitation » sont écrits dans le dossier
 `outbox/` à la racine ; ouvrez le fichier et collez le lien dans le navigateur.

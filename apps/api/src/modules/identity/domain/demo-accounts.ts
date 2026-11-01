@@ -1,9 +1,8 @@
 import type { Role } from './identity-rules.ts';
 
 /**
- * Staff accounts of the fictional hotel (portfolio, DEMO_MODE=true only): one per role. Created
- * by `npm run db:seed:demo` and listed on the login page of the staff tool, so that visitors of
- * the portfolio can try every role. Never used for a real hotel.
+ * Staff accounts of the fictional hotel (portfolio, DEMO_MODE=true only): one per role, created
+ * by `npm run db:seed:demo`. Never displayed by the staff tool; never used for a real hotel.
  */
 export const DEMO_ACCOUNTS: readonly {
   email: string;
