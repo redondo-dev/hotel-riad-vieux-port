@@ -55,6 +55,11 @@ import {
             Actualiser
           </button>
         </div>
+        @if (!canClean()) {
+          <p class="-mt-2 text-sm text-muted">
+            Vous pouvez signaler une chambre à nettoyer. Seul le ménage la déclare propre.
+          </p>
+        }
 
         <div class="flex flex-wrap items-end gap-3">
           <div
@@ -113,6 +118,7 @@ import {
                     type="button"
                     class="flex min-h-20 w-full flex-col items-center justify-center rounded-lg border-2 p-2 disabled:cursor-default"
                     [class]="room.status === 'clean' ? 'tile-clean' : 'tile-dirty'"
+                    [class.tile-locked]="next(room) === null"
                     [disabled]="busy() || next(room) === null"
                     [attr.aria-label]="tileLabel(room)"
                     (click)="toggle(room)"
