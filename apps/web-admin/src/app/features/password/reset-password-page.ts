@@ -45,7 +45,8 @@ function forgetLinkToken(): void {
 
 /**
  * New password from an e-mailed link (forgotten password, or first password of a new account).
- * The rules are shown live; an expired link offers to receive a new one.
+ * The rules are shown live. A link without its token (copied without the « #jeton=… » part) and
+ * a link refused by the server get distinct messages; both offer to receive a new one.
  */
 @Component({
   selector: 'adm-reset-password-page',
@@ -59,7 +60,18 @@ function forgetLinkToken(): void {
           <p>Votre mot de passe est enregistré. Vous pouvez maintenant vous connecter.</p>
         </div>
         <a routerLink="/connexion" class="mt-5 btn-primary w-full">Se connecter</a>
-      } @else if (token === null || linkInvalid()) {
+      } @else if (token === null) {
+        <div class="alert-error" role="alert">
+          <svg lucideCircleAlert class="mt-0.5 shrink-0 text-danger"></svg>
+          <p>
+            Ce lien est incomplet. Copiez-le en entier depuis l’e-mail, ou ouvrez-le dans le
+            navigateur où vous l’aviez déjà ouvert.
+          </p>
+        </div>
+        <a routerLink="/mot-de-passe-oublie" class="mt-5 btn-secondary w-full">
+          Recevoir un nouveau lien
+        </a>
+      } @else if (linkInvalid()) {
         <div class="alert-error" role="alert">
           <svg lucideCircleAlert class="mt-0.5 shrink-0 text-danger"></svg>
           <p>Ce lien a expiré ou a déjà servi.</p>
