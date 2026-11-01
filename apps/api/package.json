@@ -8,6 +8,8 @@
     "node": ">=22.18.0"
   },
   "scripts": {
+    "start": "node --env-file-if-exists=../../.env src/main.ts",
+    "dev": "node --watch --env-file-if-exists=../../.env src/main.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "db:migrate": "node --env-file-if-exists=../../.env db/migrate.ts up",
@@ -18,9 +20,22 @@
   },
   "dependencies": {
     "argon2": "^0.44.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.0",
+    "helmet": "^8.1.0",
     "pg": "^8.16.0",
+    "pino": "^9.7.0",
+    "pino-http": "^10.5.0",
     "sequelize": "^6.37.0",
     "umzug": "^3.8.0",
     "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/supertest": "^6.0.3",
+    "pino-pretty": "^13.0.0",
+    "supertest": "^7.1.0"
   }
 }

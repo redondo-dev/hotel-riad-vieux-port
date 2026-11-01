@@ -23,6 +23,8 @@
     "check": "npm run lint && npm run format:check && npm run typecheck",
     "start:public": "npm run start --workspace=@riad/web-public",
     "start:public:en": "npm run start:en --workspace=@riad/web-public",
+    "start:api": "npm run start --workspace=@riad/api",
+    "dev:api": "npm run dev --workspace=@riad/api",
     "db:migrate": "npm run db:migrate --workspace=@riad/api",
     "db:rollback": "npm run db:rollback --workspace=@riad/api",
     "db:status": "npm run db:status --workspace=@riad/api",
