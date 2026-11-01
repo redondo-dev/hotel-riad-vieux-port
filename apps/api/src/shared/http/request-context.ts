@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Request, RequestHandler } from 'express';
 import type { Logger } from 'pino';
-import pinoHttp from 'pino-http';
+// Named import: pino-http is a CommonJS package; its default export is not callable from ESM.
+import { pinoHttp } from 'pino-http';
 
 /** Response header carrying the trace identifier, to quote when reporting a problem. */
 export const TRACE_ID_HEADER = 'X-Trace-Id';
