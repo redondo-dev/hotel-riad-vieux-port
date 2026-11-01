@@ -1,7 +1,39 @@
 # API — Hôtel Riad Vieux-Port
 
-État : **module 1, base de données**. Les migrations, les données de démonstration et les
-tests des contraintes sont en place. Aucun point d'accès HTTP n'est encore implémenté.
+État : **module 2, socle du serveur HTTP**. La base de données (module 1) et la couche HTTP
+commune sont en place ; seul le contrôle de santé `GET /api/v1/health` est exposé. Aucune route
+métier n'existe encore.
+
+## Serveur HTTP
+
+```bash
+npm run dev:api     # depuis la racine : http://localhost:3000, redémarre à chaque modification
+npm run start:api   # sans redémarrage automatique
+```
+
+Vérification : http://localhost:3000/api/v1/health doit répondre `{"status":"ok"}`.
+
+| Élément    | Règle                                                                                                           |
+| ---------- | --------------------------------------------------------------------------------------------------------------- |
+| Adresses   | Toutes sous `/api/v1` ; contrat dans `openapi/openapi.yaml`                                                     |
+| Erreurs    | Format RFC 9457 (`application/problem+json`), jamais de détail interne au client                                |
+| Suivi      | En-tête `X-Trace-Id` sur chaque réponse, repris dans les erreurs et le journal                                  |
+| Journal    | Pino, une ligne JSON par événement ; mots de passe, jetons et cookies masqués, e-mails réduits à `j***@domaine` |
+| Validation | Zod sur le corps, les paramètres et la requête, avant tout code métier (`validated`)                            |
+| Sécurité   | Helmet ; CORS limité à `API_ALLOWED_ORIGINS` ; corps JSON de 100 Ko maximum                                     |
+| Limitation | 300 requêtes par minute et par adresse IP sur toute l'API ; limites plus strictes par route à venir             |
+| Arrêt      | À la demande de l'hébergeur, fin des requêtes en cours (10 s maximum) puis fermeture de la base                 |
+
+Organisation (dossier d'architecture, section 7) : `src/app.ts` assemble l'application,
+`src/main.ts` la démarre, `src/shared/http` contient les éléments communs à toutes les routes,
+`src/shared/domain/errors.ts` les erreurs métier. Les modules métier ajouteront leurs routes
+dans `src/modules/<module>/http`.
+
+### Tests
+
+`npm run test` (depuis `apps/api` ou la racine) lance les tests unitaires et d'intégration. Les
+tests qui ont besoin de PostgreSQL utilisent **uniquement** `TEST_DATABASE_URL`, une base dédiée
+dont le nom doit contenir « test » ; sans cette variable, ils sont affichés comme ignorés.
 
 ## Base de données
 

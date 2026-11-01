@@ -8,6 +8,8 @@
     "node": ">=22.18.0"
   },
   "scripts": {
+    "start": "node --env-file-if-exists=../../.env src/main.ts",
+    "dev": "node --watch --env-file-if-exists=../../.env src/main.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "db:migrate": "node --env-file-if-exists=../../.env db/migrate.ts up",
