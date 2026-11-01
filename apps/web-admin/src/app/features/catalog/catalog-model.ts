@@ -205,7 +205,7 @@ export function nightCount(firstNight: string, lastNight: string): number {
  * with at most two decimals.
  */
 export function parseEuros(text: string): number | null {
-  const cleaned = text.replace(/[\s  €]/g, '').replace(',', '.');
+  const cleaned = text.replace(/[\s€]/g, '').replace(',', '.');
   if (!/^\d{1,7}(\.\d{1,2})?$/.test(cleaned)) {
     return null;
   }
@@ -214,7 +214,7 @@ export function parseEuros(text: string): number | null {
 
 /** « 20 », « -15 », « +35,5 », « 12,5 % » → number. null when not a percentage. */
 export function parsePercent(text: string): number | null {
-  const cleaned = text.replace(/[\s  %]/g, '').replace(',', '.');
+  const cleaned = text.replace(/[\s%]/g, '').replace(',', '.');
   if (!/^[+-]?\d{1,4}(\.\d{1,2})?$/.test(cleaned)) {
     return null;
   }
