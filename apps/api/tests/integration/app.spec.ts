@@ -88,6 +88,16 @@ describe('errors', () => {
     expectProblem(response, 404, 'NOT_FOUND');
   });
 
+  it('logs every request with the trace identifier given to the client', async () => {
+    const { app, logs } = buildApp();
+    const response = await request(app).get(`${API_PREFIX}/nexiste-pas?email=jeanne@example.org`);
+    const entry = logs().find((line) => line.msg === 'requête terminée (404)');
+    expect(entry?.traceId).toBe(response.headers['x-trace-id']);
+    expect(entry?.req).toEqual({ method: 'GET', path: '/api/v1/nexiste-pas' });
+    // The query string, which may hold personal data, is never logged.
+    expect(JSON.stringify(entry).includes('jeanne')).toBe(false);
+  });
+
   it('refuses a malformed JSON body with a 400', async () => {
     const response = await request(buildApp().app)
       .post(`${API_PREFIX}/test/echo`)

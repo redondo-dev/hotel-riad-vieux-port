@@ -15,8 +15,9 @@ export const TRACE_ID_HEADER = 'X-Trace-Id';
  * could otherwise write misleading entries in the log. It is returned in the X-Trace-Id header
  * and in every error (`traceId`), and links what the client sees to the server log.
  *
- * Only the method, the path (without query string, which may hold personal data), the status
- * and the duration are logged; never headers, cookies or bodies.
+ * Each request is logged with its `traceId` (the same field name as in the error log), the
+ * method, the path (without query string, which may hold personal data), the status and the
+ * duration; never headers, cookies or bodies.
  */
 export function requestContext(logger: Logger): RequestHandler {
   return pinoHttp({
@@ -26,6 +27,7 @@ export function requestContext(logger: Logger): RequestHandler {
       res.setHeader(TRACE_ID_HEADER, id);
       return id;
     },
+    customProps: (req) => ({ traceId: String(req.id) }),
     customLogLevel: (_req, res, error) => {
       if (error !== undefined || res.statusCode >= 500) {
         return 'error';
@@ -39,6 +41,7 @@ export function requestContext(logger: Logger): RequestHandler {
       }),
       res: (res: { statusCode?: number }) => ({ statusCode: res.statusCode }),
     },
+    customSuccessMessage: (_req, res) => `requête terminée (${res.statusCode})`,
     // The error handler logs unexpected errors itself, with their stack.
     customErrorMessage: (_req, res) => `requête terminée en erreur ${res.statusCode}`,
   });
