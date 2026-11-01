@@ -16,8 +16,8 @@ Un seul dépôt réunit toutes les parties du projet (espaces de travail npm) :
 | `docs`            | Documentation du dépôt                | Markdown                                 |
 
 > État : le site public affiche la page d'accueil et la recherche de séjour, alimentées par
-> des **données fictives**. L'API démarre et répond à son contrôle de santé, mais n'a encore
-> aucune route métier : rien n'est réservé ni enregistré.
+> des **données fictives**. L'API gère les comptes du personnel ; l'outil de gestion permet de
+> se connecter, de gérer les comptes et son mot de passe. Rien n'est encore réservé.
 
 ## Prérequis
 
@@ -62,6 +62,7 @@ Ne jamais committer `.env` : il contient des secrets.
 | `npm run start:public:en` | Lance le site public en anglais                                              |
 | `npm run dev:api`         | Lance l'API sur http://localhost:3000, redémarrée à chaque modification      |
 | `npm run start:api`       | Lance l'API sans redémarrage automatique                                     |
+| `npm run start:admin`     | Lance l'outil de gestion sur http://localhost:4300 (l'API doit tourner)      |
 
 ### Vérification complète sur un poste de développement
 
