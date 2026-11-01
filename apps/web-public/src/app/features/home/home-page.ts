@@ -1,5 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Meta } from '@angular/platform-browser';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  type ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { HotelServiceCode } from '@riad/shared';
 import {
@@ -67,10 +75,25 @@ export class HomePage {
   protected readonly roomsListLabel = $localize`:@@home.rooms.listLabel:Nos catégories de chambres, faire défiler horizontalement`;
   protected readonly aboutText = $localize`:@@home.about.text:Un hôtel indépendant de ${this.totalRooms}:rooms: chambres, entre la lumière de Marseille et l'esprit des riads : un patio au calme, une équipe à l'écoute et le Vieux-Port au bout de la rue.`;
 
+  /**
+   * The list scrolls horizontally below 1024 px only. It is a keyboard stop only while it
+   * scrolls, so that keyboard users can scroll it (audit QA-05). The server renders the phone
+   * layout, where it scrolls.
+   */
+  protected readonly roomsScrollable = signal(true);
+  private readonly roomsList = viewChild.required<ElementRef<HTMLElement>>('roomsList');
+
   constructor() {
-    inject(Meta).updateTag({
-      name: 'description',
-      content: $localize`:@@home.metaDescription:Hôtel 3 étoiles de ${this.totalRooms}:rooms: chambres sur le Vieux-Port de Marseille. Réservation en ligne, annulation gratuite jusqu'à 48 h avec le tarif flexible, réception 24 h/24.`,
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const element = this.roomsList().nativeElement;
+      const observer = new ResizeObserver(() => {
+        this.roomsScrollable.set(element.scrollWidth > element.clientWidth);
+      });
+      observer.observe(element);
+      destroyRef.onDestroy(() => {
+        observer.disconnect();
+      });
     });
   }
 

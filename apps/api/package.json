@@ -1,5 +1,26 @@
 {
   "name": "@riad/api",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "description": "API REST et tâches de fond de l'Hôtel Riad Vieux-Port",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "db:migrate": "node --env-file-if-exists=../../.env db/migrate.ts up",
+    "db:rollback": "node --env-file-if-exists=../../.env db/migrate.ts down",
+    "db:status": "node --env-file-if-exists=../../.env db/migrate.ts status",
+    "db:seed:demo": "node --env-file-if-exists=../../.env db/seed-demo.ts",
+    "db:test:sql": "bash db/tests/run-sql-tests.sh"
+  },
+  "dependencies": {
+    "argon2": "^0.44.0",
+    "pg": "^8.16.0",
+    "sequelize": "^6.37.0",
+    "umzug": "^3.8.0",
+    "zod": "^4.1.0"
+  }
 }

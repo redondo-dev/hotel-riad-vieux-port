@@ -32,6 +32,11 @@ export default tseslint.config(
       '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
     },
   },
+  {
+    // Command-line scripts (migrations, demo data) write their progress to the console.
+    files: ['apps/api/db/**/*.ts'],
+    rules: { 'no-console': 'off' },
+  },
   // Désactive les règles de mise en forme, laissées à Prettier.
   prettier,
 );

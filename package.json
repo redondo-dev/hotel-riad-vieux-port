@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=22.12.0",
+    "node": ">=22.18.0",
     "npm": ">=10"
   },
   "scripts": {
@@ -23,18 +23,23 @@
     "check": "npm run lint && npm run format:check && npm run typecheck",
     "start:public": "npm run start --workspace=@riad/web-public",
     "start:public:en": "npm run start:en --workspace=@riad/web-public",
+    "db:migrate": "npm run db:migrate --workspace=@riad/api",
+    "db:rollback": "npm run db:rollback --workspace=@riad/api",
+    "db:status": "npm run db:status --workspace=@riad/api",
+    "db:seed:demo": "npm run db:seed:demo --workspace=@riad/api",
+    "db:test:sql": "npm run db:test:sql --workspace=@riad/api",
     "prepare": "husky"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
     "@eslint/js": "^9.30.0",
+    "@types/node": "^24.0.0",
     "eslint": "^9.30.0",
     "eslint-config-prettier": "^10.1.0",
     "husky": "^9.1.0",
     "lint-staged": "^16.1.0",
-    "@types/node": "^24.0.0",
-    "prettier": "^3.6.0",
+    "prettier": "3.9.10",
     "typescript": "~5.9.0",
     "typescript-eslint": "^8.35.0",
     "vitest": "^3.2.0"
@@ -47,5 +52,13 @@
     "*.{json,md,yml,yaml,html,scss,css}": [
       "prettier --write"
     ]
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "esbuild@0.28.2": true,
+    "argon2@0.44.0": true,
+    "lmdb@3.5.1": true,
+    "msgpackr-extract@3.0.4": true,
+    "@parcel/watcher@2.6.0": true
   }
 }

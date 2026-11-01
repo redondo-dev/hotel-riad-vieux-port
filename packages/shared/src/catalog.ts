@@ -39,12 +39,7 @@ export interface RoomCategory {
 }
 
 export type HotelServiceCode =
-  | 'breakfast'
-  | 'restaurant-bar'
-  | 'reception-24h'
-  | 'baby-cot'
-  | 'wifi'
-  | 'air-conditioning';
+  'breakfast' | 'restaurant-bar' | 'reception-24h' | 'baby-cot' | 'wifi' | 'air-conditioning';
 
 export interface HotelService {
   code: HotelServiceCode;

@@ -73,8 +73,9 @@
   </p>
   <div
     class="-mx-4 mt-8 overflow-x-auto px-4 pb-4 sm:-mx-8 sm:px-8 lg:mx-0 lg:overflow-visible lg:px-0"
+    #roomsList
     role="region"
-    tabindex="0"
+    [attr.tabindex]="roomsScrollable() ? 0 : null"
     [attr.aria-label]="roomsListLabel"
   >
     <ul class="flex snap-x snap-mandatory gap-4 lg:grid lg:grid-cols-3 lg:gap-6">

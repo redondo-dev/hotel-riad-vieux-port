@@ -20,7 +20,7 @@ Un seul dépôt réunit toutes les parties du projet (espaces de travail npm) :
 
 ## Prérequis
 
-- **Node.js 24** (version indiquée dans `.nvmrc`) ; minimum accepté : 22.12.
+- **Node.js 24** (version indiquée dans `.nvmrc`) ; minimum accepté : 22.18 (exécution directe du TypeScript par l'API).
   Avec nvm : `nvm use`.
 - **npm 10** ou plus récent.
 - **Git**.
@@ -59,6 +59,23 @@ Ne jamais committer `.env` : il contient des secrets.
 | `npm run check`           | Lint + mise en forme + types : à lancer avant d'ouvrir une demande de fusion |
 | `npm run start:public`    | Lance le site public en français sur http://localhost:4200/fr/               |
 | `npm run start:public:en` | Lance le site public en anglais                                              |
+
+### Vérification complète sur un poste de développement
+
+Ces contrôles n'ont jamais pu être lancés dans l'environnement de l'audit QA (registre npm
+inaccessible). À faire une fois, puis avant chaque fusion dans `dev` :
+
+1. `npm install` : aucune erreur ni avertissement de dépendances incompatibles
+   (Angular 21, `lucide-angular`, Zod 4, Umzug 3).
+2. `npm run check` : lint, mise en forme et types (dont `logger: undefined` dans
+   `apps/api/db/migrate.ts`).
+3. `npm run test` : tests du paquet partagé, de l'API et du site public avec Vitest.
+4. `npm run build` : compilation du site public en français **et** en anglais.
+5. `npm run start:public`, puis ouvrir http://localhost:4200/fr/ : vérifier l'accueil, le
+   calendrier et la page 404 au clavier.
+6. `npm run db:test:sql` sur une base PostgreSQL locale (voir `apps/api/README.md`).
+
+Tout échec est à signaler avant de poursuivre.
 
 ### Site public : langues
 

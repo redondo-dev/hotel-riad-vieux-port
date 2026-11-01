@@ -12,7 +12,6 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-  addDays,
   nowInTimeZone,
   toSearchQueryParams,
   validateStaySearch,
@@ -48,17 +47,14 @@ export class StaySearch {
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
   private readonly rules = this.catalog.bookingRules;
-  private readonly timeZone = this.catalog.hotel.timeZone;
+  protected readonly timeZone = this.catalog.hotel.timeZone;
   private readonly dateField = viewChild.required(DateRangeField);
   private readonly guestsField = viewChild.required(GuestsPicker);
   private readonly errorSummary = viewChild<ElementRef<HTMLElement>>('errorSummary');
 
   protected readonly icons = { search: Search, alert: CircleAlert };
-  protected readonly today: IsoDate = nowInTimeZone(this.timeZone).date;
-  protected readonly lastSelectableDate: IsoDate = addDays(
-    this.today,
-    this.rules.bookingHorizonDays + this.rules.maxStayNights,
-  );
+  /** Days that can be clicked in the calendar: the booking horizon plus the longest stay. */
+  protected readonly selectableDays = this.rules.bookingHorizonDays + this.rules.maxStayNights;
 
   protected readonly checkIn = signal<IsoDate | null>(null);
   protected readonly checkOut = signal<IsoDate | null>(null);
