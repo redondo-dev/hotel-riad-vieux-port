@@ -1,10 +1,10 @@
 # API — Hôtel Riad Vieux-Port
 
-État : **module 6, ménage (en cours)**. La base de données (module 1), la couche HTTP
+État : **module 7, pannes (en cours)**. La base de données (module 1), la couche HTTP
 commune (module 2) et l'identité du personnel (module 3) sont en place, ainsi que la lecture
 publique du catalogue (`/api/v1/public`) et sa gestion par le personnel
-(`/api/v1/admin/catalog`), et l'état du ménage des chambres (`/api/v1/admin/housekeeping`).
-Aucune route de réservation n'existe encore.
+(`/api/v1/admin/catalog`), l'état du ménage des chambres (`/api/v1/admin/housekeeping`) et
+le suivi des pannes (`/api/v1/admin/incidents`). Aucune route de réservation n'existe encore.
 
 ## Serveur HTTP
 
@@ -78,6 +78,21 @@ dans `openapi/openapi.yaml`.
 | Groupé  | Plusieurs chambres d'un coup, tout ou rien ; `changed` compte celles qui ont vraiment changé            |
 | Journal | Chaque changement réel est inscrit dans `audit_logs` (`room.housekeeping_changed`, avant → après)       |
 | À venir | Passage automatique en « à nettoyer » au départ d'un client, avec le module Réservations                |
+
+## Pannes (`/api/v1/admin/incidents`)
+
+Liste, fiche avec historique, signalement, changement d'état, assignation et commentaires ;
+détail dans `openapi/openapi.yaml`.
+
+| Sujet        | Règle                                                                                               |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| Signaler     | Tous les rôles ; une chambre ou un lieu ; référence automatique `INC-000001`                        |
+| Inutilisable | « Chambre inutilisable » la retire de la vente aussitôt ; elle revient à la vente à la résolution   |
+| États        | Signalée → en cours → résolue → clôturée ; la direction peut rouvrir une panne résolue              |
+| Droits       | Technique : en cours et résolue ; direction : tout, dont clôturer ; réception : assigner            |
+| Assigner     | À un technicien actif et/ou à un prestataire externe nommé en texte (direction, réception)          |
+| Historique   | Chaque état, assignation et commentaire est daté dans `incident_events`, et inscrit au journal      |
+| À venir      | Photos (stockage de fichiers), e-mails pour les urgences (Brevo), alerte si la chambre est réservée |
 
 ## Comptes du personnel (`/api/v1/admin`)
 
