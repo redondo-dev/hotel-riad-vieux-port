@@ -1,7 +1,7 @@
 -- DEMO DATA — fictional Hôtel Riad Vieux-Port (portfolio).
 -- Loaded only when DEMO_MODE=true, never for a real hotel. Separate from the migrations.
--- Idempotent: running it twice changes nothing. Values validated during the analysis phase,
--- identical to the frontend demo data (apps/web-public/src/app/core/data/demo-catalog.data.ts).
+-- Idempotent: running it twice changes nothing. Values validated during the analysis phase;
+-- the public site displays them through the API (GET /api/v1/public/…).
 
 INSERT INTO hotel_settings (id, name, address, phone, email, legal_identifiers)
 VALUES (

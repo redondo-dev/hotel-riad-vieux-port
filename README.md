@@ -15,9 +15,10 @@ Un seul dépôt réunit toutes les parties du projet (espaces de travail npm) :
 | `packages/shared` | Types et règles de validation communs | TypeScript, Zod                          |
 | `docs`            | Documentation du dépôt                | Markdown                                 |
 
-> État : le site public affiche la page d'accueil et la recherche de séjour, alimentées par
-> des **données fictives**. L'API gère les comptes du personnel ; l'outil de gestion permet de
-> se connecter, de gérer les comptes et son mot de passe. Rien n'est encore réservé.
+> État : le site public affiche la page d'accueil et la recherche de séjour avec le catalogue
+> de l'API (hôtel fictif, **données de démonstration**). L'API gère les comptes du personnel et
+> le catalogue ; l'outil de gestion permet de se connecter, de gérer les comptes et le
+> catalogue (catégories, chambres, tarifs, services). Rien n'est encore réservé.
 
 ## Prérequis
 
@@ -75,8 +76,11 @@ inaccessible). À faire une fois, puis avant chaque fusion dans `dev` :
    `apps/api/db/migrate.ts`).
 3. `npm run test` : tests du paquet partagé, de l'API et du site public avec Vitest.
 4. `npm run build` : compilation du site public en français **et** en anglais.
-5. `npm run start:public`, puis ouvrir http://localhost:4200/fr/ : vérifier l'accueil, le
-   calendrier et la page 404 au clavier.
+5. `npm run dev:api`, puis `npm run start:public` et ouvrir http://localhost:4200/fr/ :
+   vérifier l'accueil, le calendrier et la page 404 au clavier. Le site lit le catalogue dans
+   l'API : si elle n'a jamais répondu depuis le démarrage du site, chaque page affiche « Site
+   momentanément indisponible » (statut 503). Une fois lu, le catalogue est gardé 24 heures en
+   cas de panne de l'API.
 6. `npm run db:test:sql` sur une base PostgreSQL locale (voir `apps/api/README.md`).
 
 Tout échec est à signaler avant de poursuivre.

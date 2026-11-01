@@ -155,6 +155,9 @@
     "notFound.code": "Error 404",
     "notFound.title": "This page does not exist or has moved",
     "notFound.text": "You can search for a stay below or go back to the home page.",
-    "notFound.home": "Back to the home page"
+    "notFound.home": "Back to the home page",
+
+    "unavailable.title": "Website temporarily unavailable",
+    "unavailable.text": "Our information cannot be displayed at the moment. Please try again in a few minutes."
   }
 }

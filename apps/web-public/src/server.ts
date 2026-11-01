@@ -7,6 +7,7 @@ import {
 import express from 'express';
 import helmet from 'helmet';
 import { join } from 'node:path';
+import { CatalogSource } from './catalog-source';
 
 /**
  * Server-side rendering of the public site: pages arrive already filled in, which search
@@ -18,6 +19,10 @@ import { join } from 'node:path';
  *  - security headers (Helmet). The content security policy is in REPORT-ONLY mode for now:
  *    the browser reports violations in its console without blocking anything. It will be
  *    enforced once checked in a browser on the built site, so that it cannot break hydration.
+ *
+ * Catalogue: read from the API by this server (API_INTERNAL_URL) and handed to each page
+ * through the request context; the visitor's browser never calls the API (see
+ * catalog-source.ts for the memory and the behaviour when the API is down).
  */
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -25,6 +30,15 @@ const allowedHosts = (process.env['ALLOWED_HOSTS'] ?? '')
   .split(',')
   .map((host) => host.trim().toLowerCase())
   .filter((host) => host !== '');
+
+const catalog = new CatalogSource({
+  // An empty value (copied from .env.example) means « not set ».
+  apiUrl: process.env['API_INTERNAL_URL'] || 'http://localhost:3000/api/v1',
+  onError: (error) => {
+    // eslint-disable-next-line no-console -- the SSR server has no logger yet
+    console.error('Catalogue : lecture de l’API impossible.', error);
+  },
+});
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
@@ -53,7 +67,7 @@ app.use(
         'style-src': ["'self'", "'unsafe-inline'"],
         'img-src': ["'self'", 'data:'],
         'font-src': ["'self'"],
-        // The API origin will be added here when the site calls it (catalogue module).
+        // The browser never calls the API: the catalogue comes with the page.
         'connect-src': ["'self'"],
         'object-src': ["'none'"],
         'base-uri': ["'self'"],
@@ -73,8 +87,9 @@ app.use(
 );
 
 app.use((req, res, next) => {
-  angularApp
-    .handle(req)
+  catalog
+    .get()
+    .then((snapshot) => angularApp.handle(req, { catalog: snapshot }))
     .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))
     .catch(next);
 });
