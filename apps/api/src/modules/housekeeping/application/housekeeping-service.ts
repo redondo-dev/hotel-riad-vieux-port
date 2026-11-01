@@ -77,7 +77,11 @@ export class HousekeepingService {
       if (toChange.length === 0) {
         return 0;
       }
-      await this.#repository.setStatus(toChange.map((room) => room.id), status, transaction);
+      await this.#repository.setStatus(
+        toChange.map((room) => room.id),
+        status,
+        transaction,
+      );
       for (const room of toChange) {
         await recordAudit(
           this.#sequelize,
