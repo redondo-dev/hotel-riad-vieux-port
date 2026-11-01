@@ -14,37 +14,13 @@ import { join } from 'node:path';
 import argon2 from 'argon2';
 import { describeDatabase } from '../src/config/database-url.ts';
 import { loadEnv } from '../src/config/env.ts';
+import { DEMO_ACCOUNTS } from '../src/modules/identity/domain/demo-accounts.ts';
 import { createSequelize } from '../src/shared/infrastructure/database.ts';
 import { runSqlFile } from './migrate.ts';
 
 const SEEDS_DIR = join(import.meta.dirname, 'seeds', 'demo');
 
-const DEMO_USERS = [
-  {
-    email: 'direction@riad-vieux-port.example',
-    firstName: 'Démo',
-    lastName: 'Direction',
-    role: 'direction',
-  },
-  {
-    email: 'reception@riad-vieux-port.example',
-    firstName: 'Démo',
-    lastName: 'Réception',
-    role: 'reception',
-  },
-  {
-    email: 'menage@riad-vieux-port.example',
-    firstName: 'Démo',
-    lastName: 'Ménage',
-    role: 'housekeeping',
-  },
-  {
-    email: 'technique@riad-vieux-port.example',
-    firstName: 'Démo',
-    lastName: 'Technique',
-    role: 'technician',
-  },
-] as const;
+const DEMO_USERS = DEMO_ACCOUNTS;
 
 async function main(): Promise<void> {
   const env = loadEnv();
