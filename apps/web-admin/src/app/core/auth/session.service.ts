@@ -50,7 +50,7 @@ export class SessionService {
 
   async logOut(): Promise<void> {
     try {
-      await firstValueFrom(this.http.delete<void>(`${this.api}/session`));
+      await firstValueFrom(this.http.delete(`${this.api}/session`));
     } finally {
       this.clear();
     }
