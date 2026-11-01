@@ -5,9 +5,12 @@ import { isRole, landingFor, menuFor } from './roles';
 
 describe('menuFor', () => {
   it('shows the account management to the management only', () => {
-    expect(menuFor('direction').map((item) => item.path)).toEqual(['/accueil', '/utilisateurs']);
-    for (const role of ['reception', 'housekeeping', 'technician'] as const) {
-      expect(menuFor(role).map((item) => item.path)).toEqual(['/accueil']);
+    const paths = (role: Parameters<typeof menuFor>[0]): string[] =>
+      menuFor(role).map((item) => item.path);
+    expect(paths('direction')).toEqual(['/accueil', '/catalogue', '/utilisateurs']);
+    expect(paths('reception')).toEqual(['/accueil', '/catalogue']);
+    for (const role of ['housekeeping', 'technician'] as const) {
+      expect(paths(role)).toEqual(['/accueil']);
     }
   });
 });

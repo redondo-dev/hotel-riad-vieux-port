@@ -22,7 +22,7 @@ export interface StaffUser {
   role: Role;
 }
 
-export type MenuIcon = 'home' | 'users';
+export type MenuIcon = 'home' | 'catalog' | 'users';
 
 export interface MenuItem {
   path: string;
@@ -38,6 +38,7 @@ export interface MenuItem {
  */
 export const MENU: readonly MenuItem[] = [
   { path: '/accueil', label: 'Accueil', icon: 'home', roles: ROLES },
+  { path: '/catalogue', label: 'Catalogue', icon: 'catalog', roles: ['direction', 'reception'] },
   { path: '/utilisateurs', label: 'Utilisateurs', icon: 'users', roles: ['direction'] },
 ];
 
