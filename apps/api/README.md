@@ -1,9 +1,10 @@
 # API — Hôtel Riad Vieux-Port
 
-État : **module 5, catalogue (en cours)**. La base de données (module 1), la couche HTTP
+État : **module 6, ménage (en cours)**. La base de données (module 1), la couche HTTP
 commune (module 2) et l'identité du personnel (module 3) sont en place, ainsi que la lecture
 publique du catalogue (`/api/v1/public`) et sa gestion par le personnel
-(`/api/v1/admin/catalog`). Aucune route de réservation n'existe encore.
+(`/api/v1/admin/catalog`), et l'état du ménage des chambres (`/api/v1/admin/housekeeping`).
+Aucune route de réservation n'existe encore.
 
 ## Serveur HTTP
 
@@ -64,6 +65,19 @@ Catégories, chambres, saisons et événements, fermetures de vente et services 
 | Conflits    | Numéro de chambre déjà pris : 409 `ROOM_NUMBER_TAKEN` ; périodes en chevauchement : 409 `RATE_PERIOD_OVERLAP`     |
 | Prix        | Un changement ne touche que les futures réservations : chaque réservation garde le prix de ses nuits              |
 | Journal     | Chaque modification est inscrite dans `audit_logs` (qui, quoi, avant → après), dans la même transaction           |
+
+## Ménage (`/api/v1/admin/housekeeping`)
+
+`GET /rooms` (filtres `floor` et `status`), `PATCH /rooms/:id` et `POST /rooms/status` ; détail
+dans `openapi/openapi.yaml`.
+
+| Sujet   | Règle                                                                                                   |
+| ------- | ------------------------------------------------------------------------------------------------------- |
+| États   | Deux seulement : propre (`clean`) ou à nettoyer (`dirty`) ; seules les chambres actives sont concernées |
+| Droits  | Ménage et direction : les deux états ; réception : « à nettoyer » seulement ; technique : aucun accès   |
+| Groupé  | Plusieurs chambres d'un coup, tout ou rien ; `changed` compte celles qui ont vraiment changé            |
+| Journal | Chaque changement réel est inscrit dans `audit_logs` (`room.housekeeping_changed`, avant → après)       |
+| À venir | Passage automatique en « à nettoyer » au départ d'un client, avec le module Réservations                |
 
 ## Comptes du personnel (`/api/v1/admin`)
 

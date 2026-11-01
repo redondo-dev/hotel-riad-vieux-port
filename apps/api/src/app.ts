@@ -7,6 +7,8 @@ import { hotelToday } from './modules/catalog/domain/pricing.ts';
 import { catalogAdminRouter } from './modules/catalog/http/catalog-admin-routes.ts';
 import { publicCatalogRouter } from './modules/catalog/http/public-catalog-routes.ts';
 import { CatalogRepository } from './modules/catalog/infrastructure/catalog-repository.ts';
+import { HousekeepingService } from './modules/housekeeping/application/housekeeping-service.ts';
+import { housekeepingRouter } from './modules/housekeeping/http/housekeeping-routes.ts';
 import { IdentityService } from './modules/identity/application/identity-service.ts';
 import { requireStaff } from './modules/identity/http/guards.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
@@ -81,8 +83,10 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   );
   const findActiveStaff = (id: string) => users.findActiveStaff(id);
   router.use(identityRouter(identity, findActiveStaff));
+  const staff = requireStaff(findActiveStaff);
   const catalog = new CatalogAdmin(deps.sequelize, deps.today ?? (() => hotelToday()));
-  router.use('/catalog', catalogAdminRouter(catalog, requireStaff(findActiveStaff)));
+  router.use('/catalog', catalogAdminRouter(catalog, staff));
+  router.use('/housekeeping', housekeepingRouter(new HousekeepingService(deps.sequelize), staff));
   return router;
 }
 

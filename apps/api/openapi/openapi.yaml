@@ -5,8 +5,8 @@ info:
   description: |
     API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
 
-    **État : contrôle de santé, comptes du personnel et catalogue (public et gestion)
-    implémentés.** Ce fichier ne décrit que ce qui
+    **État : contrôle de santé, comptes du personnel, catalogue (public et gestion) et
+    ménage implémentés.** Ce fichier ne décrit que ce qui
     existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
     La spécification complète validée figure dans le dossier d'architecture (section 5).
 
@@ -657,6 +657,112 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
+  /admin/housekeeping/rooms:
+    get:
+      operationId: getHousekeepingBoard
+      summary: État du ménage
+      description: |
+        Chambres actives et leur état, triées par étage puis numéro, avec le décompte de
+        l'hôtel. Direction, réception et ménage ; jamais mis en cache.
+      tags: [Ménage]
+      security: [{ staffSession: [] }]
+      parameters:
+        - { name: floor, in: query, schema: { type: integer, minimum: -5, maximum: 50 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/HousekeepingStatus' } }
+      responses:
+        '200':
+          description: État du ménage.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, summary]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/HousekeepingRoom' }
+                  summary:
+                    type: object
+                    required: [total, dirty]
+                    properties:
+                      total: { type: integer, description: Chambres actives. }
+                      dirty: { type: integer, description: Chambres à nettoyer. }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/housekeeping/rooms/{id}:
+    patch:
+      operationId: setHousekeepingStatus
+      summary: Changer l'état d'une chambre
+      description: |
+        Ménage et direction : propre ou à nettoyer. Réception : à nettoyer seulement (sinon 403
+        `HOUSEKEEPING_STATUS_FORBIDDEN`). Chambre désactivée ou inconnue : 404. Inscrit au
+        journal d'audit si l'état change.
+      tags: [Ménage]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/HousekeepingStatus' }
+      responses:
+        '200':
+          description: Chambre dans son nouvel état.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HousekeepingRoom' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/housekeeping/rooms/status:
+    post:
+      operationId: setHousekeepingStatusOfRooms
+      summary: Changer l'état de plusieurs chambres
+      description: |
+        Tout ou rien : si une chambre est inconnue ou désactivée (404), aucune ne change.
+        `changed` compte les chambres dont l'état a vraiment changé. Mêmes droits que pour une
+        chambre.
+      tags: [Ménage]
+      security: [{ staffSession: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [roomIds, status]
+              properties:
+                roomIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  items: { type: string, format: uuid }
+                status: { $ref: '#/components/schemas/HousekeepingStatus' }
+      responses:
+        '200':
+          description: Chambres dans leur nouvel état.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, changed]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/HousekeepingRoom' }
+                  changed: { type: integer }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
 components:
   securitySchemes:
     staffSession:
@@ -688,6 +794,20 @@ components:
       properties:
         fr: { type: string }
         en: { type: string }
+    HousekeepingStatus:
+      type: string
+      enum: [clean, dirty]
+      description: '« clean » : propre ; « dirty » : à nettoyer.'
+    HousekeepingRoom:
+      type: object
+      required: [id, number, floor, categoryCode, categoryName, status]
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: string, example: '214' }
+        floor: { type: integer }
+        categoryCode: { type: string }
+        categoryName: { type: string }
+        status: { $ref: '#/components/schemas/HousekeepingStatus' }
     Amenity:
       type: string
       enum:
