@@ -1,7 +1,7 @@
 /**
- * Hotel catalogue types. They mirror the API resources described in the architecture
- * document (`GET /api/v1/public/hotel`, `/room-categories`, `/services`), so the
- * Angular screens built today on demo data will keep working once the API is plugged in.
+ * Hotel catalogue types. They mirror the public API resources (`GET /api/v1/public/hotel`,
+ * `/room-categories`, `/services`, see apps/api/openapi/openapi.yaml), read by the server of
+ * the public site and handed to the Angular screens.
  */
 
 export const SUPPORTED_LOCALES = ['fr', 'en'] as const;
@@ -33,14 +33,21 @@ export interface RoomCategory {
   baseOccupancy: number;
   areaSqm: number;
   roomCount: number;
-  /** Base price per night, flexible rate, low season, in euro cents. */
+  /** Base price per night, flexible rate, without season or event, in euro cents. */
   basePriceCents: number;
-  amenities: AmenityCode[];
+  /** Supplement per night for each adult or child above the base occupancy, in euro cents. */
+  extraAdultCents: number;
+  extraChildCents: number;
+  /** Lowest price of a night bookable online now, non-refundable rate, in euro cents. */
+  fromPriceCents: number;
+  /** Equipment codes; a code unknown to the site is simply not displayed. */
+  amenities: string[];
 }
 
 export type HotelServiceCode =
   'breakfast' | 'restaurant-bar' | 'reception-24h' | 'baby-cot' | 'wifi' | 'air-conditioning';
 
+/** A highlight of the hotel shown on the home page (static content of the site). */
 export interface HotelService {
   code: HotelServiceCode;
   name: LocalizedText;
@@ -49,7 +56,8 @@ export interface HotelService {
 
 export interface HotelInfo {
   name: string;
-  address: LocalizedText;
+  /** A postal address is not translated: the same text in every language. */
+  address: string;
   phone: {
     /** Number as displayed, for example `04 65 71 00 00`. */
     display: string;
@@ -80,4 +88,26 @@ export interface DemoReview {
   rating: 1 | 2 | 3 | 4 | 5;
   text: LocalizedText;
   categoryCode: string;
+}
+
+export type PricingUnit = 'per_person_night' | 'per_night' | 'per_stay' | 'per_unit';
+
+/** An option guests can add when booking online (breakfast, baby cot…), price including VAT. */
+export interface HotelOption {
+  code: string;
+  name: LocalizedText;
+  unitPriceCents: number;
+  pricingUnit: PricingUnit;
+}
+
+/**
+ * Everything the public site needs from the catalogue, read from the API by the server of the
+ * site and handed to the pages. `fetchedAt` (ISO date-time) tells how fresh it is.
+ */
+export interface CatalogSnapshot {
+  hotel: HotelInfo;
+  bookingRules: BookingRules;
+  categories: RoomCategory[];
+  options: HotelOption[];
+  fetchedAt: string;
 }
