@@ -16,6 +16,7 @@ import {
  *
  *   GET  /                 list; filters status, priority, roomId, mine, includeClosed
  *   POST /                 report an incident (« room unusable » blocks the room)
+ *   GET  /rooms            active rooms, for the report form
  *   GET  /technicians      active technicians, for the assignment     (management, reception)
  *   GET  /:id              one incident and its history
  *   POST /:id/status       change the state (rights checked by the service)
@@ -141,6 +142,11 @@ export function incidentRouter(service: IncidentService, requireStaff: RequestHa
       res.status(201).json(await service.report(actorOf(req), body, originOf(req)));
     }),
   );
+
+  router.get('/rooms', ...readers, async (_req, res) => {
+    noStore(res);
+    res.json({ items: await service.rooms() });
+  });
 
   router.get(
     '/technicians',

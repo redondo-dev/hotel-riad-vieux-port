@@ -19,6 +19,7 @@ import {
   LucidePanelLeftOpen,
   LucideSparkles,
   LucideUsers,
+  LucideWrench,
   LucideX,
 } from '@lucide/angular';
 import { filter, map } from 'rxjs';
@@ -65,6 +66,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
     LucideHouse,
     LucideBed,
     LucideSparkles,
+    LucideWrench,
     LucideUsers,
     LucideCircleUserRound,
     LucideLogOut,
@@ -126,6 +128,9 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
                     }
                     @case ('housekeeping') {
                       <svg lucideSparkles class="shrink-0"></svg>
+                    }
+                    @case ('incidents') {
+                      <svg lucideWrench class="shrink-0"></svg>
                     }
                     @case ('catalog') {
                       <svg lucideBed class="shrink-0"></svg>

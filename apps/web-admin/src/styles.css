@@ -135,6 +135,11 @@
     @apply border-dashed opacity-50 grayscale;
   }
 
+  /* An urgent incident in a list: red bar on the left */
+  .incident-urgent {
+    @apply border-l-4 border-l-danger;
+  }
+
   .alert-error {
     @apply flex items-start gap-3 rounded-lg border border-danger/30 bg-danger-pale p-4 text-sm text-ink;
   }

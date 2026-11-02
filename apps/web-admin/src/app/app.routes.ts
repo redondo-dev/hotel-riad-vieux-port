@@ -48,6 +48,20 @@ export const routes: Routes = [
           import('./features/housekeeping/housekeeping-page').then((m) => m.HousekeepingPage),
       },
       {
+        path: 'pannes',
+        title: `Pannes · ${TITLE}`,
+        data: { heading: 'Pannes' },
+        loadComponent: () =>
+          import('./features/incidents/incidents-page').then((m) => m.IncidentsPage),
+      },
+      {
+        path: 'pannes/:id',
+        title: `Panne · ${TITLE}`,
+        data: { heading: 'Pannes' },
+        loadComponent: () =>
+          import('./features/incidents/incident-page').then((m) => m.IncidentPage),
+      },
+      {
         path: 'catalogue',
         data: { heading: 'Catalogue', roles: ['direction', 'reception'] },
         canActivate: [roleGuard],
