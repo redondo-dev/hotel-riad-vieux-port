@@ -1226,7 +1226,7 @@ components:
         isActive: { type: boolean }
         outOfService:
           type: boolean
-          description: Chambre bloquée aujourd’hui (panne, maintenance) ; hors vente.
+          description: Blocage non levé qui couvre aujourd’hui (panne, maintenance) ; hors vente.
     NewRoom:
       type: object
       additionalProperties: false

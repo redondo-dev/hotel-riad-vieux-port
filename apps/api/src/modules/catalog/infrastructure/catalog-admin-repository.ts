@@ -151,14 +151,18 @@ const CATEGORY_SELECT = `
            AS "activeRoomCount"
     FROM room_categories c`;
 
-/** `$today` is the bind parameter that holds the current day at the hotel. */
+/**
+ * `today` is the bind parameter that holds the current day at the hotel. A released block never
+ * counts: one released on the day it started still covers that day (a period is never empty).
+ */
 function roomSelect(today: string): string {
   return `
   SELECT r.id, r.number, r.floor, r.category_id AS "categoryId", r.is_active AS "isActive",
          r.housekeeping_status AS "housekeepingStatus",
          c.code AS "categoryCode", c.name_fr AS "categoryName",
          EXISTS (SELECT 1 FROM room_blocks b
-                  WHERE b.room_id = r.id AND b.period @> ${today}::date) AS "outOfService"
+                  WHERE b.room_id = r.id AND b.released_at IS NULL
+                    AND b.period @> ${today}::date) AS "outOfService"
     FROM rooms r
     JOIN room_categories c ON c.id = r.category_id`;
 }

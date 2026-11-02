@@ -63,7 +63,7 @@ Catégories, chambres, saisons et événements, fermetures de vente et services 
 | Langues     | Nom, description et lits obligatoires en français et en anglais                                                   |
 | Nuits       | Données par la première et la dernière nuit, incluses ; une période dure au plus 1 100 nuits                      |
 | Conflits    | Numéro de chambre déjà pris : 409 `ROOM_NUMBER_TAKEN` ; périodes en chevauchement : 409 `RATE_PERIOD_OVERLAP`     |
-| Hors vente  | `outOfService` vrai si la chambre est bloquée aujourd'hui (panne « inutilisable », maintenance) ; calculé         |
+| Hors vente  | `outOfService` vrai si un blocage non levé couvre aujourd'hui (panne « inutilisable », maintenance)               |
 | Prix        | Un changement ne touche que les futures réservations : chaque réservation garde le prix de ses nuits              |
 | Journal     | Chaque modification est inscrite dans `audit_logs` (qui, quoi, avant → après), dans la même transaction           |
 

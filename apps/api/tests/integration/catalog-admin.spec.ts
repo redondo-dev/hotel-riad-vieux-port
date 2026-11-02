@@ -276,6 +276,12 @@ describe.skipIf(!hasTestDatabase)('catalogue management', () => {
          SELECT id, daterange('2020-01-01', '2020-01-05', '[)'), 'maintenance' FROM rooms
           WHERE number = 'G802'`,
       );
+      // Released on the day it started: the period still covers today, the room is back on sale.
+      await harness.execute(
+        `INSERT INTO room_blocks (room_id, period, reason, released_at)
+         SELECT id, daterange(current_date - 1, current_date + 2, '[)'), 'maintenance', now()
+           FROM rooms WHERE number = 'G803'`,
+      );
       const response = await reception.agent.get(`${CATALOG}/rooms?categoryId=${categoryId}`);
       const rooms = response.body.items as { number: string; outOfService: boolean }[];
       const states = rooms.map((room) => [room.number, room.outOfService]);
