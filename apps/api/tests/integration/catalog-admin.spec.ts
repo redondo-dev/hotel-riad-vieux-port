@@ -232,6 +232,7 @@ describe.skipIf(!hasTestDatabase)('catalogue management', () => {
         categoryName: 'Double vue mer',
         housekeepingStatus: 'clean',
         isActive: true,
+        outOfService: false,
       });
       roomId = String(response.body.id);
       expect((await lastAudit(roomId))?.action).toBe('room.created');
@@ -264,6 +265,25 @@ describe.skipIf(!hasTestDatabase)('catalogue management', () => {
       expect(response.status).toBe(200);
       const rooms = response.body.items as { number: string }[];
       expect(rooms.map((room) => room.number)).toEqual(['G801', 'G803']);
+    });
+
+    it('marks out of service a room blocked today, not one blocked in the past', async () => {
+      await harness.execute(
+        `INSERT INTO room_blocks (room_id, period, reason)
+         SELECT id, daterange('2020-01-01', NULL, '[)'), 'maintenance' FROM rooms
+          WHERE number = 'G801'
+         UNION ALL
+         SELECT id, daterange('2020-01-01', '2020-01-05', '[)'), 'maintenance' FROM rooms
+          WHERE number = 'G802'`,
+      );
+      const response = await reception.agent.get(`${CATALOG}/rooms?categoryId=${categoryId}`);
+      const rooms = response.body.items as { number: string; outOfService: boolean }[];
+      const states = rooms.map((room) => [room.number, room.outOfService]);
+      expect(states).toEqual([
+        ['G801', true],
+        ['G802', false],
+        ['G803', false],
+      ]);
     });
 
     it('moves a room to another category, then deactivates it', async () => {

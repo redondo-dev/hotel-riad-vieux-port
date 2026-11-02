@@ -1214,6 +1214,7 @@ components:
         - categoryName
         - housekeepingStatus
         - isActive
+        - outOfService
       properties:
         id: { type: string, format: uuid }
         number: { type: string, example: '214' }
@@ -1223,6 +1224,9 @@ components:
         categoryName: { type: string }
         housekeepingStatus: { type: string, enum: [clean, dirty] }
         isActive: { type: boolean }
+        outOfService:
+          type: boolean
+          description: Chambre bloquée aujourd’hui (panne, maintenance) ; hors vente.
     NewRoom:
       type: object
       additionalProperties: false
