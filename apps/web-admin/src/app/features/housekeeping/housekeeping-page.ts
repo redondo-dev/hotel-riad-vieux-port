@@ -7,7 +7,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { LucideCircleAlert, LucideRefreshCw, LucideSparkles } from '@lucide/angular';
+import { RouterLink } from '@angular/router';
+import { LucideCircleAlert, LucideRefreshCw, LucideSparkles, LucideWrench } from '@lucide/angular';
 import { type Problem, toProblem } from '../../core/api/problem';
 import { SessionService } from '../../core/auth/session.service';
 import { NotifierService } from '../../core/notifier.service';
@@ -27,11 +28,12 @@ import {
  * Housekeeping board (UI/UX specification, section 5.G), made first for the phone: one tile per
  * room, grouped by floor, green when clean and orange when to be cleaned. A tap changes the
  * state; « Tout l'étage est propre » cleans a whole floor after confirmation. The reception
- * can only mark a room to be cleaned. « Actualiser » reads the board again.
+ * can only mark a room to be cleaned. « Actualiser » reads the board again. The wrench of a
+ * tile opens « Signaler une panne » with that room already chosen.
  */
 @Component({
   selector: 'adm-housekeeping-page',
-  imports: [LucideCircleAlert, LucideRefreshCw, LucideSparkles],
+  imports: [RouterLink, LucideCircleAlert, LucideRefreshCw, LucideSparkles, LucideWrench],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (problem(); as error) {
@@ -113,7 +115,7 @@ import {
             </div>
             <ul class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-9">
               @for (room of group.rooms; track room.id) {
-                <li>
+                <li class="relative">
                   <button
                     type="button"
                     class="flex min-h-20 w-full flex-col items-center justify-center rounded-lg border-2 p-2 disabled:cursor-default"
@@ -126,6 +128,15 @@ import {
                     <span class="text-lg font-semibold">{{ room.number }}</span>
                     <span class="text-sm">{{ statusLabel(room) }}</span>
                   </button>
+                  <a
+                    class="absolute top-0 right-0 flex size-9 items-center justify-center rounded-lg text-muted hover:text-ink"
+                    routerLink="/pannes"
+                    [queryParams]="{ chambre: room.id }"
+                    [attr.aria-label]="reportLabel(room)"
+                    [attr.title]="reportLabel(room)"
+                  >
+                    <svg lucideWrench class="size-4"></svg>
+                  </a>
                 </li>
               }
             </ul>
@@ -224,6 +235,10 @@ export class HousekeepingPage {
     const next = this.next(room);
     const state = `Chambre ${room.number}, ${STATUS_LABELS[room.status].toLowerCase()}.`;
     return next === null ? state : `${state} Marquer ${STATUS_LABELS[next].toLowerCase()}.`;
+  }
+
+  protected reportLabel(room: HousekeepingRoom): string {
+    return `Signaler une panne, chambre ${room.number}`;
   }
 
   protected floorOf(event: Event): void {

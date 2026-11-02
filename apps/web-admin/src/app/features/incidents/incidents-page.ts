@@ -1,9 +1,11 @@
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
   type ElementRef,
   inject,
+  input,
   signal,
   viewChild,
 } from '@angular/core';
@@ -59,7 +61,8 @@ const PRIORITIES: readonly IncidentPriority[] = ['urgent', 'normal', 'low'];
 /**
  * Incidents (UI/UX specification, section 5.H): the list, urgent ones first and marked in red,
  * with filters, and « Signaler une panne » for every staff member. A tap on an incident opens
- * its page (history, actions).
+ * its page (history, actions). `?chambre=<id>` (link of the housekeeping board) opens the form
+ * with that room already chosen.
  */
 @Component({
   selector: 'adm-incidents-page',
@@ -272,6 +275,9 @@ const PRIORITIES: readonly IncidentPriority[] = ['urgent', 'normal', 'low'];
   `,
 })
 export class IncidentsPage {
+  /** `?chambre=` : room to report, chosen in advance. */
+  readonly chambre = input<string>();
+
   private readonly api = inject(IncidentApi);
   private readonly router = inject(Router);
   private readonly notifier = inject(NotifierService);
@@ -300,6 +306,14 @@ export class IncidentsPage {
 
   constructor() {
     void this.load();
+    afterNextRender(() => {
+      const roomId = this.chambre();
+      if (roomId !== undefined && roomId !== '') {
+        void this.openReport(roomId);
+        // Read once: a reload of the page must not open the form again.
+        void this.router.navigate(['/pannes'], { replaceUrl: true });
+      }
+    });
   }
 
   protected async load(): Promise<void> {
@@ -394,7 +408,8 @@ export class IncidentsPage {
     this.patch({ priority: PRIORITIES.find((item) => item === value) ?? 'normal' });
   }
 
-  protected async openReport(): Promise<void> {
+  /** `roomId`: the room to choose in advance, if it is among the active rooms. */
+  protected async openReport(roomId?: string): Promise<void> {
     this.draft.set(EMPTY_DRAFT);
     this.formProblem.set(null);
     this.reportDialog().nativeElement.showModal();
@@ -404,6 +419,9 @@ export class IncidentsPage {
       } catch (error) {
         this.formProblem.set(toProblem(error));
       }
+    }
+    if (roomId !== undefined && this.rooms().some((room) => room.id === roomId)) {
+      this.patch({ roomId });
     }
   }
 

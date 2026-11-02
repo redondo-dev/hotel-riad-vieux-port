@@ -33,6 +33,8 @@ interface Draft {
  * Rooms of the hotel (UI/UX specification, section 5.K): a table filtered by category, floor
  * and state. The management adds a room, changes its number, floor or category, and
  * deactivates it after confirmation (a room is never deleted: reservations refer to it).
+ * « Hors service » marks a room blocked today by an incident: it comes back on its own when
+ * the incident is resolved.
  */
 @Component({
   selector: 'adm-rooms-page',
@@ -123,11 +125,16 @@ interface Draft {
                 <td class="px-4 py-3">{{ room.categoryName }}</td>
                 <td class="px-4 py-3">{{ housekeepingLabel(room.housekeepingStatus) }}</td>
                 <td class="px-4 py-3">
-                  @if (room.isActive) {
-                    <span class="badge-ok">Active</span>
-                  } @else {
-                    <span class="badge-off">Désactivée</span>
-                  }
+                  <span class="flex flex-wrap gap-1.5">
+                    @if (room.isActive) {
+                      <span class="badge-ok">Active</span>
+                    } @else {
+                      <span class="badge-off">Désactivée</span>
+                    }
+                    @if (room.outOfService) {
+                      <span class="badge-off">Hors service</span>
+                    }
+                  </span>
                 </td>
                 @if (canEdit()) {
                   <td class="px-4 py-2 text-right whitespace-nowrap">
