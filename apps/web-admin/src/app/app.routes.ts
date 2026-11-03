@@ -64,6 +64,13 @@ export const routes: Routes = [
           import('./features/reservations/reservation-page').then((m) => m.ReservationPage),
       },
       {
+        path: 'planning',
+        title: `Planning · ${TITLE}`,
+        data: { heading: 'Planning' },
+        loadComponent: () =>
+          import('./features/planning/planning-page').then((m) => m.PlanningPage),
+      },
+      {
         path: 'menage',
         title: `Ménage · ${TITLE}`,
         data: { heading: 'Ménage', roles: ['direction', 'reception', 'housekeeping'] },

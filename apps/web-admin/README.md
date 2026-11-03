@@ -32,6 +32,8 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 | Réservations : nouvelle réservation (téléphone, comptoir)     | Direction, réception         |
 | Réservations : modifier, attribuer une chambre, annuler       | Direction, réception         |
 | Non remboursable : modifier, annuler ; renoncer aux frais     | Direction                    |
+| Planning des chambres (lecture), avec le nom des clients      | Direction, réception         |
+| Planning des chambres (lecture), sans le nom des clients      | Ménage, technique            |
 | Ménage : état des chambres par étage ; propre ou à nettoyer   | Direction, ménage            |
 | Ménage : signaler une chambre à nettoyer                      | Direction, réception, ménage |
 | Pannes : liste, fiche, signaler, commenter                    | Tous les rôles               |
@@ -44,8 +46,8 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 | Utilisateurs : inviter, modifier, désactiver, envoyer un lien | Direction                    |
 
 Le menu n'affiche que les rubriques autorisées au rôle ; l'API vérifie les mêmes droits. Les
-rubriques du quotidien (planning, arrivées et départs, tableau de bord) seront ajoutées avec
-leurs modules. Le rôle ménage arrive directement sur l'écran Ménage et le rôle technique sur
+rubriques du quotidien (arrivées et départs, tableau de bord) seront ajoutées avec leurs
+modules. Le rôle ménage arrive directement sur l'écran Ménage et le rôle technique sur
 les Pannes, tous deux pensés d'abord pour le téléphone.
 
 Dans le catalogue, les prix se saisissent en euros (« 95 » ou « 95,50 ») et les périodes par
@@ -64,6 +66,14 @@ bébé), le client (trouvé par son nom ou son e-mail, ou nouveau), puis le réc
 les catégories avec leur prix ; une catégorie fermée, trop petite ou complète est grisée avec
 sa raison. Tout changement du séjour demande de relancer la recherche. Le formulaire envoie
 une clé d'idempotence : un double clic ne crée pas deux réservations.
+
+Le planning montre 14 jours à partir d'aujourd'hui, une chambre par ligne, avec une ligne
+« À attribuer » par catégorie ; les flèches avancent ou reculent de 7 jours. Sur téléphone, il
+devient la liste d'un jour, chambre par chambre (départ, arrivée, occupée, hors service ou
+libre). Un clic sur un séjour ouvre un panneau à droite : pour la direction et la réception,
+le client, le paiement, le total et « Ouvrir la fiche » ; pour le ménage et la technique, la
+chambre, les dates et le nombre de voyageurs seulement. Un clic sur « Hors service » montre le
+motif et mène à la panne.
 
 Les écrans se répondent : sur l'écran Ménage, la clé à molette d'une case ouvre « Signaler une
 panne » avec la chambre déjà choisie (`/pannes?chambre=<id>`) ; dans l'onglet Chambres du

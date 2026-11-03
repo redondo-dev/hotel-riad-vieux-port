@@ -22,7 +22,8 @@ export interface StaffUser {
   role: Role;
 }
 
-export type MenuIcon = 'home' | 'reservations' | 'housekeeping' | 'incidents' | 'catalog' | 'users';
+export type MenuIcon =
+  'home' | 'reservations' | 'planning' | 'housekeeping' | 'incidents' | 'catalog' | 'users';
 
 export interface MenuItem {
   path: string;
@@ -33,7 +34,7 @@ export interface MenuItem {
 
 /**
  * Sections of the sidebar, in display order. Only the sections that really exist are listed:
- * the others (dashboard, planning…) are added with their module.
+ * the others (dashboard, arrivals and departures…) are added with their module.
  * « Mon compte » and « Se déconnecter » sit at the bottom of the sidebar for everyone.
  */
 export const MENU: readonly MenuItem[] = [
@@ -44,6 +45,7 @@ export const MENU: readonly MenuItem[] = [
     icon: 'reservations',
     roles: ['direction', 'reception'],
   },
+  { path: '/planning', label: 'Planning', icon: 'planning', roles: ROLES },
   {
     path: '/menage',
     label: 'Ménage',

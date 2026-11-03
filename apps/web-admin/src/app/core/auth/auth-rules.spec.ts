@@ -10,6 +10,7 @@ describe('menuFor', () => {
     expect(paths('direction')).toEqual([
       '/accueil',
       '/reservations',
+      '/planning',
       '/menage',
       '/pannes',
       '/catalogue',
@@ -18,12 +19,13 @@ describe('menuFor', () => {
     expect(paths('reception')).toEqual([
       '/accueil',
       '/reservations',
+      '/planning',
       '/menage',
       '/pannes',
       '/catalogue',
     ]);
-    expect(paths('housekeeping')).toEqual(['/accueil', '/menage', '/pannes']);
-    expect(paths('technician')).toEqual(['/accueil', '/pannes']);
+    expect(paths('housekeeping')).toEqual(['/accueil', '/planning', '/menage', '/pannes']);
+    expect(paths('technician')).toEqual(['/accueil', '/planning', '/pannes']);
   });
 });
 

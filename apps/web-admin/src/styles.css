@@ -169,4 +169,13 @@
   .dialog-panel::backdrop {
     background: rgb(28 36 48 / 0.55);
   }
+
+  /* Side panel of the planning: 480 px on the right, the whole screen on a phone */
+  .side-panel {
+    @apply fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-[480px] max-w-full overflow-y-auto bg-white p-0 text-ink shadow-dialog;
+  }
+
+  .side-panel::backdrop {
+    background: rgb(28 36 48 / 0.35);
+  }
 }
