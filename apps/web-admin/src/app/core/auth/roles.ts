@@ -23,13 +23,7 @@ export interface StaffUser {
 }
 
 export type MenuIcon =
-  | 'home'
-  | 'reservations'
-  | 'planning'
-  | 'housekeeping'
-  | 'incidents'
-  | 'catalog'
-  | 'users';
+  'home' | 'reservations' | 'planning' | 'housekeeping' | 'incidents' | 'catalog' | 'users';
 
 export interface MenuItem {
   path: string;
