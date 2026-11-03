@@ -13,7 +13,7 @@ import {
 
 /** Intl writes narrow non-breaking spaces: compared here with plain spaces. */
 function plain(text: string): string {
-  return text.replace(/[  ]/g, ' ');
+  return text.replace(/[\u00a0\u202f]/g, ' ');
 }
 
 function detail(changes: Partial<ReservationDetail>): ReservationDetail {
