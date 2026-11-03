@@ -12,6 +12,7 @@ import {
 import {
   LucideBed,
   LucideCalendarDays,
+  LucideCalendarRange,
   LucideCircleUserRound,
   LucideHouse,
   LucideLogOut,
@@ -66,6 +67,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
     ZelligeStar,
     LucideHouse,
     LucideCalendarDays,
+    LucideCalendarRange,
     LucideBed,
     LucideSparkles,
     LucideWrench,
@@ -130,6 +132,9 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
                     }
                     @case ('reservations') {
                       <svg lucideCalendarDays class="shrink-0"></svg>
+                    }
+                    @case ('planning') {
+                      <svg lucideCalendarRange class="shrink-0"></svg>
                     }
                     @case ('housekeeping') {
                       <svg lucideSparkles class="shrink-0"></svg>
