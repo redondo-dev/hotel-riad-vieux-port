@@ -9,12 +9,19 @@ describe('menuFor', () => {
       menuFor(role).map((item) => item.path);
     expect(paths('direction')).toEqual([
       '/accueil',
+      '/reservations',
       '/menage',
       '/pannes',
       '/catalogue',
       '/utilisateurs',
     ]);
-    expect(paths('reception')).toEqual(['/accueil', '/menage', '/pannes', '/catalogue']);
+    expect(paths('reception')).toEqual([
+      '/accueil',
+      '/reservations',
+      '/menage',
+      '/pannes',
+      '/catalogue',
+    ]);
     expect(paths('housekeeping')).toEqual(['/accueil', '/menage', '/pannes']);
     expect(paths('technician')).toEqual(['/accueil', '/pannes']);
   });
