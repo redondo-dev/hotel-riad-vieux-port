@@ -388,6 +388,155 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/categories/{id}/photos:
+    get:
+      operationId: listCategoryPhotos
+      summary: Photos d'une catégorie
+      description: |
+        Dans l'ordre d'affichage ; la première est la photo principale. Direction, réception.
+      tags: [Catalogue]
+      security: [{ staffSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Les photos.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoList' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addCategoryPhoto
+      summary: Ajouter une photo (direction)
+      description: |
+        Envoi multipart : `file` (JPEG, PNG ou WebP, 10 Mo au plus ; le format est lu dans le
+        contenu), `altFr` et `altEn` (textes alternatifs obligatoires). La photo est tournée
+        selon l'appareil, débarrassée de ses métadonnées (GPS…) et convertie en WebP de 400, 800
+        et 1 600 px, sans agrandissement. Ajoutée en dernier ; 12 photos au plus par catégorie
+        (409 `TOO_MANY_PHOTOS`) ; trop lourde : 413 `PHOTO_TOO_LARGE`.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, altFr, altEn]
+              properties:
+                file: { type: string, format: binary }
+                altFr: { type: string, minLength: 1, maxLength: 200 }
+                altEn: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '201':
+          description: Toutes les photos de la catégorie.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoList' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/categories/{id}/photos/order:
+    put:
+      operationId: orderCategoryPhotos
+      summary: Changer l'ordre des photos (direction)
+      description: |
+        Toutes les photos de la catégorie, chacune une fois ; la première devient la photo
+        principale.
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                  minItems: 1
+                  maxItems: 12
+      responses:
+        '200':
+          description: Les photos dans le nouvel ordre.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoList' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/catalog/photos/{photoId}:
+    parameters:
+      - { name: photoId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updateCategoryPhoto
+      summary: Changer les textes alternatifs d'une photo (direction)
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [alt]
+              properties:
+                alt: { $ref: '#/components/schemas/LocalizedText' }
+      responses:
+        '200':
+          description: Les photos de la catégorie.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoList' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteCategoryPhoto
+      summary: Supprimer une photo et ses fichiers (direction)
+      tags: [Catalogue]
+      security: [{ staffSession: [], csrfToken: [] }]
+      responses:
+        '200':
+          description: Les photos restantes de la catégorie.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoList' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /public/media/{file}:
+    get:
+      operationId: getMedia
+      summary: Fichier d'une photo
+      description: |
+        `<uuid>-<400|800|1600>.webp`, rien d'autre. Un fichier ne change jamais (une nouvelle photo
+        a un nouveau nom) : mis en cache un an. Sans session.
+      tags: [Catalogue public]
+      parameters:
+        - { name: file, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: L'image.
+          content:
+            image/webp:
+              schema: { type: string, format: binary }
+        '404':
+          description: Aucun fichier de ce nom.
   /admin/catalog/rooms:
     get:
       operationId: listCatalogRooms
@@ -2412,6 +2561,7 @@ components:
         - extraAdultCents
         - extraChildCents
         - fromPriceCents
+        - photos
       properties:
         code: { type: string, example: double-standard }
         name: { $ref: '#/components/schemas/LocalizedText' }
@@ -2438,6 +2588,35 @@ components:
           type: integer
           description: Prix « à partir de » d'une nuit, tarif non remboursable.
           example: 8550
+        photos:
+          description: Dans l'ordre d'affichage ; la première est la photo principale.
+          type: array
+          items: { $ref: '#/components/schemas/Photo' }
+    Photo:
+      type: object
+      required: [alt, width, height, sources]
+      properties:
+        id: { type: string, format: uuid, description: Outil de gestion seulement. }
+        position: { type: integer, description: 0 pour la photo principale (gestion). }
+        alt: { $ref: '#/components/schemas/LocalizedText' }
+        width: { type: [integer, 'null'], description: Largeur de la plus grande version. }
+        height: { type: [integer, 'null'] }
+        sources:
+          description: Versions WebP de 400, 800 et 1 600 px de large (srcset).
+          type: array
+          items:
+            type: object
+            required: [width, url]
+            properties:
+              width: { type: integer, enum: [400, 800, 1600] }
+              url:
+                type: string
+                example: /api/v1/public/media/0f8fad5b-d9cb-469f-a165-70867728950e-800.webp
+    PhotoList:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Photo' } }
     PublicService:
       type: object
       required: [code, name, unitPriceCents, pricingUnit]
