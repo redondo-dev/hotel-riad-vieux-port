@@ -8,7 +8,7 @@ import { hasTestDatabase } from '../support/test-database.ts';
  * database, so the figures are compared before and after the data of this file is added: the
  * differences are exact. Skipped without TEST_DATABASE_URL.
  *
- * This file owns floor 9 (rooms T901 and T902), the category « tdb-double », the references
+ * This file owns floor 10 (rooms K1001 and K1002), the category « tdb-double », the references
  * « TDB… », February and March 2035, with the clock fixed on 10 March 2035.
  */
 
@@ -64,22 +64,22 @@ describe.skipIf(!hasTestDatabase)('dashboard', () => {
     );
     await harness.execute(
       `INSERT INTO rooms (number, floor, category_id)
-       SELECT v.number, 9, c.id
-         FROM room_categories c, (VALUES ('T901'), ('T902')) AS v (number)
+       SELECT v.number, 10, c.id
+         FROM room_categories c, (VALUES ('K1001'), ('K1002')) AS v (number)
         WHERE c.code = 'tdb-double'`,
     );
-    // T902 out of service the nights of 15 and 16 March.
+    // K1002 out of service the nights of 15 and 16 March.
     await harness.execute(
       `INSERT INTO room_blocks (room_id, period, reason)
        SELECT id, daterange('2035-03-15', '2035-03-17', '[)'), 'maintenance' FROM rooms
-        WHERE number = 'T902'`,
+        WHERE number = 'K1002'`,
     );
     await harness.execute(
       `INSERT INTO customers (first_name, last_name, email)
        VALUES ('Léon', 'Tableau', 'tdb-leon@test.example')`,
     );
-    // TDB00001: 10 → 12 March on T901 (2 × 100 €); TDB00002: cancelled with a fee of 50 €;
-    // TDB00003: 27 February → 2 March on T902 (3 × 80 €, across the two months).
+    // TDB00001: 10 → 12 March on K1001 (2 × 100 €); TDB00002: cancelled with a fee of 50 €;
+    // TDB00003: 27 February → 2 March on K1002 (3 × 80 €, across the two months).
     await harness.execute(
       `INSERT INTO reservations (reference, customer_id, source, check_in, check_out, status,
                                  rate_plan, total_amount_cents, free_cancellation_until,
@@ -100,7 +100,7 @@ describe.skipIf(!hasTestDatabase)('dashboard', () => {
        SELECT r.id, k.id, m.id, 2, 0
          FROM reservations r
          JOIN room_categories k ON k.code = 'tdb-double'
-         JOIN rooms m ON m.number = CASE r.reference WHEN 'TDB00003' THEN 'T902' ELSE 'T901' END
+         JOIN rooms m ON m.number = CASE r.reference WHEN 'TDB00003' THEN 'K1002' ELSE 'K1001' END
         WHERE r.reference LIKE 'TDB%'`,
     );
     await harness.execute(
@@ -139,7 +139,7 @@ describe.skipIf(!hasTestDatabase)('dashboard', () => {
   it('adds up the month night by night, and keeps the previous month apart', async () => {
     const after = await read();
     expect(after.month.month).toBe('2035-03');
-    // 2 rooms × 31 nights, but T902 out of service 2 nights.
+    // 2 rooms × 31 nights, but K1002 out of service 2 nights.
     expect(after.month.roomNightsAvailable - before.month.roomNightsAvailable).toBe(60);
     // 2 nights of TDB00001 and 1 of TDB00003; the cancelled stay holds nothing.
     expect(after.month.roomNightsSold - before.month.roomNightsSold).toBe(3);
