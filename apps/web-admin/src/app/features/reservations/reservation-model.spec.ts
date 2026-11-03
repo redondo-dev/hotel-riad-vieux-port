@@ -4,6 +4,7 @@ import {
   canCancel,
   canChangeStay,
   formatDifference,
+  freeCancellationText,
   guestsText,
   parseAges,
   type ReservationDetail,
@@ -57,6 +58,18 @@ describe('texts', () => {
     expect(plain(formatDifference(16_200))).toBe('+162,00 €');
     expect(plain(formatDifference(-2000))).toBe('−20,00 €');
     expect(formatDifference(0)).toBe('aucun changement');
+  });
+
+  it('says whether the free cancellation is still possible', () => {
+    const until = '2034-05-08T13:00:00.000Z';
+    const before = new Date('2034-05-08T12:59:00Z');
+    const after = new Date('2034-05-08T13:00:00Z');
+    expect(plain(freeCancellationText('flexible', until, before))).toBe(
+      'Annulation gratuite jusqu’au 8 mai 2034 à 15:00.',
+    );
+    const late = plain(freeCancellationText('flexible', until, after));
+    expect(late).toMatch(/^Annulation gratuite dépassée/);
+    expect(freeCancellationText('non_refundable', null, after)).toMatch(/non remboursable/);
   });
 });
 

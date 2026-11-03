@@ -247,6 +247,25 @@ export function formatDateTime(iso: string): string {
   return `${day} à ${time}`;
 }
 
+/**
+ * What the detail says about free cancellation at `now`: the deadline, or that it is past
+ * (then the first night of each room is due, RM-15 and RM-16).
+ */
+export function freeCancellationText(ratePlan: RatePlan, until: string | null, now: Date): string {
+  if (ratePlan === 'non_refundable') {
+    return 'Tarif non remboursable : aucune annulation gratuite.';
+  }
+  if (until === null) {
+    return '';
+  }
+  const when = formatDateTime(until);
+  if (new Date(until).getTime() > now.getTime()) {
+    return `Annulation gratuite jusqu’au ${when}.`;
+  }
+  const fee = 'la première nuit de chaque chambre est due';
+  return `Annulation gratuite dépassée (le ${when}) : ${fee}.`;
+}
+
 /** « 2 adultes, 2 enfants (6 et 3 ans) », « 1 adulte, bébé (1 an) ». */
 export function guestsText(room: Pick<ReservationRoom, 'adults' | 'childrenAges'>): string {
   const adults = `${room.adults} adulte${room.adults > 1 ? 's' : ''}`;

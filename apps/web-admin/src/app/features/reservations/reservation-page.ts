@@ -27,6 +27,7 @@ import {
   formatDay,
   formatDifference,
   formatEuros,
+  freeCancellationText,
   type FreeRoom,
   guestsText,
   isManagement,
@@ -596,11 +597,10 @@ export class ReservationPage implements OnInit {
   });
   protected readonly cancellationText = computed(() => {
     const current = this.reservation();
-    if (current === null || current.ratePlan === 'non_refundable') {
-      return 'Tarif non remboursable : aucune annulation gratuite.';
+    if (current === null) {
+      return '';
     }
-    const until = current.freeCancellationUntil;
-    return until === null ? '' : `Annulation gratuite jusqu’au ${formatDateTime(until)}.`;
+    return freeCancellationText(current.ratePlan, current.freeCancellationUntil, new Date());
   });
   protected readonly feeText = computed(() => {
     const fee = this.reservation()?.cancellationFeeCents ?? 0;
