@@ -71,6 +71,8 @@ export interface Room {
   categoryName: string;
   housekeepingStatus: HousekeepingStatus;
   isActive: boolean;
+  /** Blocked today by an incident or maintenance: not for sale. */
+  outOfService: boolean;
 }
 
 export type RatePeriodKind = 'season' | 'event';

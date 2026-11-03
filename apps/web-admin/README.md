@@ -48,6 +48,11 @@ Dans le catalogue, les prix se saisissent en euros (« 95 » ou « 95,50 ») et 
 leur première et leur dernière nuit, incluses. Rien ne se supprime sauf les périodes de tarif et
 les fermetures de vente : une catégorie, une chambre ou un service se désactive.
 
+Les écrans se répondent : sur l'écran Ménage, la clé à molette d'une case ouvre « Signaler une
+panne » avec la chambre déjà choisie (`/pannes?chambre=<id>`) ; dans l'onglet Chambres du
+catalogue, le badge « Hors service » marque une chambre retirée de la vente aujourd'hui par une
+panne. Il disparaît seul quand la panne est résolue.
+
 ## Sécurité côté navigateur
 
 - Session dans un cookie `HttpOnly` illisible par le code ; seul le jeton anti-CSRF est gardé

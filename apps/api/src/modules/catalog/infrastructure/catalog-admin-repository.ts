@@ -46,6 +46,8 @@ export interface RoomAdminView extends RoomFields {
   categoryCode: string;
   categoryName: string;
   housekeepingStatus: 'clean' | 'dirty';
+  /** Blocked today (incident, maintenance…): not for sale, whatever `isActive` says. */
+  outOfService: boolean;
 }
 
 export interface RoomFilter {
@@ -149,12 +151,21 @@ const CATEGORY_SELECT = `
            AS "activeRoomCount"
     FROM room_categories c`;
 
-const ROOM_SELECT = `
+/**
+ * `today` is the bind parameter that holds the current day at the hotel. A released block never
+ * counts: one released on the day it started still covers that day (a period is never empty).
+ */
+function roomSelect(today: string): string {
+  return `
   SELECT r.id, r.number, r.floor, r.category_id AS "categoryId", r.is_active AS "isActive",
          r.housekeeping_status AS "housekeepingStatus",
-         c.code AS "categoryCode", c.name_fr AS "categoryName"
+         c.code AS "categoryCode", c.name_fr AS "categoryName",
+         EXISTS (SELECT 1 FROM room_blocks b
+                  WHERE b.room_id = r.id AND b.released_at IS NULL
+                    AND b.period @> ${today}::date) AS "outOfService"
     FROM rooms r
     JOIN room_categories c ON c.id = r.category_id`;
+}
 
 const RATE_PERIOD_SELECT = `
   SELECT p.id, p.name, p.kind, p.category_id AS "categoryId", c.code AS "categoryCode",
@@ -307,28 +318,29 @@ export class CatalogAdminRepository {
 
   // --- Rooms ---
 
-  async listRooms(filter: RoomFilter): Promise<RoomAdminView[]> {
+  async listRooms(filter: RoomFilter, today: string): Promise<RoomAdminView[]> {
     // Every filter is optional: a missing one is passed as NULL and matches every row.
     const rows = await this.#select<RoomAdminView>(
-      `${ROOM_SELECT}
+      `${roomSelect('$4')}
         WHERE ($1::uuid IS NULL OR r.category_id = $1::uuid)
           AND ($2::smallint IS NULL OR r.floor = $2::smallint)
           AND ($3::boolean IS NULL OR r.is_active = $3::boolean)
         ORDER BY r.floor, r.number`,
-      [filter.categoryId ?? null, filter.floor ?? null, filter.isActive ?? null],
+      [filter.categoryId ?? null, filter.floor ?? null, filter.isActive ?? null, today],
     );
     return rows;
   }
 
   async findRoom(
     id: string,
+    today: string,
     transaction?: Transaction,
     lock = false,
   ): Promise<RoomAdminView | undefined> {
     const rows = await this.#select<RoomAdminView>(
       // FOR UPDATE OF r: only the room is locked, not its category.
-      `${ROOM_SELECT} WHERE r.id = $1${lock ? ' FOR UPDATE OF r' : ''}`,
-      [id],
+      `${roomSelect('$2')} WHERE r.id = $1${lock ? ' FOR UPDATE OF r' : ''}`,
+      [id, today],
       transaction,
     );
     return rows[0];

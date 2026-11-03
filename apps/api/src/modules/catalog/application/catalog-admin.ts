@@ -200,7 +200,7 @@ export class CatalogAdmin {
   // --- Rooms ---
 
   listRooms(filter: RoomFilter): Promise<RoomAdminView[]> {
-    return this.#repository.listRooms(filter);
+    return this.#repository.listRooms(filter, this.#today());
   }
 
   async createRoom(
@@ -214,7 +214,7 @@ export class CatalogAdmin {
       await this.#audit(actor, 'room.created', 'room', roomId, { ...fields }, origin, transaction);
       return roomId;
     });
-    return this.#found(await this.#repository.findRoom(id));
+    return this.#found(await this.#repository.findRoom(id, this.#today()));
   }
 
   async updateRoom(
@@ -224,7 +224,7 @@ export class CatalogAdmin {
     origin: ActionOrigin,
   ): Promise<RoomAdminView> {
     await this.#roomWrite(async (transaction) => {
-      const current = await this.#repository.findRoom(id, transaction, true);
+      const current = await this.#repository.findRoom(id, this.#today(), transaction, true);
       if (current === undefined) {
         throw new NotFoundError('Cette chambre n’existe pas.');
       }
@@ -250,7 +250,7 @@ export class CatalogAdmin {
       );
       return id;
     });
-    return this.#found(await this.#repository.findRoom(id));
+    return this.#found(await this.#repository.findRoom(id, this.#today()));
   }
 
   /** A room number already used gives a clear 409 instead of a server error. */
