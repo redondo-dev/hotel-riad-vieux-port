@@ -55,6 +55,14 @@ const originList = z
     return origins;
   });
 
+/** Variables without a default in production: the API refuses to start without them. */
+const REQUIRED_IN_PRODUCTION = [
+  'API_ALLOWED_ORIGINS',
+  'SESSION_SECRET',
+  'ADMIN_APP_URL',
+  'STORAGE_DIR',
+] as const;
+
 const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -106,12 +114,18 @@ const EnvSchema = z
     ADMIN_APP_URL: emptyAsMissing(
       z.url({ protocol: /^https?$/, error: 'doit être une adresse http(s) valide' }).optional(),
     ),
+    /**
+     * Folder of the photos sent by the staff. Defaults to « storage » at the root of the
+     * repository (ignored by Git) outside production; in production, a persistent disk until
+     * an S3-compatible storage is set up.
+     */
+    STORAGE_DIR: emptyAsMissing(z.string().min(1).optional()),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') {
       return;
     }
-    for (const name of ['API_ALLOWED_ORIGINS', 'SESSION_SECRET', 'ADMIN_APP_URL'] as const) {
+    for (const name of REQUIRED_IN_PRODUCTION) {
       const value = env[name];
       if (value === undefined || (Array.isArray(value) && value.length === 0)) {
         ctx.addIssue({ code: 'custom', path: [name], message: 'est obligatoire en production' });

@@ -36,8 +36,9 @@ dans `src/modules/<module>/http`.
 
 ## Catalogue public (`/api/v1/public`)
 
-Trois routes en lecture seule, sans session, pour le site public : `GET /hotel`,
-`GET /room-categories` et `GET /services` (détail dans `openapi/openapi.yaml`).
+Routes en lecture seule, sans session, pour le site public : `GET /hotel`,
+`GET /room-categories`, `GET /services` et les fichiers des photos `GET /media/…` (détail dans
+`openapi/openapi.yaml`).
 
 | Sujet         | Règle                                                                                                                   |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -48,6 +49,8 @@ Trois routes en lecture seule, sans session, pour le site public : `GET /hotel`,
 | Services      | Seules les options actives réservables en ligne (petit-déjeuner, lit bébé…) ; les atouts de l'hôtel restent sur le site |
 | Cache         | `Cache-Control: public, max-age=300` : un changement de prix apparaît sur le site en 5 minutes au plus                  |
 | Non configuré | Sans paramètres de l'hôtel, réponse 503 `HOTEL_NOT_CONFIGURED`                                                          |
+| Photos        | `photos` de chaque catégorie, la principale d'abord ; fichiers sous `GET /media/<uuid>-<largeur>.webp`                  |
+| Fichiers      | Mis en cache un an (`immutable`) : une photo remplacée prend un nouveau nom                                             |
 
 Le calcul du prix d'une nuit (`src/modules/catalog/domain/pricing.ts`) servira aussi aux devis
 de réservation : une seule règle de tarif pour tout l'hôtel. Les jours sont comptés à l'heure
@@ -55,7 +58,7 @@ de Marseille (`Europe/Paris`).
 
 ## Gestion du catalogue (`/api/v1/admin/catalog`)
 
-Catégories, chambres, saisons et événements, fermetures de vente et services (détail dans
+Catégories, photos, chambres, saisons et événements, fermetures de vente et services (détail dans
 `openapi/openapi.yaml`). Session du personnel et jeton anti-CSRF obligatoires.
 
 | Sujet       | Règle                                                                                                             |
@@ -70,6 +73,8 @@ Catégories, chambres, saisons et événements, fermetures de vente et services 
 | Hors vente  | `outOfService` vrai si un blocage non levé couvre aujourd'hui (panne « inutilisable », maintenance)               |
 | Prix        | Un changement ne touche que les futures réservations : chaque réservation garde le prix de ses nuits              |
 | Journal     | Chaque modification est inscrite dans `audit_logs` (qui, quoi, avant → après), dans la même transaction           |
+| Photos      | Direction : ajout (JPEG, PNG, WebP, 10 Mo), textes alternatifs FR et EN, ordre, suppression                       |
+| Traitement  | Format lu dans le contenu ; métadonnées retirées ; WebP 400, 800 et 1 600 px ; 12 photos au plus                  |
 
 ## Ménage (`/api/v1/admin/housekeeping`)
 

@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import pg from 'pg';
 import { QueryTypes, type Sequelize } from 'sequelize';
 import request from 'supertest';
@@ -7,6 +10,10 @@ import type { Role } from '../../src/modules/identity/domain/identity-rules.ts';
 import { hashPassword } from '../../src/modules/identity/infrastructure/password-hasher.ts';
 import { createSessionStore } from '../../src/shared/http/session.ts';
 import { createSequelize } from '../../src/shared/infrastructure/database.ts';
+import {
+  type FileStorage,
+  localFileStorage,
+} from '../../src/shared/infrastructure/file-storage.ts';
 import { createLogger } from '../../src/shared/infrastructure/logger.ts';
 import type { MailMessage } from '../../src/shared/infrastructure/mailer.ts';
 import { testDatabaseUrl } from './test-database.ts';
@@ -28,6 +35,9 @@ export class IdentityHarness {
   readonly #pool: pg.Pool;
   /** Every e-mail « sent » since the harness was created. */
   readonly mails: MailMessage[] = [];
+  /** Photos stored by the tests: a folder of their own, removed by close(). */
+  readonly #storageDir = join(tmpdir(), `riad-test-${randomUUID()}`);
+  readonly storage: FileStorage = localFileStorage(this.#storageDir);
 
   constructor() {
     this.sequelize = createSequelize(testDatabaseUrl);
@@ -57,9 +67,11 @@ export class IdentityHarness {
           },
         },
         adminAppUrl: ADMIN_APP_URL,
+        storage: this.storage,
         ...(options.today === undefined ? {} : { today: options.today }),
         ...(options.now === undefined ? {} : { now: options.now }),
       },
+      public: { sequelize: this.sequelize, storage: this.storage },
     });
   }
 
@@ -101,6 +113,7 @@ export class IdentityHarness {
 
   async close(): Promise<void> {
     await Promise.all([this.sequelize.close(), this.#pool.end()]);
+    await rm(this.#storageDir, { recursive: true, force: true });
   }
 }
 

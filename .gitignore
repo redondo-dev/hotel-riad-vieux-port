@@ -25,3 +25,6 @@ Thumbs.db
 
 # E-mails écrits en développement (liens secrets)
 outbox/
+
+# Photos envoyées en développement
+storage/

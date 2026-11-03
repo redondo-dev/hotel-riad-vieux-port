@@ -198,6 +198,8 @@ describe.skipIf(!hasTestDatabase)('public catalogue', () => {
         extraChildCents: 1500,
         // Cheapest night: the event at -50 % (5 000), then -10 % non-refundable.
         fromPriceCents: 4500,
+        // No photo chosen yet.
+        photos: [],
       });
       // Only the season applies: 8 000 + 20 % = 9 600, then -10 %.
       expect(items[1]?.fromPriceCents).toBe(8640);

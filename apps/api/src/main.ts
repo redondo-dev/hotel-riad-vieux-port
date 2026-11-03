@@ -13,6 +13,7 @@ import { DEFAULT_ADMIN_APP_URL, loadEnv } from './config/env.ts';
 import { createSessionStore } from './shared/http/session.ts';
 import { createSequelize } from './shared/infrastructure/database.ts';
 import { createLogger } from './shared/infrastructure/logger.ts';
+import { localFileStorage } from './shared/infrastructure/file-storage.ts';
 import { type Mailer, outboxMailer } from './shared/infrastructure/mailer.ts';
 
 /** Time left to the requests in progress when the hosting asks the API to stop. */
@@ -20,6 +21,9 @@ const SHUTDOWN_GRACE_MS = 10_000;
 
 /** Development e-mails land here (repository root, ignored by Git). */
 const OUTBOX_DIR = join(import.meta.dirname, '..', '..', '..', 'outbox');
+
+/** Development photos land here (repository root, ignored by Git), unless STORAGE_DIR says. */
+const DEFAULT_STORAGE_DIR = join(import.meta.dirname, '..', '..', '..', 'storage');
 
 const env = loadEnv();
 if (env.SESSION_SECRET === undefined) {
@@ -39,6 +43,8 @@ function createMailer(): Mailer {
 }
 
 const sequelize = createSequelize(env.DATABASE_URL);
+// Required in production by the configuration check (loadEnv).
+const storage = localFileStorage(env.STORAGE_DIR ?? DEFAULT_STORAGE_DIR);
 const sessionPool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 5 });
 
 const app = createApp({
@@ -54,9 +60,10 @@ const app = createApp({
     sessionSecret: env.SESSION_SECRET,
     secureCookies: env.NODE_ENV === 'production',
     mailer: createMailer(),
+    storage,
     adminAppUrl: env.ADMIN_APP_URL ?? DEFAULT_ADMIN_APP_URL,
   },
-  public: { sequelize },
+  public: { sequelize, storage },
 });
 
 // Express 5 also calls this function when listening fails (port taken…): the error is then

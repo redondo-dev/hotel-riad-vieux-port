@@ -2,11 +2,14 @@ import express, { type Express, Router } from 'express';
 import type { Logger } from 'pino';
 import type { Sequelize } from 'sequelize';
 import { CatalogAdmin } from './modules/catalog/application/catalog-admin.ts';
+import { CategoryPhotos } from './modules/catalog/application/category-photos.ts';
 import { PublicCatalog } from './modules/catalog/application/public-catalog.ts';
 import { hotelToday } from './modules/catalog/domain/pricing.ts';
 import { catalogAdminRouter } from './modules/catalog/http/catalog-admin-routes.ts';
+import { mediaRouter, photoAdminRouter } from './modules/catalog/http/photo-routes.ts';
 import { publicCatalogRouter } from './modules/catalog/http/public-catalog-routes.ts';
 import { CatalogRepository } from './modules/catalog/infrastructure/catalog-repository.ts';
+import { PhotoRepository } from './modules/catalog/infrastructure/photo-repository.ts';
 import { DashboardService } from './modules/dashboard/application/dashboard-service.ts';
 import { dashboardRouter } from './modules/dashboard/http/dashboard-routes.ts';
 import { HousekeepingService } from './modules/housekeeping/application/housekeeping-service.ts';
@@ -33,6 +36,7 @@ import { GLOBAL_RATE_LIMIT, type RateLimitRule, rateLimiter } from './shared/htt
 import { requestContext } from './shared/http/request-context.ts';
 import { corsPolicy, jsonBody, securityHeaders } from './shared/http/security.ts';
 import { type SessionStore, staffSessions } from './shared/http/session.ts';
+import type { FileStorage } from './shared/infrastructure/file-storage.ts';
 import type { Mailer } from './shared/infrastructure/mailer.ts';
 
 /** Prefix of every route of the API, version included. */
@@ -57,6 +61,8 @@ export interface AppDependencies {
 
 export interface PublicDependencies {
   sequelize: Sequelize;
+  /** Files of the photos (GET /public/media/…); left out by the tests that do not need them. */
+  storage?: FileStorage;
   /** Current day at the hotel, « YYYY-MM-DD »; the tests fix it. Default: the real clock. */
   today?: () => string;
 }
@@ -68,6 +74,8 @@ export interface AdminDependencies {
   /** True in production: session cookie sent over HTTPS only. */
   secureCookies: boolean;
   mailer: Mailer;
+  /** Files of the photos; without it, the photo routes are not offered. */
+  storage?: FileStorage;
   /** Address of the staff tool, for the links sent by e-mail. */
   adminAppUrl: string;
   /** Current day at the hotel, « YYYY-MM-DD »; the tests fix it. Default: the real clock. */
@@ -103,6 +111,10 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   const today = deps.today ?? (() => hotelToday());
   const catalog = new CatalogAdmin(deps.sequelize, today);
   router.use('/catalog', catalogAdminRouter(catalog, staff));
+  if (deps.storage !== undefined) {
+    const photos = new CategoryPhotos(deps.sequelize, deps.storage);
+    router.use('/catalog', photoAdminRouter(photos, staff));
+  }
   router.use('/housekeeping', housekeepingRouter(new HousekeepingService(deps.sequelize), staff));
   router.use('/incidents', incidentRouter(new IncidentService(deps.sequelize, today), staff));
   router.use(availabilityRouter(new AvailabilityService(deps.sequelize, today), staff));
@@ -121,9 +133,13 @@ function publicRouter(deps: PublicDependencies): Router {
   const catalog = new PublicCatalog(
     new CatalogRepository(deps.sequelize),
     deps.today ?? (() => hotelToday()),
+    new PhotoRepository(deps.sequelize),
   );
   const router = Router();
   router.use(publicCatalogRouter(catalog));
+  if (deps.storage !== undefined) {
+    router.use(mediaRouter(deps.storage));
+  }
   return router;
 }
 

@@ -68,6 +68,7 @@ describe('loadEnv', () => {
       ADMIN_APP_URL: 'http://gestion.riad-vieux-port.example',
     });
     expect(message.includes('SESSION_SECRET est obligatoire en production')).toBe(true);
+    expect(message.includes('STORAGE_DIR est obligatoire en production')).toBe(true);
     expect(message.includes('ADMIN_APP_URL doit utiliser https en production')).toBe(true);
   });
 
