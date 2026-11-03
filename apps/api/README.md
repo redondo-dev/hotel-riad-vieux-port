@@ -88,16 +88,16 @@ dans `openapi/openapi.yaml`.
 Liste, fiche avec historique, signalement, changement d'état, assignation et commentaires ;
 détail dans `openapi/openapi.yaml`.
 
-| Sujet        | Règle                                                                                               |
-| ------------ | --------------------------------------------------------------------------------------------------- |
-| Signaler     | Tous les rôles ; une chambre ou un lieu ; référence automatique `INC-000001`                        |
-| Inutilisable | « Chambre inutilisable » la retire de la vente aussitôt ; elle revient à la vente à la résolution   |
-| États        | Signalée → en cours → résolue → clôturée ; la direction peut rouvrir une panne résolue              |
-| Droits       | Technique : en cours et résolue ; direction : tout, dont clôturer ; réception : assigner            |
-| Assigner     | À un technicien actif et/ou à un prestataire externe nommé en texte (direction, réception)          |
-| Historique   | Chaque état, assignation et commentaire est daté dans `incident_events`, et inscrit au journal      |
-| Séjours      | La fiche liste les séjours attribués à la chambre pendant le blocage (`affectedStays`)              |
-| À venir      | Photos (stockage de fichiers), e-mails pour les urgences (Brevo)                                    |
+| Sujet        | Règle                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| Signaler     | Tous les rôles ; une chambre ou un lieu ; référence automatique `INC-000001`                      |
+| Inutilisable | « Chambre inutilisable » la retire de la vente aussitôt ; elle revient à la vente à la résolution |
+| États        | Signalée → en cours → résolue → clôturée ; la direction peut rouvrir une panne résolue            |
+| Droits       | Technique : en cours et résolue ; direction : tout, dont clôturer ; réception : assigner          |
+| Assigner     | À un technicien actif et/ou à un prestataire externe nommé en texte (direction, réception)        |
+| Historique   | Chaque état, assignation et commentaire est daté dans `incident_events`, et inscrit au journal    |
+| Séjours      | La fiche liste les séjours attribués à la chambre pendant le blocage (`affectedStays`)            |
+| À venir      | Photos (stockage de fichiers), e-mails pour les urgences (Brevo)                                  |
 
 ## Disponibilités (`/api/v1/admin/availability`)
 
