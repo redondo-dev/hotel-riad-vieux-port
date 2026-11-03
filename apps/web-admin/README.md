@@ -28,6 +28,7 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 | Choisir un mot de passe (lien e-mail)                         | Sans session                 |
 | Accueil (provisoire)                                          | Tous les rôles               |
 | Mon compte : informations, mot de passe                       | Tous les rôles               |
+| Aujourd’hui : arrivées, départs, non-présentations            | Direction, réception         |
 | Réservations : liste, recherche, fiche                        | Direction, réception         |
 | Réservations : nouvelle réservation (téléphone, comptoir)     | Direction, réception         |
 | Réservations : modifier, attribuer une chambre, annuler       | Direction, réception         |
@@ -46,8 +47,7 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 | Utilisateurs : inviter, modifier, désactiver, envoyer un lien | Direction                    |
 
 Le menu n'affiche que les rubriques autorisées au rôle ; l'API vérifie les mêmes droits. Les
-rubriques du quotidien (arrivées et départs, tableau de bord) seront ajoutées avec leurs
-modules. Le rôle ménage arrive directement sur l'écran Ménage et le rôle technique sur
+rubriques à venir (tableau de bord) seront ajoutées avec leurs modules. Le rôle ménage arrive directement sur l'écran Ménage et le rôle technique sur
 les Pannes, tous deux pensés d'abord pour le téléphone.
 
 Dans le catalogue, les prix se saisissent en euros (« 95 » ou « 95,50 ») et les périodes par
@@ -74,6 +74,14 @@ libre). Un clic sur un séjour ouvre un panneau à droite : pour la direction et
 le client, le paiement, le total et « Ouvrir la fiche » ; pour le ménage et la technique, la
 chambre, les dates et le nombre de voyageurs seulement. Un clic sur « Hors service » montre le
 motif et mène à la panne.
+
+« Aujourd’hui » est l'écran de travail de la réception : les arrivées et les départs d'un jour,
+avec leurs compteurs (« 12, dont 4 faites ») ; les arrivées en retard et les départs oubliés
+sont signalés. Les actions ne sont proposées que pour aujourd'hui, dans un panneau à droite :
+l'arrivée (identité et fiche de police à cocher ; chambre à attribuer ou hors service : bloquant ;
+chambre à nettoyer : « Enregistrer quand même », inscrit au journal), le départ (les chambres
+passent à nettoyer) et la non-présentation (frais à encaisser). La fiche d'une réservation
+propose les mêmes actions et ouvre ce panneau (`/aujourdhui?ouvrir=<id>`).
 
 Les écrans se répondent : sur l'écran Ménage, la clé à molette d'une case ouvre « Signaler une
 panne » avec la chambre déjà choisie (`/pannes?chambre=<id>`) ; dans l'onglet Chambres du
