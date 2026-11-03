@@ -154,9 +154,13 @@ const TO_ASSIGN = 'À attribuer';
           <li class="rounded-md border px-2" [class]="blockTone">Hors service</li>
         </ul>
 
-        <div class="card overflow-x-auto max-lg:hidden">
+        <!-- Scrolls inside itself: the line of the days stays on top while the rooms go by. -->
+        <div class="card max-h-[calc(100dvh-12rem)] overflow-auto max-lg:hidden">
           <div class="min-w-[60rem]">
-            <div class="grid border-b border-line" [style.grid-template-columns]="columns">
+            <div
+              class="sticky top-0 z-30 grid border-b border-line bg-white"
+              [style.grid-template-columns]="columns"
+            >
               <div class="sticky left-0 z-20 bg-white px-3 py-2 text-sm font-semibold">Chambre</div>
               @for (day of days(); track day) {
                 <div
