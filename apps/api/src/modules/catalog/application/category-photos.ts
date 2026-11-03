@@ -163,7 +163,10 @@ export class CategoryPhotos {
         throw new NotFoundError('Cette catégorie n’existe pas.');
       }
       const current = await this.#repository.ofCategory(categoryId, transaction);
-      const problem = orderProblem(current.map((photo) => photo.id), ids);
+      const problem = orderProblem(
+        current.map((photo) => photo.id),
+        ids,
+      );
       if (problem !== null) {
         throw new ValidationError([{ field: 'ids', message: problem }]);
       }
