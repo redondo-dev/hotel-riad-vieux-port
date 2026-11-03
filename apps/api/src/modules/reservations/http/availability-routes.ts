@@ -45,7 +45,8 @@ export function availabilityRouter(
     requireRole(...BOOKING_ROLES),
     validated({ query: stayQuery }, async ({ query }, _req, res) => {
       res.set('Cache-Control', 'no-store');
-      res.json(await service.search(query));
+      const { checkIn, checkOut, guests } = query;
+      res.json(await service.search({ checkIn, checkOut, rooms: guests }));
     }),
   );
 

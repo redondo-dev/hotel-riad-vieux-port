@@ -8,11 +8,13 @@ import { hasTestDatabase } from '../support/test-database.ts';
  * blocks, booked and cancelled stays, sales closures, rate periods, capacity. Skipped without
  * TEST_DATABASE_URL.
  *
- * This file owns floor 5 (rooms D5xx), the categories « dispo-… » and the year 2034. It sets the
- * hotel settings it needs and puts the previous ones back at the end.
+ * This file owns floor 5 (rooms D5xx), the categories « dispo-… » and the year 2034, with the
+ * current day fixed on 1 April 2034. It sets the hotel settings it needs and puts the previous
+ * ones back at the end.
  */
 
 const AVAILABILITY = `${ADMIN}/availability`;
+const TODAY = '2034-04-01';
 const STAY = 'checkIn=2034-04-30&checkOut=2034-05-03';
 
 interface Offer {
@@ -57,7 +59,7 @@ describe.skipIf(!hasTestDatabase)('availability for the staff', () => {
 
   beforeAll(async () => {
     harness = new IdentityHarness();
-    app = harness.app();
+    app = harness.app({ today: () => TODAY });
     reception = await logIn(app, await harness.createStaff('reception'));
     housekeeper = await logIn(app, await harness.createStaff('housekeeping'));
 
