@@ -16,9 +16,11 @@ import { requireStaff } from './modules/identity/http/guards.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
 import { UserRepository } from './modules/identity/infrastructure/user-repository.ts';
 import { AvailabilityService } from './modules/reservations/application/availability-service.ts';
+import { PlanningService } from './modules/reservations/application/planning-service.ts';
 import { ReservationChanges } from './modules/reservations/application/reservation-changes.ts';
 import { ReservationService } from './modules/reservations/application/reservation-service.ts';
 import { availabilityRouter } from './modules/reservations/http/availability-routes.ts';
+import { planningRouter } from './modules/reservations/http/planning-routes.ts';
 import { reservationChangeRouter } from './modules/reservations/http/reservation-change-routes.ts';
 import { reservationRouter } from './modules/reservations/http/reservation-routes.ts';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.ts';
@@ -104,6 +106,7 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   const now = deps.now ?? (() => new Date());
   const changes = new ReservationChanges(deps.sequelize, today, now);
   router.use(reservationChangeRouter(changes, staff));
+  router.use(planningRouter(new PlanningService(deps.sequelize), staff));
   return router;
 }
 

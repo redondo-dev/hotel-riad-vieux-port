@@ -5,7 +5,8 @@ couche HTTP commune (module 2) et l'identité du personnel (module 3) sont en pl
 lecture publique du catalogue (`/api/v1/public`) et sa gestion par le personnel
 (`/api/v1/admin/catalog`), l'état du ménage des chambres (`/api/v1/admin/housekeeping`), le
 suivi des pannes (`/api/v1/admin/incidents`), les disponibilités du personnel
-(`/api/v1/admin/availability`) et la saisie des réservations (`/api/v1/admin/reservations`).
+(`/api/v1/admin/availability`), les réservations du personnel (`/api/v1/admin/reservations`)
+et le planning des chambres (`/api/v1/admin/planning`).
 
 ## Serveur HTTP
 
@@ -145,6 +146,16 @@ Saisie par le personnel, liste et détail ; détail dans `openapi/openapi.yaml`.
 | Sélecteur        | `GET …/rooms/{lineId}/free-rooms` : chambres libres et en service sur tout le séjour, avec leur propreté             |
 | Dates            | Nouvelles dates refusées si la chambre attribuée n'y est pas libre : 409 `ROOM_NOT_FREE`, changer de chambre d'abord |
 | Journal          | `reservation.updated`, `reservation.cancelled`, `reservation.room_assigned`, dans la même transaction                |
+
+### Planning des chambres
+
+| Sujet    | Règle                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------ |
+| Adresse  | `GET /api/v1/admin/planning?from=…&to=…` : deux jours inclus, 31 jours au plus                               |
+| Contenu  | Par catégorie : chambres (numéro, étage, propreté), séjours placés, blocages en cours, ligne « À attribuer » |
+| Exclus   | Réservations annulées, expirées ou non présentées ; chambres désactivées sans séjour ; blocages levés        |
+| Droits   | Tous les rôles, en lecture ; nom du client (« Martin J. ») pour la direction et la réception seulement       |
+| Rapidité | Quatre requêtes quelle que soit la taille de l'hôtel ; un mois entier en moins d'1 s (testé)                 |
 
 ## Comptes du personnel (`/api/v1/admin`)
 
