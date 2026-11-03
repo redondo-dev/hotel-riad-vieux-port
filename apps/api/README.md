@@ -1,10 +1,11 @@
 # API — Hôtel Riad Vieux-Port
 
-État : **module 7, pannes (en cours)**. La base de données (module 1), la couche HTTP
-commune (module 2) et l'identité du personnel (module 3) sont en place, ainsi que la lecture
-publique du catalogue (`/api/v1/public`) et sa gestion par le personnel
-(`/api/v1/admin/catalog`), l'état du ménage des chambres (`/api/v1/admin/housekeeping`) et
-le suivi des pannes (`/api/v1/admin/incidents`). Aucune route de réservation n'existe encore.
+État : **module 8, réservations et planning (en cours)**. La base de données (module 1), la
+couche HTTP commune (module 2) et l'identité du personnel (module 3) sont en place, ainsi que la
+lecture publique du catalogue (`/api/v1/public`) et sa gestion par le personnel
+(`/api/v1/admin/catalog`), l'état du ménage des chambres (`/api/v1/admin/housekeeping`), le
+suivi des pannes (`/api/v1/admin/incidents`) et les disponibilités du personnel
+(`/api/v1/admin/availability`). La création des réservations arrive à l'étape 8-2.
 
 ## Serveur HTTP
 
@@ -94,6 +95,22 @@ détail dans `openapi/openapi.yaml`.
 | Assigner     | À un technicien actif et/ou à un prestataire externe nommé en texte (direction, réception)          |
 | Historique   | Chaque état, assignation et commentaire est daté dans `incident_events`, et inscrit au journal      |
 | À venir      | Photos (stockage de fichiers), e-mails pour les urgences (Brevo), alerte si la chambre est réservée |
+
+## Disponibilités (`/api/v1/admin/availability`)
+
+Disponibilités et prix d'un séjour pour la saisie au comptoir ou au téléphone ; détail dans
+`openapi/openapi.yaml`. Exemple : `?checkIn=2026-05-12&checkOut=2026-05-15&guests=2-6_3`.
+
+| Sujet          | Règle                                                                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| Droits         | Direction et réception ; ménage et technique : aucun accès                                                 |
+| Limites        | Arrivée ni passée (RM-04) ni à plus de 730 jours ; 90 nuits au plus ; pas les limites en ligne (RM-06)     |
+| Chambres       | Par nuit : chambres actives non bloquées − chambres réservées (RM-02) ; un blocage levé ne compte pas      |
+| Fermeture      | Une fermeture à la vente est signalée (`closed`), la catégorie reste affichée                              |
+| Prix           | Base ± saison ou événement, plus suppléments (RM-10) ; non remboursable = flexible − remise, nuit par nuit |
+| Suppléments    | Les places incluses vont d'abord aux adultes et aux 12 ans et plus ; bébé (0-1 an) gratuit et non compté   |
+| Taxe           | Taxe de séjour à part : par adulte et par nuit, au taux des paramètres (RM-13, à confirmer)                |
+| Rien de retenu | La réservation (étape suivante) revérifie la disponibilité dans sa transaction (RM-03)                     |
 
 ## Comptes du personnel (`/api/v1/admin`)
 

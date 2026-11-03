@@ -15,6 +15,8 @@ import { IdentityService } from './modules/identity/application/identity-service
 import { requireStaff } from './modules/identity/http/guards.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
 import { UserRepository } from './modules/identity/infrastructure/user-repository.ts';
+import { AvailabilityService } from './modules/reservations/application/availability-service.ts';
+import { availabilityRouter } from './modules/reservations/http/availability-routes.ts';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.ts';
 import { type DatabaseCheck, healthRouter } from './shared/http/health.ts';
 import { GLOBAL_RATE_LIMIT, type RateLimitRule, rateLimiter } from './shared/http/rate-limit.ts';
@@ -91,6 +93,7 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   router.use('/catalog', catalogAdminRouter(catalog, staff));
   router.use('/housekeeping', housekeepingRouter(new HousekeepingService(deps.sequelize), staff));
   router.use('/incidents', incidentRouter(new IncidentService(deps.sequelize, today), staff));
+  router.use(availabilityRouter(new AvailabilityService(deps.sequelize, today), staff));
   return router;
 }
 
