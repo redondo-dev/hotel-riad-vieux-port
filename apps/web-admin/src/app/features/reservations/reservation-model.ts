@@ -15,11 +15,7 @@ export type ReservationStatus =
   | 'expired';
 
 export type PaymentStatus =
-  | 'unpaid'
-  | 'partially_paid'
-  | 'paid'
-  | 'partially_refunded'
-  | 'refunded';
+  'unpaid' | 'partially_paid' | 'paid' | 'partially_refunded' | 'refunded';
 export type RatePlan = 'flexible' | 'non_refundable';
 export type Source = 'website' | 'phone' | 'desk';
 export type SortOrder = 'checkIn' | 'created' | 'total';
