@@ -5,8 +5,8 @@ info:
   description: |
     API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
 
-    **État : contrôle de santé, comptes du personnel, catalogue (public et gestion), ménage
-    et pannes implémentés.** Ce fichier ne décrit que ce qui
+    **État : contrôle de santé, comptes du personnel, catalogue (public et gestion), ménage,
+    pannes et disponibilités du personnel implémentés.** Ce fichier ne décrit que ce qui
     existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
     La spécification complète validée figure dans le dossier d'architecture (section 5).
 
@@ -986,6 +986,39 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+  /admin/availability:
+    get:
+      operationId: searchAvailability
+      summary: Disponibilités et prix d'un séjour (saisie au comptoir)
+      description: |
+        Pour chaque catégorie active : chambres restant à vendre nuit par nuit (chambres actives
+        non bloquées, moins les chambres réservées ; un blocage levé ne compte pas), fermeture à
+        la vente signalée, et prix de chaque chambre demandée aux deux tarifs, avec la taxe de
+        séjour à part. Rien n'est retenu : la réservation revérifie. Direction et réception.
+        Limites du personnel : arrivée ni passée ni à plus de 730 jours, 90 nuits au plus.
+      tags: [Réservations]
+      security: [{ staffSession: [] }]
+      parameters:
+        - { name: checkIn, in: query, required: true, schema: { type: string, format: date } }
+        - { name: checkOut, in: query, required: true, schema: { type: string, format: date } }
+        - name: guests
+          in: query
+          required: true
+          description: |
+            Une chambre par bloc séparé par « _ » ; dans chaque bloc, les adultes puis l'âge de
+            chaque enfant, séparés par « - ». « 2-6_3 » : 2 adultes et un enfant de 6 ans, puis
+            3 adultes. 5 chambres, 4 adultes et 3 enfants par chambre au plus.
+          schema: { type: string, maxLength: 60, example: '2-6_3' }
+      responses:
+        '200':
+          description: Disponibilités et prix.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Availability' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
 components:
   securitySchemes:
     staffSession:
@@ -1146,6 +1179,84 @@ components:
       type: string
       format: date
       description: Nuit désignée par le jour où elle commence (AAAA-MM-JJ).
+    Occupancy:
+      type: object
+      required: [adults, childrenAges]
+      properties:
+        adults: { type: integer, minimum: 1, maximum: 4 }
+        childrenAges:
+          type: array
+          maxItems: 3
+          items: { type: integer, minimum: 0, maximum: 17 }
+    RoomOffer:
+      type: object
+      required: [fits]
+      description: |
+        Prix du séjour dans une chambre demandée ; `fits: false` seul si les voyageurs ne
+        tiennent pas dans la catégorie (bébé de moins de 2 ans non compté).
+      properties:
+        fits: { type: boolean }
+        flexibleCents: { type: integer }
+        nonRefundableCents: { type: integer }
+        touristTaxCents:
+          type: integer
+          description: Par adulte et par nuit ; mineurs exonérés.
+        nights:
+          type: array
+          items:
+            type: object
+            required: [night, adjustmentPct, flexibleCents, nonRefundableCents]
+            properties:
+              night: { $ref: '#/components/schemas/Night' }
+              adjustmentPct: { type: number, description: Saison ou événement appliqué (0 sinon). }
+              flexibleCents: { type: integer }
+              nonRefundableCents: { type: integer }
+    Availability:
+      type: object
+      required: [checkIn, checkOut, nights, rooms, categories]
+      properties:
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        nights: { type: integer }
+        rooms: { type: array, items: { $ref: '#/components/schemas/Occupancy' } }
+        categories:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - code
+              - name
+              - maxOccupancy
+              - baseOccupancy
+              - freeRooms
+              - freeRoomsByNight
+              - closed
+              - offers
+            properties:
+              id: { type: string, format: uuid }
+              code: { type: string }
+              name: { type: string }
+              maxOccupancy: { type: integer }
+              baseOccupancy: { type: integer }
+              freeRooms:
+                type: integer
+                description: Chambres libres sur chaque nuit du séjour (la nuit la plus pleine).
+              freeRoomsByNight:
+                type: array
+                items:
+                  type: object
+                  required: [night, free]
+                  properties:
+                    night: { $ref: '#/components/schemas/Night' }
+                    free:
+                      type: integer
+                      description: Négatif si plus de séjours que de chambres.
+              closed: { type: boolean, description: Fermée à la vente sur au moins une nuit. }
+              offers:
+                type: array
+                description: Une offre par chambre demandée, dans l'ordre de la demande.
+                items: { $ref: '#/components/schemas/RoomOffer' }
     CategoryAdmin:
       type: object
       required:

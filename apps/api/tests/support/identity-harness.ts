@@ -34,8 +34,11 @@ export class IdentityHarness {
     this.#pool = new pg.Pool({ connectionString: testDatabaseUrl, max: 3 });
   }
 
-  /** A NEW application each time: its rate-limit counters start from zero. */
-  app(): ReturnType<typeof createApp> {
+  /**
+   * A NEW application each time: its rate-limit counters start from zero. `today` fixes the
+   * current day at the hotel (« YYYY-MM-DD »); by default, the real clock.
+   */
+  app(options: { today?: () => string } = {}): ReturnType<typeof createApp> {
     const logger = createLogger({ level: 'silent', pretty: false });
     return createApp({
       logger,
@@ -53,6 +56,7 @@ export class IdentityHarness {
           },
         },
         adminAppUrl: ADMIN_APP_URL,
+        ...(options.today === undefined ? {} : { today: options.today }),
       },
     });
   }
