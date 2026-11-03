@@ -1,12 +1,12 @@
 # API — Hôtel Riad Vieux-Port
 
-État : **module 8, réservations et planning (en cours)**. La base de données (module 1), la
+État : **module 9, réception et tableau de bord (en cours)**. La base de données (module 1), la
 couche HTTP commune (module 2) et l'identité du personnel (module 3) sont en place, ainsi que la
 lecture publique du catalogue (`/api/v1/public`) et sa gestion par le personnel
 (`/api/v1/admin/catalog`), l'état du ménage des chambres (`/api/v1/admin/housekeeping`), le
 suivi des pannes (`/api/v1/admin/incidents`), les disponibilités du personnel
-(`/api/v1/admin/availability`), les réservations du personnel (`/api/v1/admin/reservations`)
-et le planning des chambres (`/api/v1/admin/planning`).
+(`/api/v1/admin/availability`), les réservations du personnel (`/api/v1/admin/reservations`),
+le planning des chambres (`/api/v1/admin/planning`) et la réception (`/api/v1/admin/front-desk`).
 
 ## Serveur HTTP
 
@@ -158,6 +158,19 @@ Saisie par le personnel, liste et détail ; détail dans `openapi/openapi.yaml`.
 | Exclus   | Réservations annulées, expirées ou non présentées ; chambres désactivées sans séjour ; blocages levés        |
 | Droits   | Tous les rôles, en lecture ; nom du client (« Martin J. ») pour la direction et la réception seulement       |
 | Rapidité | Quatre requêtes quelle que soit la taille de l'hôtel ; un mois entier en moins d'1 s (testé)                 |
+
+### Arrivées et départs
+
+| Sujet        | Règle                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------------------------------- |
+| Adresse      | `GET /api/v1/admin/front-desk?date=…` (aujourd'hui par défaut) : arrivées et départs, à faire d'abord      |
+| Retards      | Arrivée passée sans arrivée (`late`) et client resté après son départ : listés, hors compteurs             |
+| Arrivée      | `POST …/check-in` : confirmée, du jour d'arrivée à la veille du départ ; chambres attribuées et en service |
+| Propreté     | Chambre à nettoyer : 409 `ROOM_DIRTY`, sauf `acceptDirtyRoom: true`, inscrit au journal                    |
+| Départ       | `POST …/check-out` : le jour du départ ou après ; chambres « à nettoyer » ; pas encore de départ anticipé  |
+| Non présenté | `POST …/no-show` : dès le lendemain de l'arrivée ; 1re nuit (flexible) ou toutes (RM-17) à encaisser       |
+| Version      | Les trois actions exigent `If-Match` (428, 412), comme la modification                                     |
+| Droits       | Direction et réception ; journal `reservation.checked_in`, `checked_out`, `no_show`                        |
 
 ## Comptes du personnel (`/api/v1/admin`)
 
