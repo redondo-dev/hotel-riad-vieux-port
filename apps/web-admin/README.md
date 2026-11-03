@@ -29,6 +29,7 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 | Accueil (provisoire)                                          | Tous les rôles               |
 | Mon compte : informations, mot de passe                       | Tous les rôles               |
 | Réservations : liste, recherche, fiche                        | Direction, réception         |
+| Réservations : nouvelle réservation (téléphone, comptoir)     | Direction, réception         |
 | Réservations : modifier, attribuer une chambre, annuler       | Direction, réception         |
 | Non remboursable : modifier, annuler ; renoncer aux frais     | Direction                    |
 | Ménage : état des chambres par étage ; propre ou à nettoyer   | Direction, ménage            |
@@ -55,6 +56,14 @@ Une réservation se modifie en deux temps : « Voir le nouveau prix » (rien n'e
 puis « Enregistrer ». Si un collègue l'a modifiée entre-temps, la fenêtre l'indique (son nom
 et l'heure), garde la saisie et propose « Recharger ». Le sélecteur de chambre ne propose que
 les chambres de la catégorie libres et en service sur tout le séjour, avec leur propreté.
+
+Une nouvelle réservation (téléphone ou comptoir) se prend sur une seule page en trois blocs :
+le séjour (dates, puis pour chaque chambre les adultes, les âges des enfants « 6, 3 » et le lit
+bébé), le client (trouvé par son nom ou son e-mail, ou nouveau), puis le récapitulatif
+(origine, prestations, notes, total). « Voir les disponibilités » affiche pour chaque chambre
+les catégories avec leur prix ; une catégorie fermée, trop petite ou complète est grisée avec
+sa raison. Tout changement du séjour demande de relancer la recherche. Le formulaire envoie
+une clé d'idempotence : un double clic ne crée pas deux réservations.
 
 Les écrans se répondent : sur l'écran Ménage, la clé à molette d'une case ouvre « Signaler une
 panne » avec la chambre déjà choisie (`/pannes?chambre=<id>`) ; dans l'onglet Chambres du

@@ -48,6 +48,14 @@ export const routes: Routes = [
           import('./features/reservations/reservations-page').then((m) => m.ReservationsPage),
       },
       {
+        path: 'reservations/nouvelle',
+        title: `Nouvelle réservation · ${TITLE}`,
+        data: { heading: 'Nouvelle réservation', roles: ['direction', 'reception'] },
+        canActivate: [roleGuard],
+        loadComponent: () =>
+          import('./features/reservations/new-reservation-page').then((m) => m.NewReservationPage),
+      },
+      {
         path: 'reservations/:id',
         title: `Réservation · ${TITLE}`,
         data: { heading: 'Réservations', roles: ['direction', 'reception'] },
