@@ -293,7 +293,7 @@ sont obligatoires ; aucun mot de passe n'est écrit dans le code. Comptes créé
 `direction@`, `reception@`, `menage@` et `technique@riad-vieux-port.example`.
 
 La commande ajoute aussi une quarantaine de séjours autour du jour où elle est lancée (de 7 jours
-avant à 30 jours après) : partis, présents, arrivées du jour, à venir, quelques-uns sans
+avant à 30 jours après) : partis, présents (dont 2 qui partent ce jour-là), arrivées du jour, à venir, quelques-uns sans
 chambre et deux annulés. Clients fictifs en `@example.com`. Les séjours passent par les mêmes
 règles que l'outil de gestion (prix réels du catalogue, nuits, prestations, journal). Ils ne
 se chargent qu'une fois : si un client de démonstration existe déjà, rien n'est ajouté, et

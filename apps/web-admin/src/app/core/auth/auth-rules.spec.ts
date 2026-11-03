@@ -8,7 +8,7 @@ describe('menuFor', () => {
     const paths = (role: Parameters<typeof menuFor>[0]): string[] =>
       menuFor(role).map((item) => item.path);
     expect(paths('direction')).toEqual([
-      '/accueil',
+      '/tableau-de-bord',
       '/aujourdhui',
       '/reservations',
       '/planning',
@@ -18,7 +18,6 @@ describe('menuFor', () => {
       '/utilisateurs',
     ]);
     expect(paths('reception')).toEqual([
-      '/accueil',
       '/aujourdhui',
       '/reservations',
       '/planning',
@@ -26,17 +25,17 @@ describe('menuFor', () => {
       '/pannes',
       '/catalogue',
     ]);
-    expect(paths('housekeeping')).toEqual(['/accueil', '/planning', '/menage', '/pannes']);
-    expect(paths('technician')).toEqual(['/accueil', '/planning', '/pannes']);
+    expect(paths('housekeeping')).toEqual(['/planning', '/menage', '/pannes']);
+    expect(paths('technician')).toEqual(['/planning', '/pannes']);
   });
 });
 
 describe('landingFor', () => {
-  it('opens the work screen of housekeeping and technicians, the home page for the others', () => {
+  it('opens the work screen of each role', () => {
     expect(landingFor('housekeeping')).toBe('/menage');
     expect(landingFor('technician')).toBe('/pannes');
-    expect(landingFor('reception')).toBe('/accueil');
-    expect(landingFor('direction')).toBe('/accueil');
+    expect(landingFor('reception')).toBe('/aujourdhui');
+    expect(landingFor('direction')).toBe('/tableau-de-bord');
   });
 });
 

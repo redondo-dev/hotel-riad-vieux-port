@@ -29,7 +29,8 @@ describe('demoStayPlan', () => {
       if (stay.status === 'checked_out') {
         expect(stay.checkOut <= TODAY).toBe(true);
       } else if (stay.status === 'checked_in') {
-        expect(stay.checkIn < TODAY && TODAY < stay.checkOut).toBe(true);
+        // Still in, possibly leaving today: a departure to record.
+        expect(stay.checkIn < TODAY && TODAY <= stay.checkOut).toBe(true);
       } else {
         expect(stay.checkIn >= TODAY).toBe(true);
       }
@@ -39,6 +40,8 @@ describe('demoStayPlan', () => {
     }
     const count = (status: string): number => plan.filter((stay) => stay.status === status).length;
     expect([count('checked_out'), count('checked_in'), count('cancelled')]).toEqual([6, 6, 2]);
+    const leaving = plan.filter((stay) => stay.status === 'checked_in' && stay.checkOut === TODAY);
+    expect(leaving).toHaveLength(2);
     expect(plan.some((stay) => !stay.assigned)).toBe(true);
   });
 
