@@ -40,6 +40,22 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home-page').then((m) => m.HomePage),
       },
       {
+        path: 'reservations',
+        title: `Réservations · ${TITLE}`,
+        data: { heading: 'Réservations', roles: ['direction', 'reception'] },
+        canActivate: [roleGuard],
+        loadComponent: () =>
+          import('./features/reservations/reservations-page').then((m) => m.ReservationsPage),
+      },
+      {
+        path: 'reservations/:id',
+        title: `Réservation · ${TITLE}`,
+        data: { heading: 'Réservations', roles: ['direction', 'reception'] },
+        canActivate: [roleGuard],
+        loadComponent: () =>
+          import('./features/reservations/reservation-page').then((m) => m.ReservationPage),
+      },
+      {
         path: 'menage',
         title: `Ménage · ${TITLE}`,
         data: { heading: 'Ménage', roles: ['direction', 'reception', 'housekeeping'] },

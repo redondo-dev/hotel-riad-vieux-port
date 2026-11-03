@@ -28,6 +28,9 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 | Choisir un mot de passe (lien e-mail)                         | Sans session                 |
 | Accueil (provisoire)                                          | Tous les rôles               |
 | Mon compte : informations, mot de passe                       | Tous les rôles               |
+| Réservations : liste, recherche, fiche                        | Direction, réception         |
+| Réservations : modifier, attribuer une chambre, annuler       | Direction, réception         |
+| Non remboursable : modifier, annuler ; renoncer aux frais     | Direction                    |
 | Ménage : état des chambres par étage ; propre ou à nettoyer   | Direction, ménage            |
 | Ménage : signaler une chambre à nettoyer                      | Direction, réception, ménage |
 | Pannes : liste, fiche, signaler, commenter                    | Tous les rôles               |
@@ -47,6 +50,11 @@ les Pannes, tous deux pensés d'abord pour le téléphone.
 Dans le catalogue, les prix se saisissent en euros (« 95 » ou « 95,50 ») et les périodes par
 leur première et leur dernière nuit, incluses. Rien ne se supprime sauf les périodes de tarif et
 les fermetures de vente : une catégorie, une chambre ou un service se désactive.
+
+Une réservation se modifie en deux temps : « Voir le nouveau prix » (rien n'est enregistré),
+puis « Enregistrer ». Si un collègue l'a modifiée entre-temps, la fenêtre l'indique (son nom
+et l'heure), garde la saisie et propose « Recharger ». Le sélecteur de chambre ne propose que
+les chambres de la catégorie libres et en service sur tout le séjour, avec leur propreté.
 
 Les écrans se répondent : sur l'écran Ménage, la clé à molette d'une case ouvre « Signaler une
 panne » avec la chambre déjà choisie (`/pannes?chambre=<id>`) ; dans l'onglet Chambres du

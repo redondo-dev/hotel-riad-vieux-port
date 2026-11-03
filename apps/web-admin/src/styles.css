@@ -121,6 +121,15 @@
     @apply rounded-full bg-mist px-2 py-0.5 font-medium whitespace-nowrap text-muted;
   }
 
+  /* Reservation statuses: confirmed (blue), waiting or to assign (amber) */
+  .badge-info {
+    @apply rounded-full bg-info-pale px-2 py-0.5 font-medium whitespace-nowrap text-port;
+  }
+
+  .badge-warning {
+    @apply rounded-full bg-warning-pale px-2 py-0.5 font-medium whitespace-nowrap text-warning;
+  }
+
   /* Housekeeping tiles: clean (green) or to be cleaned (orange), readable outdoors */
   .tile-clean {
     @apply border-success/40 bg-success-pale text-success;
