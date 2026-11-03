@@ -4,6 +4,7 @@ import {
   LucideChevronLeft,
   LucideChevronRight,
   LucideCircleAlert,
+  LucidePlus,
   LucideSearch,
 } from '@lucide/angular';
 import { type Problem, toProblem } from '../../core/api/problem';
@@ -51,10 +52,21 @@ const EMPTY_FILTER: ReservationFilter = { sort: 'checkIn', page: 1 };
  */
 @Component({
   selector: 'adm-reservations-page',
-  imports: [RouterLink, LucideSearch, LucideCircleAlert, LucideChevronLeft, LucideChevronRight],
+  imports: [
+    RouterLink,
+    LucidePlus,
+    LucideSearch,
+    LucideCircleAlert,
+    LucideChevronLeft,
+    LucideChevronRight,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
+      <a routerLink="/reservations/nouvelle" class="self-end btn-primary">
+        <svg lucidePlus></svg>
+        Nouvelle réservation
+      </a>
       <form
         class="card flex flex-col gap-3 p-4"
         role="search"
