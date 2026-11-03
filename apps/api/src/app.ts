@@ -16,10 +16,12 @@ import { requireStaff } from './modules/identity/http/guards.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
 import { UserRepository } from './modules/identity/infrastructure/user-repository.ts';
 import { AvailabilityService } from './modules/reservations/application/availability-service.ts';
+import { FrontDesk } from './modules/reservations/application/front-desk.ts';
 import { PlanningService } from './modules/reservations/application/planning-service.ts';
 import { ReservationChanges } from './modules/reservations/application/reservation-changes.ts';
 import { ReservationService } from './modules/reservations/application/reservation-service.ts';
 import { availabilityRouter } from './modules/reservations/http/availability-routes.ts';
+import { frontDeskRouter } from './modules/reservations/http/front-desk-routes.ts';
 import { planningRouter } from './modules/reservations/http/planning-routes.ts';
 import { reservationChangeRouter } from './modules/reservations/http/reservation-change-routes.ts';
 import { reservationRouter } from './modules/reservations/http/reservation-routes.ts';
@@ -107,6 +109,7 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   const changes = new ReservationChanges(deps.sequelize, today, now);
   router.use(reservationChangeRouter(changes, staff));
   router.use(planningRouter(new PlanningService(deps.sequelize), staff));
+  router.use(frontDeskRouter(new FrontDesk(deps.sequelize, today), staff, today));
   return router;
 }
 

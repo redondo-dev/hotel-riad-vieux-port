@@ -1345,6 +1345,122 @@ paths:
         '400': { $ref: '#/components/responses/Problem' }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
+  /admin/front-desk:
+    get:
+      operationId: getFrontDesk
+      summary: Arrivées et départs du jour
+      description: |
+        Arrivées du jour (à faire d'abord, puis faites ou non présentées) et réservations
+        confirmées dont l'arrivée est passée sans arrivée (`late`) ; départs du jour et clients
+        encore là après leur jour de départ. Les compteurs ne portent que sur le jour. Direction
+        et réception.
+      tags: [Réception]
+      security: [{ staffSession: [] }]
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Le jour affiché ; aujourd'hui par défaut.
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Les arrivées et les départs.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FrontDeskDay' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}/check-in:
+    post:
+      operationId: checkInReservation
+      summary: Enregistrer l'arrivée
+      description: |
+        Réservation confirmée, du jour d'arrivée à la veille du départ (409
+        `RESERVATION_STATE`). Chaque chambre doit être attribuée (409 `ROOM_NOT_ASSIGNED`) et en
+        service jusqu'au départ (409 `ROOM_OUT_OF_SERVICE`) ; une chambre à nettoyer est refusée
+        (409 `ROOM_DIRTY`) sauf avec `acceptDirtyRoom: true`, inscrit au journal avec les
+        vérifications cochées. Verrou optimiste : `If-Match` (428, 412).
+      tags: [Réception]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: If-Match, in: header, required: true, schema: { type: string, example: '"3"' } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                identityChecked: { type: boolean, default: false }
+                policeFormDone: { type: boolean, default: false }
+                acceptDirtyRoom: { type: boolean, default: false }
+      responses:
+        '200':
+          description: La réservation, statut `checked_in`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '412': { $ref: '#/components/responses/Problem' }
+        '428': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}/check-out:
+    post:
+      operationId: checkOutReservation
+      summary: Enregistrer le départ
+      description: |
+        Client arrivé, le jour du départ ou plus tard (départ oublié) ; un départ anticipé est
+        refusé pour l'instant (409 `RESERVATION_STATE`). Les chambres passent « à nettoyer ».
+        Le solde et la facture viendront avec la facturation. Verrou optimiste : `If-Match`.
+      tags: [Réception]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: If-Match, in: header, required: true, schema: { type: string, example: '"3"' } }
+      responses:
+        '200':
+          description: La réservation, statut `checked_out`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '412': { $ref: '#/components/responses/Problem' }
+        '428': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}/no-show:
+    post:
+      operationId: declareNoShow
+      summary: Déclarer une non-présentation
+      description: |
+        Réservation confirmée, à partir du lendemain de l'arrivée prévue (409
+        `RESERVATION_STATE`). Frais (RM-17) : première nuit de chaque chambre au tarif flexible,
+        toutes les nuits au tarif non remboursable, enregistrés à encaisser
+        (`cancellationFeeCents`) ; les chambres sont libérées. Verrou optimiste : `If-Match`.
+      tags: [Réception]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: If-Match, in: header, required: true, schema: { type: string, example: '"3"' } }
+      responses:
+        '200':
+          description: La réservation, statut `no_show`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '412': { $ref: '#/components/responses/Problem' }
+        '428': { $ref: '#/components/responses/Problem' }
 components:
   securitySchemes:
     staffSession:
@@ -1678,6 +1794,68 @@ components:
           type: string
           example: Martin J.
           description: Direction et réception seulement.
+    FrontDeskItem:
+      type: object
+      required:
+        - id
+        - reference
+        - status
+        - version
+        - ratePlan
+        - checkIn
+        - checkOut
+        - nights
+        - totalCents
+        - customerName
+        - adults
+        - children
+        - customerMessage
+        - rooms
+        - late
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        status: { type: string }
+        version: { type: integer }
+        ratePlan: { type: string, enum: [flexible, non_refundable] }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        nights: { type: integer }
+        totalCents: { type: integer }
+        customerName: { type: string, description: Nom puis prénom. }
+        adults: { type: integer }
+        children: { type: integer }
+        customerMessage: { type: [string, 'null'] }
+        late: { type: boolean, description: Attendu avant le jour affiché. }
+        rooms:
+          type: array
+          items:
+            type: object
+            required: [lineId, categoryName, room]
+            properties:
+              lineId: { type: string, format: uuid }
+              categoryName: { type: string }
+              room:
+                type: [object, 'null']
+                properties:
+                  id: { type: string, format: uuid }
+                  number: { type: string }
+                  housekeepingStatus: { type: string, enum: [clean, dirty] }
+                  outOfService: { type: boolean }
+    FrontDeskDay:
+      type: object
+      required: [date, arrivals, departures]
+      properties:
+        date: { type: string, format: date }
+        arrivals: { $ref: '#/components/schemas/FrontDeskList' }
+        departures: { $ref: '#/components/schemas/FrontDeskList' }
+    FrontDeskList:
+      type: object
+      required: [total, done, items]
+      properties:
+        total: { type: integer, description: Séjours du jour (les retards ne comptent pas). }
+        done: { type: integer }
+        items: { type: array, items: { $ref: '#/components/schemas/FrontDeskItem' } }
     Planning:
       type: object
       required: [from, to, categories]
