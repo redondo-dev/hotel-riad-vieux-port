@@ -26,7 +26,7 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 | ------------------------------------------------------------- | ---------------------------- |
 | Connexion, mot de passe oublié                                | Sans session                 |
 | Choisir un mot de passe (lien e-mail)                         | Sans session                 |
-| Accueil (provisoire)                                          | Tous les rôles               |
+| Tableau de bord : occupation, chiffre d’affaires, pannes      | Direction                    |
 | Mon compte : informations, mot de passe                       | Tous les rôles               |
 | Aujourd’hui : arrivées, départs, non-présentations            | Direction, réception         |
 | Réservations : liste, recherche, fiche                        | Direction, réception         |
@@ -46,9 +46,14 @@ par rôle (voir `apps/api/README.md`). Ils ne sont jamais affichés sur la page 
 | Catalogue : fermer ou rouvrir une catégorie à la vente        | Direction, réception         |
 | Utilisateurs : inviter, modifier, désactiver, envoyer un lien | Direction                    |
 
-Le menu n'affiche que les rubriques autorisées au rôle ; l'API vérifie les mêmes droits. Les
-rubriques à venir (tableau de bord) seront ajoutées avec leurs modules. Le rôle ménage arrive directement sur l'écran Ménage et le rôle technique sur
-les Pannes, tous deux pensés d'abord pour le téléphone.
+Le menu n'affiche que les rubriques autorisées au rôle ; l'API vérifie les mêmes droits. Il n'y
+a pas de page d'accueil : chacun arrive sur son écran de travail, la direction sur le tableau
+de bord, la réception sur « Aujourd’hui », le ménage sur Ménage et la technique sur les Pannes
+(ces deux derniers pensés d'abord pour le téléphone). L'ancienne adresse `/accueil` y mène aussi.
+
+Le tableau de bord montre ce soir (occupation, arrivées, départs, pannes ouvertes) et le mois
+(occupation, chiffre d'affaires hébergement, prix moyen, nuits vendues), chaque chiffre du mois
+comparé au mois précédent entier : en points pour un taux, en % pour un montant.
 
 Dans le catalogue, les prix se saisissent en euros (« 95 » ou « 95,50 ») et les périodes par
 leur première et leur dernière nuit, incluses. Rien ne se supprime sauf les périodes de tarif et

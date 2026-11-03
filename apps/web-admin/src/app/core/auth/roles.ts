@@ -23,7 +23,7 @@ export interface StaffUser {
 }
 
 export type MenuIcon =
-  | 'home'
+  | 'dashboard'
   | 'today'
   | 'reservations'
   | 'planning'
@@ -45,7 +45,7 @@ export interface MenuItem {
  * « Mon compte » and « Se déconnecter » sit at the bottom of the sidebar for everyone.
  */
 export const MENU: readonly MenuItem[] = [
-  { path: '/accueil', label: 'Accueil', icon: 'home', roles: ROLES },
+  { path: '/tableau-de-bord', label: 'Tableau de bord', icon: 'dashboard', roles: ['direction'] },
   { path: '/aujourdhui', label: 'Aujourd’hui', icon: 'today', roles: ['direction', 'reception'] },
   {
     path: '/reservations',
@@ -70,15 +70,20 @@ export function menuFor(role: Role): MenuItem[] {
 }
 
 /**
- * Screen shown right after login: the housekeeping board for the housekeeping staff, the
- * incidents for the technicians, the provisional home page for the others until the dashboard
- * (management) and « Aujourd'hui » (reception) exist.
+ * Screen shown right after login, and at the root of the tool: the work screen of each role
+ * (UI/UX specification, D-11). No generic home page.
  */
 export function landingFor(role: Role): string {
-  if (role === 'housekeeping') {
-    return '/menage';
+  switch (role) {
+    case 'direction':
+      return '/tableau-de-bord';
+    case 'reception':
+      return '/aujourdhui';
+    case 'housekeeping':
+      return '/menage';
+    case 'technician':
+      return '/pannes';
   }
-  return role === 'technician' ? '/pannes' : '/accueil';
 }
 
 export function isRole(value: unknown): value is Role {

@@ -11,7 +11,7 @@ import { RouterLink } from '@angular/router';
       <p class="mt-2 text-muted">
         L’adresse est peut-être incomplète, ou l’écran n’existe pas encore.
       </p>
-      <a routerLink="/accueil" class="mt-4 btn-secondary">Retour à l’accueil</a>
+      <a routerLink="/" class="mt-4 btn-secondary">Retour à l’accueil</a>
     </section>
   `,
 })

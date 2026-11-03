@@ -15,7 +15,7 @@ import {
   LucideCalendarDays,
   LucideCalendarRange,
   LucideCircleUserRound,
-  LucideHouse,
+  LucideLayoutDashboard,
   LucideLogOut,
   LucideMenu,
   LucidePanelLeftClose,
@@ -66,7 +66,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
     RouterLink,
     RouterLinkActive,
     ZelligeStar,
-    LucideHouse,
+    LucideLayoutDashboard,
     LucideCalendarCheck,
     LucideCalendarDays,
     LucideCalendarRange,
@@ -129,8 +129,8 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
                   (click)="closeDrawer()"
                 >
                   @switch (item.icon) {
-                    @case ('home') {
-                      <svg lucideHouse class="shrink-0"></svg>
+                    @case ('dashboard') {
+                      <svg lucideLayoutDashboard class="shrink-0"></svg>
                     }
                     @case ('today') {
                       <svg lucideCalendarCheck class="shrink-0"></svg>

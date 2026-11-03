@@ -14,7 +14,7 @@ export const authGuard: CanActivateFn = async (_route, state) => {
     : true;
 };
 
-/** Only the roles listed in the route data (`data: { roles: [...] }`); otherwise the home page. */
+/** Only the roles listed in the route data (`data: { roles: [...] }`); else the role's screen. */
 export const roleGuard: CanActivateFn = (route) => {
   const router = inject(Router);
   const user = inject(SessionService).user();
@@ -28,7 +28,14 @@ export const roleGuard: CanActivateFn = (route) => {
   return router.createUrlTree([landingFor(user.role)]);
 };
 
-/** The login and password pages are pointless once logged in: go to the home page. */
+/** The root of the tool (and the old « /accueil »): the work screen of the role. */
+export const landingGuard: CanActivateFn = () => {
+  const router = inject(Router);
+  const user = inject(SessionService).user();
+  return router.createUrlTree([user === null ? '/connexion' : landingFor(user.role)]);
+};
+
+/** The login and password pages are pointless once logged in: go to the role's screen. */
 export const guestGuard: CanActivateFn = async () => {
   const router = inject(Router);
   const user = await inject(SessionService)

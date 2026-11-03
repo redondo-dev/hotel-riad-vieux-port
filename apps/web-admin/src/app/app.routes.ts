@@ -1,5 +1,5 @@
 import type { Routes } from '@angular/router';
-import { authGuard, guestGuard, roleGuard } from './core/auth/guards';
+import { authGuard, guestGuard, landingGuard, roleGuard } from './core/auth/guards';
 
 const TITLE = 'Gestion · Hôtel Riad Vieux-Port';
 
@@ -32,12 +32,16 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./layout/shell').then((m) => m.Shell),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'accueil' },
+      // No home page: the root (and the old « /accueil ») opens the work screen of the role.
+      { path: '', pathMatch: 'full', canActivate: [landingGuard], children: [] },
+      { path: 'accueil', canActivate: [landingGuard], children: [] },
       {
-        path: 'accueil',
-        title: `Accueil · ${TITLE}`,
-        data: { heading: 'Accueil' },
-        loadComponent: () => import('./features/home/home-page').then((m) => m.HomePage),
+        path: 'tableau-de-bord',
+        title: `Tableau de bord · ${TITLE}`,
+        data: { heading: 'Tableau de bord', roles: ['direction'] },
+        canActivate: [roleGuard],
+        loadComponent: () =>
+          import('./features/dashboard/dashboard-page').then((m) => m.DashboardPage),
       },
       {
         path: 'aujourdhui',

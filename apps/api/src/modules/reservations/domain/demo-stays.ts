@@ -128,9 +128,11 @@ function timingFor(index: number): { from: number; nights: number; status: DemoS
     return { from: -DEMO_DAYS_BEFORE + index, nights: 1 + (index % 2), status: 'checked_out' };
   }
   if (index < 12) {
-    // In the hotel tonight: arrived 1 to 3 days ago, leave in 1 to 3 days.
+    // In the hotel: arrived 1 to 3 days ago; the first two leave today (departures to record),
+    // the others in 1 or 2 days.
     const before = 1 + (index % 3);
-    return { from: -before, nights: before + 1 + (index % 2), status: 'checked_in' };
+    const after = index < 8 ? 0 : 1 + (index % 2);
+    return { from: -before, nights: before + after, status: 'checked_in' };
   }
   if (index < 16) {
     // Arriving today.
