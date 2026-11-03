@@ -770,6 +770,10 @@ export class ReservationRepository {
 
   // --- Rooms of a reservation ---
 
+  /**
+   * FOR SHARE: a deactivation of the room (catalogue) waits for this assignment, then sees it;
+   * an assignment started after a deactivation reads the room inactive.
+   */
   async roomForAssignment(
     roomId: string,
     transaction: Transaction,
@@ -777,7 +781,8 @@ export class ReservationRepository {
     const rows = await this.#select<RoomForAssignment>(
       `SELECT id, number, category_id AS "categoryId", is_active AS "isActive"
          FROM rooms
-        WHERE id = $1`,
+        WHERE id = $1
+          FOR SHARE`,
       [roomId],
       transaction,
     );

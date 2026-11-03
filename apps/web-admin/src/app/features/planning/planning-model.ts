@@ -125,6 +125,23 @@ export function sleepsOn(stay: Pick<PlanningStay, 'checkIn' | 'checkOut'>, day: 
   return stay.checkIn <= day && day < stay.checkOut;
 }
 
+/**
+ * Stays of a room booked on a night it is out of service (an incident blocked it after the
+ * room was given): the guests must be moved. Their line ids.
+ */
+export function conflictingStays(room: PlanningRoom): Set<string> {
+  const lines = new Set<string>();
+  for (const stay of room.stays) {
+    const blocked = room.blocks.some((block) => {
+      return block.from < stay.checkOut && (block.to === null || stay.checkIn < block.to);
+    });
+    if (blocked && stay.status !== 'checked_out') {
+      lines.add(stay.lineId);
+    }
+  }
+  return lines;
+}
+
 export type DayEventKind = 'departure' | 'arrival' | 'staying' | 'blocked';
 
 export const EVENT_LABELS: Record<DayEventKind, string> = {

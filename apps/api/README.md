@@ -61,6 +61,7 @@ Catégories, chambres, saisons et événements, fermetures de vente et services 
 | ----------- | ----------------------------------------------------------------------------------------------------------------- |
 | Droits      | Direction : tout ; réception : lecture et fermetures de vente ; ménage et technique : aucun accès                 |
 | Suppression | Jamais pour une catégorie, une chambre ou un service (désactivation) ; possible pour une période ou une fermeture |
+| Séjours     | Désactivation refusée tant que des séjours à venir l'occupent : `ROOM_HAS_STAYS`, `CATEGORY_HAS_STAYS`            |
 | Code        | Le code d'une catégorie ou d'un service ne change jamais : il figure dans les adresses du site                    |
 | Langues     | Nom, description et lits obligatoires en français et en anglais                                                   |
 | Nuits       | Données par la première et la dernière nuit, incluses ; une période dure au plus 1 100 nuits                      |
@@ -95,7 +96,8 @@ détail dans `openapi/openapi.yaml`.
 | Droits       | Technique : en cours et résolue ; direction : tout, dont clôturer ; réception : assigner            |
 | Assigner     | À un technicien actif et/ou à un prestataire externe nommé en texte (direction, réception)          |
 | Historique   | Chaque état, assignation et commentaire est daté dans `incident_events`, et inscrit au journal      |
-| À venir      | Photos (stockage de fichiers), e-mails pour les urgences (Brevo), alerte si la chambre est réservée |
+| Séjours      | La fiche liste les séjours attribués à la chambre pendant le blocage (`affectedStays`)              |
+| À venir      | Photos (stockage de fichiers), e-mails pour les urgences (Brevo)                                    |
 
 ## Disponibilités (`/api/v1/admin/availability`)
 

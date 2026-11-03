@@ -26,6 +26,7 @@ import {
 import { PlanningApi } from './planning-api';
 import {
   addDays,
+  conflictingStays,
   dayHead,
   daysBetween,
   daysFrom,
@@ -50,7 +51,7 @@ import {
 
 /** What the side panel shows. */
 type Selection =
-  | { kind: 'stay'; stay: PlanningStay; category: string; room: string | null }
+  | { kind: 'stay'; stay: PlanningStay; category: string; room: string | null; conflict: boolean }
   | { kind: 'block'; block: PlanningBlock; category: string; room: string };
 
 /** A stay or a block drawn on the grid. */
@@ -94,6 +95,9 @@ interface DayCategory {
 }
 
 const BLOCK_TONE = 'border-danger/30 bg-danger-pale text-danger';
+/** A stay in a room out of service: to move to another room. */
+const CONFLICT_TONE = 'ring-2 ring-danger';
+const CONFLICT_TEXT = 'Chambre hors service pendant ce séjour : changez-la de chambre.';
 const TO_ASSIGN = 'À attribuer';
 
 /**
@@ -281,6 +285,9 @@ const TO_ASSIGN = 'À attribuer';
                 <dd>{{ euros(current.totalCents) }}</dd>
               }
             </dl>
+            @if (chosen.conflict) {
+              <p class="alert-error" role="alert">{{ conflictText }}</p>
+            }
             @if (detailProblem(); as current) {
               <p class="field-error" role="alert">{{ current.detail }}</p>
             }
@@ -321,6 +328,7 @@ export class PlanningPage {
   protected readonly step = PLANNING_STEP;
   protected readonly blockTone = BLOCK_TONE;
   protected readonly toAssign = TO_ASSIGN;
+  protected readonly conflictText = CONFLICT_TEXT;
   protected readonly columns = `7rem repeat(${PLANNING_DAYS}, minmax(3.5rem, 1fr))`;
 
   protected readonly today = signal(hotelToday(new Date()));
@@ -369,7 +377,10 @@ export class PlanningPage {
             selection,
           });
         });
-        const stays = room.stays.map((stay) => this.stayBar(stay, category.name, room.number));
+        const conflicts = conflictingStays(room);
+        const stays = room.stays.map((stay) => {
+          return this.stayBar(stay, category.name, room.number, conflicts.has(stay.lineId));
+        });
         const bars = [...blocks, ...stays].filter((bar): bar is Bar => bar !== null);
         return { key: room.id, title: room.number, inactive: !room.isActive, bars };
       });
@@ -396,6 +407,7 @@ export class PlanningPage {
         return { key: stay.lineId, title: TO_ASSIGN, items };
       });
       const rooms = category.rooms.map((room) => {
+        const conflicts = conflictingStays(room);
         const items = eventsOn(room, day).map((event, index) => {
           if (event.kind === 'blocked') {
             const selection: Selection = {
@@ -406,7 +418,8 @@ export class PlanningPage {
             };
             return { key: `b${index}`, text: EVENT_LABELS.blocked, tone: BLOCK_TONE, selection };
           }
-          return this.stayItem(event.stay, event.kind, category.name, room.number);
+          const conflict = conflicts.has(event.stay.lineId);
+          return this.stayItem(event.stay, event.kind, category.name, room.number, conflict);
         });
         return { key: room.id, title: room.number, items };
       });
@@ -493,16 +506,26 @@ export class PlanningPage {
     return { key, column, before: span.before, after: span.after, ...content };
   }
 
-  private stayBar(stay: PlanningStay, category: string, room: string | null): Bar | null {
-    const selection: Selection = { kind: 'stay', stay, category, room };
+  private stayBar(
+    stay: PlanningStay,
+    category: string,
+    room: string | null,
+    conflict = false,
+  ): Bar | null {
+    const selection: Selection = { kind: 'stay', stay, category, room, conflict };
     const where = room === null ? `${category}, à attribuer` : `chambre ${room}`;
     const dates = stayText(stay.checkIn, stay.checkOut, daysBetween(stay.checkIn, stay.checkOut));
+    const warning = conflict ? ` ${CONFLICT_TEXT}` : '';
     return this.bar(stay.lineId, stay.checkIn, stay.checkOut, this.from(), {
       text: stayLabel(stay),
-      label: `${stayLabel(stay)}, ${where}, ${dates}`,
-      tone: stayTone(stay.status),
+      label: `${stayLabel(stay)}, ${where}, ${dates}.${warning}`,
+      tone: this.toneOf(stay, conflict),
       selection,
     });
+  }
+
+  private toneOf(stay: PlanningStay, conflict: boolean): string {
+    return conflict ? `${stayTone(stay.status)} ${CONFLICT_TONE}` : stayTone(stay.status);
   }
 
   private stayItem(
@@ -510,10 +533,11 @@ export class PlanningPage {
     kind: 'departure' | 'arrival' | 'staying',
     category: string,
     room: string | null = null,
+    conflict = false,
   ): DayLine['items'][number] {
-    const selection: Selection = { kind: 'stay', stay, category, room };
+    const selection: Selection = { kind: 'stay', stay, category, room, conflict };
     const text = `${EVENT_LABELS[kind]} · ${stayLabel(stay)}`;
-    return { key: `${kind}-${stay.lineId}`, text, tone: stayTone(stay.status), selection };
+    return { key: `${kind}-${stay.lineId}`, text, tone: this.toneOf(stay, conflict), selection };
   }
 
   // --- Side panel ---

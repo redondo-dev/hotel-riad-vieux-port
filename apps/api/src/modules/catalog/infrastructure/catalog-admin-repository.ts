@@ -368,6 +368,32 @@ export class CatalogAdminRepository {
     );
   }
 
+  /**
+   * References of the stays not over yet (departure after `today`) that hold a room, or a room
+   * of a category: 5 at most, the nearest first. Cancelled stays no longer hold anything.
+   */
+  upcomingStays(
+    holder: { roomId: string } | { categoryId: string },
+    today: string,
+    transaction: Transaction,
+  ): Promise<{ reference: string }[]> {
+    const byRoom = 'roomId' in holder;
+    return this.#select<{ reference: string }>(
+      `SELECT r.reference
+         FROM reservation_rooms l
+         JOIN reservations r ON r.id = l.reservation_id
+        WHERE l.is_active
+          AND r.status IN ('pending_payment', 'confirmed', 'checked_in')
+          AND upper(l.stay) > $2::date
+          AND (CASE WHEN $3::boolean THEN l.room_id ELSE l.category_id END) = $1::uuid
+        GROUP BY r.reference, r.check_in
+        ORDER BY r.check_in, r.reference
+        LIMIT 5`,
+      [byRoom ? holder.roomId : holder.categoryId, today, byRoom],
+      transaction,
+    );
+  }
+
   // --- Rate periods ---
 
   /** Periods whose last night is `fromNight` or later; every period when `fromNight` is null. */

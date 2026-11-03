@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  conflictingStays,
   eventsOn,
   hotelToday,
   lanesOf,
@@ -84,6 +85,21 @@ describe('eventsOn', () => {
     expect(kinds('2034-05-03')).toEqual(['departure', 'arrival']);
     expect(kinds('2034-05-06')).toEqual(['departure']);
     expect(kinds('2034-05-07')).toEqual([]);
+  });
+});
+
+describe('conflictingStays', () => {
+  it('finds the stays booked on a night the room is out of service', () => {
+    const room: PlanningRoom = {
+      id: 'm',
+      number: '204',
+      floor: 2,
+      housekeepingStatus: 'clean',
+      isActive: true,
+      stays: [stay('2034-05-01', '2034-05-03'), stay('2034-05-05', '2034-05-08')],
+      blocks: [{ from: '2034-05-03', to: '2034-05-06', reason: 'incident', incident: null }],
+    };
+    expect([...conflictingStays(room)]).toEqual(['2034-05-05-2034-05-08']);
   });
 });
 

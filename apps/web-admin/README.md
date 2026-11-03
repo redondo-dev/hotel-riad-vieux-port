@@ -78,7 +78,10 @@ motif et mène à la panne.
 Les écrans se répondent : sur l'écran Ménage, la clé à molette d'une case ouvre « Signaler une
 panne » avec la chambre déjà choisie (`/pannes?chambre=<id>`) ; dans l'onglet Chambres du
 catalogue, le badge « Hors service » marque une chambre retirée de la vente aujourd'hui par une
-panne. Il disparaît seul quand la panne est résolue.
+panne. Il disparaît seul quand la panne est résolue. Une chambre (ou une catégorie) réservée
+pour des séjours à venir ne peut pas être désactivée. Quand une panne bloque une chambre déjà
+attribuée, la fiche de la panne l'annonce avec les réservations à déplacer, et le planning
+entoure ces séjours en rouge jusqu'à leur changement de chambre.
 
 ## Sécurité côté navigateur
 

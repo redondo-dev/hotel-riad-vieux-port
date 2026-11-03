@@ -14,6 +14,7 @@ import {
   STATUS_WORDS,
 } from '../domain/incident-rules.ts';
 import {
+  type AffectedStay,
   type IncidentEventView,
   type IncidentFilter,
   IncidentRepository,
@@ -28,6 +29,8 @@ export interface ActionOrigin {
 
 export interface IncidentDetail extends IncidentView {
   events: IncidentEventView[];
+  /** Stays booked in the room while it is out of service: to move to another room. */
+  affectedStays: AffectedStay[];
 }
 
 export interface Assignment {
@@ -114,7 +117,9 @@ export class IncidentService {
     if (incident === undefined) {
       throw new NotFoundError('Cette panne n’existe pas.');
     }
-    return { ...incident, events: await this.#repository.events(id) };
+    const events = await this.#repository.events(id);
+    const affectedStays = await this.#repository.affectedStays(id, this.#today());
+    return { ...incident, events, affectedStays };
   }
 
   async report(
