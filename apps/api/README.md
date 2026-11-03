@@ -4,8 +4,8 @@
 couche HTTP commune (module 2) et l'identité du personnel (module 3) sont en place, ainsi que la
 lecture publique du catalogue (`/api/v1/public`) et sa gestion par le personnel
 (`/api/v1/admin/catalog`), l'état du ménage des chambres (`/api/v1/admin/housekeeping`), le
-suivi des pannes (`/api/v1/admin/incidents`) et les disponibilités du personnel
-(`/api/v1/admin/availability`). La création des réservations arrive à l'étape 8-2.
+suivi des pannes (`/api/v1/admin/incidents`), les disponibilités du personnel
+(`/api/v1/admin/availability`) et la saisie des réservations (`/api/v1/admin/reservations`).
 
 ## Serveur HTTP
 
@@ -111,6 +111,25 @@ Disponibilités et prix d'un séjour pour la saisie au comptoir ou au téléphon
 | Suppléments    | Les places incluses vont d'abord aux adultes et aux 12 ans et plus ; bébé (0-1 an) gratuit et non compté   |
 | Taxe           | Taxe de séjour à part : par adulte et par nuit, au taux des paramètres (RM-13, à confirmer)                |
 | Rien de retenu | La réservation (étape suivante) revérifie la disponibilité dans sa transaction (RM-03)                     |
+
+## Réservations (`/api/v1/admin/reservations`)
+
+Saisie par le personnel, liste et détail ; détail dans `openapi/openapi.yaml`.
+
+| Sujet            | Règle                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------- |
+| Droits           | Direction et réception ; ménage et technique : aucun accès                                                    |
+| Création         | Téléphone ou comptoir ; statut « confirmée », paiement « non payé », sans garantie (Stripe plus tard)         |
+| Dernière chambre | Catégories verrouillées, puis disponibilité recomptée nuit par nuit : une seule réservation l'obtient (RM-03) |
+| Refus            | Trop de voyageurs (sonde P1) ; catégorie fermée à la vente : 409 `CATEGORY_CLOSED` ; 409 `NOT_AVAILABLE`      |
+| Prix figés       | Prix de chaque nuit enregistré avec la réservation (RM-14) ; un changement de tarif ne le modifie pas         |
+| Prestations      | Sur tout le séjour : petit-déjeuner par personne et par nuit, bébé exclu (RM-12) ; prix figé                  |
+| Taxe             | Ligne séparée : par adulte et par nuit, au taux des paramètres ; absente si le taux vaut 0 (RM-13)            |
+| Annulation       | Tarif flexible : gratuite jusqu'à 48 h avant 15 h le jour d'arrivée (RM-15) ; non remboursable : aucune       |
+| Double clic      | En-tête `Idempotency-Key` obligatoire : la même clé renvoie la même réponse, sans 2e réservation              |
+| Client           | Existant (`customerId`) ou nouveau (`newCustomer`) ; recherche : `GET /customers?q=` (10 résultats)           |
+| Liste            | Arrivées à partir d'aujourd'hui par défaut ; recherche, filtres, 25 par page ; archivées exclues              |
+| Journal          | `reservation.created` dans `audit_logs`, dans la même transaction                                             |
 
 ## Comptes du personnel (`/api/v1/admin`)
 
