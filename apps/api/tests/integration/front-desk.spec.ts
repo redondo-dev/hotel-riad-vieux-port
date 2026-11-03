@@ -32,6 +32,11 @@ interface Day {
   departures: { total: number; done: number; items: Item[] };
 }
 
+/** The other files leave confirmed stays in the past, listed late as well: set aside here. */
+function ours(items: Item[]): Item[] {
+  return items.filter((stay) => stay.reference.startsWith('ACCU'));
+}
+
 describe.skipIf(!hasTestDatabase)('front desk', () => {
   let harness: IdentityHarness;
   let app: ReturnType<IdentityHarness['app']>;
@@ -149,12 +154,19 @@ describe.skipIf(!hasTestDatabase)('front desk', () => {
 
   it('lists the arrivals and departures of the day, the late arrival apart', async () => {
     const { arrivals, departures } = await day();
-    const references = arrivals.items.map((stay) => stay.reference);
-    expect(references).toEqual(['ACCU0005', 'ACCU0001', 'ACCU0002', 'ACCU0003']);
-    expect(arrivals.items[0]?.late).toBe(true);
+    const expected = ours(arrivals.items);
+    expect(expected.map((stay) => stay.reference)).toEqual([
+      'ACCU0005',
+      'ACCU0001',
+      'ACCU0002',
+      'ACCU0003',
+    ]);
+    expect(expected[0]?.late).toBe(true);
+    // The counters cover the day only (this file owns September 2034).
     expect([arrivals.total, arrivals.done]).toEqual([3, 0]);
-    expect(departures.items.map((stay) => stay.reference)).toEqual(['ACCU0004']);
-    expect(departures.items[0]?.customerName).toBe('Accueil Inès');
+    const leaving = ours(departures.items);
+    expect(leaving.map((stay) => stay.reference)).toEqual(['ACCU0004']);
+    expect(leaving[0]?.customerName).toBe('Accueil Inès');
   });
 
   it('records an arrival with the version read, a given room and the checks', async () => {
