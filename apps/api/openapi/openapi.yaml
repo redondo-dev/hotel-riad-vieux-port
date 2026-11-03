@@ -6,7 +6,8 @@ info:
     API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
 
     **État : contrôle de santé, comptes du personnel, catalogue (public et gestion), ménage,
-    pannes et disponibilités du personnel implémentés.** Ce fichier ne décrit que ce qui
+    pannes, disponibilités et réservations du personnel implémentés.** Ce fichier ne décrit
+    que ce qui
     existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
     La spécification complète validée figure dans le dossier d'architecture (section 5).
 
@@ -1019,6 +1020,133 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '503': { $ref: '#/components/responses/Problem' }
+  /admin/reservations:
+    get:
+      operationId: listReservations
+      summary: Rechercher les réservations
+      description: |
+        Par défaut, les arrivées à partir d'aujourd'hui ; une recherche (`q`) ou une période
+        demandée regarde toutes les dates. Réservations archivées exclues. 25 par page.
+        Direction et réception.
+      tags: [Réservations]
+      security: [{ staffSession: [] }]
+      parameters:
+        - name: q
+          in: query
+          description: Référence exacte, ou partie du nom, du prénom ou de l'e-mail du client.
+          schema: { type: string, maxLength: 100 }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ReservationStatus' }
+        - name: paymentStatus
+          in: query
+          schema: { $ref: '#/components/schemas/PaymentStatus' }
+        - { name: source, in: query, schema: { type: string, enum: [website, phone, desk] } }
+        - { name: arrivalFrom, in: query, schema: { type: string, format: date } }
+        - { name: arrivalTo, in: query, schema: { type: string, format: date } }
+        - name: unassigned
+          in: query
+          description: Seulement les réservations dont une chambre n'a pas encore de numéro.
+          schema: { type: string, enum: ['true', 'false'] }
+        - name: sort
+          in: query
+          description: Arrivée croissante (défaut), création ou total décroissants.
+          schema: { type: string, enum: [checkIn, created, total], default: checkIn }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        '200':
+          description: Une page de réservations.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, pageSize]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/ReservationSummary' } }
+                  total: { type: integer, description: Réservations correspondant aux filtres. }
+                  page: { type: integer }
+                  pageSize: { type: integer, example: 25 }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createReservation
+      summary: Saisir une réservation (téléphone ou comptoir)
+      description: |
+        Dans une seule transaction : verrou des catégories demandées, capacité (sonde P1),
+        fermeture à la vente (409 `CATEGORY_CLOSED`), disponibilité de chaque nuit
+        (409 `NOT_AVAILABLE`), prix des nuits figés, prestations, taxe de séjour à part,
+        journal. Statut « confirmée », paiement « non payé ». Le même en-tête
+        `Idempotency-Key` renvoie la même réponse (en-tête `Idempotent-Replayed: true`) ;
+        réutilisé pour une autre demande : 422 `IDEMPOTENCY_KEY_REUSED`.
+      tags: [Réservations]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{16,128}$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewBooking' }
+      responses:
+        '201':
+          description: La réservation créée (ou la réponse déjà donnée pour cette clé).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}:
+    get:
+      operationId: getReservation
+      summary: Détail d'une réservation
+      tags: [Réservations]
+      security: [{ staffSession: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Client, chambres, nuits, prestations, taxe et version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/customers:
+    get:
+      operationId: searchCustomers
+      summary: Rechercher un client (formulaire de réservation)
+      description: |
+        Nom, prénom ou e-mail contenant `q` ; 10 résultats au plus ; clients anonymisés exclus.
+      tags: [Réservations]
+      security: [{ staffSession: [] }]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 100 }
+      responses:
+        '200':
+          description: Clients trouvés.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Customer' } }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
 components:
   securitySchemes:
     staffSession:
@@ -1257,6 +1385,195 @@ components:
                 type: array
                 description: Une offre par chambre demandée, dans l'ordre de la demande.
                 items: { $ref: '#/components/schemas/RoomOffer' }
+    ReservationStatus:
+      type: string
+      enum: [pending_payment, confirmed, checked_in, checked_out, cancelled, no_show, expired]
+    PaymentStatus:
+      type: string
+      enum: [unpaid, partially_paid, paid, partially_refunded, refunded]
+    Customer:
+      type: object
+      required: [id, firstName, lastName, email, phone, preferredLanguage]
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: [string, 'null'] }
+        preferredLanguage: { type: string, enum: [fr, en] }
+    NewBooking:
+      type: object
+      additionalProperties: false
+      required: [checkIn, checkOut, ratePlan, source, rooms]
+      description: Un client existant (`customerId`) ou un nouveau (`newCustomer`), jamais les deux.
+      properties:
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        ratePlan: { type: string, enum: [flexible, non_refundable] }
+        source: { type: string, enum: [phone, desk] }
+        rooms:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required: [categoryId, adults]
+            properties:
+              categoryId: { type: string, format: uuid }
+              adults: { type: integer, minimum: 1, maximum: 4 }
+              childrenAges:
+                type: array
+                maxItems: 3
+                items: { type: integer, minimum: 0, maximum: 17 }
+              babyCot: { type: boolean, default: false }
+        services:
+          type: array
+          maxItems: 10
+          description: Prestations sur tout le séjour ; `quantity` ne sert qu'à l'unité.
+          items:
+            type: object
+            additionalProperties: false
+            required: [serviceId]
+            properties:
+              serviceId: { type: string, format: uuid }
+              quantity: { type: integer, minimum: 1, maximum: 99, default: 1 }
+        customerId: { type: string, format: uuid }
+        newCustomer:
+          type: object
+          additionalProperties: false
+          required: [firstName, lastName, email]
+          properties:
+            firstName: { type: string, minLength: 1, maxLength: 100 }
+            lastName: { type: string, minLength: 1, maxLength: 100 }
+            email: { type: string, format: email, maxLength: 254 }
+            phone: { type: string, maxLength: 30 }
+            preferredLanguage: { type: string, enum: [fr, en], default: fr }
+        customerMessage: { type: string, maxLength: 500 }
+        internalNotes: { type: string, maxLength: 2000 }
+    ReservationSummary:
+      type: object
+      required:
+        - id
+        - reference
+        - customer
+        - checkIn
+        - checkOut
+        - nights
+        - rooms
+        - status
+        - paymentStatus
+        - totalCents
+        - source
+        - createdAt
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string, example: K7M2QX9A }
+        customer:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            firstName: { type: string }
+            lastName: { type: string }
+            email: { type: string }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        nights: { type: integer }
+        rooms:
+          type: array
+          items:
+            type: object
+            properties:
+              categoryName: { type: string }
+              roomNumber: { type: [string, 'null'], description: null tant que non attribuée. }
+        status: { $ref: '#/components/schemas/ReservationStatus' }
+        paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
+        totalCents: { type: integer }
+        source: { type: string, enum: [website, phone, desk] }
+        createdAt: { type: string, format: date-time }
+    ReservationDetail:
+      type: object
+      required:
+        - id
+        - reference
+        - status
+        - paymentStatus
+        - source
+        - ratePlan
+        - checkIn
+        - checkOut
+        - nights
+        - totalCents
+        - version
+        - customer
+        - rooms
+        - charges
+      properties:
+        id: { type: string, format: uuid }
+        reference: { type: string }
+        status: { $ref: '#/components/schemas/ReservationStatus' }
+        paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
+        source: { type: string, enum: [website, phone, desk] }
+        ratePlan: { type: string, enum: [flexible, non_refundable] }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        nights: { type: integer }
+        totalCents: { type: integer, description: Nuits, prestations et taxe de séjour. }
+        freeCancellationUntil:
+          type: [string, 'null']
+          format: date-time
+          description: Tarif flexible seulement (RM-15).
+        customerMessage: { type: [string, 'null'] }
+        internalNotes: { type: [string, 'null'] }
+        version: { type: integer, description: Verrou optimiste, à renvoyer pour modifier. }
+        createdAt: { type: string, format: date-time }
+        createdBy: { oneOf: [{ $ref: '#/components/schemas/PersonName' }, { type: 'null' }] }
+        customer: { $ref: '#/components/schemas/Customer' }
+        rooms:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              category:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  code: { type: string }
+                  name: { type: string }
+              room:
+                oneOf:
+                  - type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      number: { type: string }
+                  - type: 'null'
+              adults: { type: integer }
+              childrenAges: { type: array, items: { type: integer } }
+              babyCot: { type: boolean }
+              subtotalCents: { type: integer }
+              nights:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    night: { $ref: '#/components/schemas/Night' }
+                    priceCents: { type: integer, description: Prix figé à la réservation. }
+                    rateLabel: { type: [string, 'null'], example: '+30 %' }
+        charges:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              kind:
+                type: string
+                enum: [service, tourist_tax, cancellation_fee, no_show_fee, other]
+              label: { type: string }
+              quantity: { type: number }
+              unitPriceCents: { type: integer }
+              vatRate: { type: number }
+              totalCents: { type: integer }
     CategoryAdmin:
       type: object
       required:

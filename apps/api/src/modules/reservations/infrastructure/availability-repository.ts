@@ -1,4 +1,4 @@
-import { QueryTypes, type Sequelize } from 'sequelize';
+import { QueryTypes, type Sequelize, type Transaction } from 'sequelize';
 import type { PricedCategory, PricingSettings } from '../domain/quote.ts';
 
 /**
@@ -31,8 +31,16 @@ export class AvailabilityRepository {
     this.#sequelize = sequelize;
   }
 
-  async #select<T extends object>(sql: string, bind: unknown[] = []): Promise<T[]> {
-    return this.#sequelize.query<T>(sql, { bind, type: QueryTypes.SELECT });
+  async #select<T extends object>(
+    sql: string,
+    bind: unknown[] = [],
+    transaction?: Transaction,
+  ): Promise<T[]> {
+    return this.#sequelize.query<T>(sql, {
+      bind,
+      type: QueryTypes.SELECT,
+      ...(transaction === undefined ? {} : { transaction }),
+    });
   }
 
   /** undefined while the hotel is not configured. */
@@ -68,9 +76,13 @@ export class AvailabilityRepository {
    * booked rooms of the category that night (RM-02). A released block never counts: one
    * released on the day it started still covers that day, the room is back on sale. A booked
    * room counts whether a room number is assigned or not, and even if its room is blocked:
-   * the guest still needs a room.
+   * the guest still needs a room. Inside a booking, `transaction` sees the locks it holds.
    */
-  freeRoomsByNight(checkIn: string, checkOut: string): Promise<FreeRoomsOfNight[]> {
+  freeRoomsByNight(
+    checkIn: string,
+    checkOut: string,
+    transaction?: Transaction,
+  ): Promise<FreeRoomsOfNight[]> {
     return this.#select<FreeRoomsOfNight>(
       `WITH nights AS (
          SELECT day::date AS night
@@ -102,16 +114,22 @@ export class AvailabilityRepository {
         WHERE c.is_active
         ORDER BY c.id, n.night`,
       [checkIn, checkOut],
+      transaction,
     );
   }
 
   /** Categories closed to sale on at least one night of the stay (sales_closures). */
-  async closedCategoryIds(checkIn: string, checkOut: string): Promise<Set<string>> {
+  async closedCategoryIds(
+    checkIn: string,
+    checkOut: string,
+    transaction?: Transaction,
+  ): Promise<Set<string>> {
     const rows = await this.#select<{ categoryId: string }>(
       `SELECT DISTINCT category_id AS "categoryId"
          FROM sales_closures
         WHERE period && daterange($1::date, $2::date, '[)')`,
       [checkIn, checkOut],
+      transaction,
     );
     return new Set(rows.map((row) => row.categoryId));
   }
