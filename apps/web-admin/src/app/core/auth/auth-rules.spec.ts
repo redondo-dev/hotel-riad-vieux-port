@@ -9,6 +9,7 @@ describe('menuFor', () => {
       menuFor(role).map((item) => item.path);
     expect(paths('direction')).toEqual([
       '/accueil',
+      '/aujourdhui',
       '/reservations',
       '/planning',
       '/menage',
@@ -18,6 +19,7 @@ describe('menuFor', () => {
     ]);
     expect(paths('reception')).toEqual([
       '/accueil',
+      '/aujourdhui',
       '/reservations',
       '/planning',
       '/menage',

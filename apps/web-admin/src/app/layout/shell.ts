@@ -11,6 +11,7 @@ import {
 } from '@angular/router';
 import {
   LucideBed,
+  LucideCalendarCheck,
   LucideCalendarDays,
   LucideCalendarRange,
   LucideCircleUserRound,
@@ -66,6 +67,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
     RouterLinkActive,
     ZelligeStar,
     LucideHouse,
+    LucideCalendarCheck,
     LucideCalendarDays,
     LucideCalendarRange,
     LucideBed,
@@ -129,6 +131,9 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
                   @switch (item.icon) {
                     @case ('home') {
                       <svg lucideHouse class="shrink-0"></svg>
+                    }
+                    @case ('today') {
+                      <svg lucideCalendarCheck class="shrink-0"></svg>
                     }
                     @case ('reservations') {
                       <svg lucideCalendarDays class="shrink-0"></svg>

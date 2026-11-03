@@ -14,6 +14,8 @@ import { LucideArrowLeft, LucideCircleAlert, LucidePencil, LucideX } from '@luci
 import { fieldMessage, type Problem, toProblem } from '../../core/api/problem';
 import { SessionService } from '../../core/auth/session.service';
 import { NotifierService } from '../../core/notifier.service';
+import { ACTION_LABELS, actionsFor, type FrontDeskAction } from '../front-desk/front-desk-model';
+import { hotelToday } from '../planning/planning-model';
 import { ReservationApi, type ReservationChanges } from './reservation-api';
 import {
   canAssignRoom,
@@ -118,6 +120,19 @@ const CLOSED_STATUSES = new Set(['cancelled', 'expired', 'no_show']);
           </p>
           <h2 id="titre-reservation" class="text-xl font-semibold">{{ name() }}</h2>
           <p>{{ stay() }}</p>
+          @if (deskActions().length > 0) {
+            <div class="flex flex-wrap gap-2 pt-1">
+              @for (action of deskActions(); track action) {
+                <a
+                  [class]="action === 'no-show' ? 'btn-secondary' : 'btn-primary'"
+                  routerLink="/aujourdhui"
+                  [queryParams]="{ ouvrir: current.id }"
+                >
+                  {{ deskLabel(action) }}
+                </a>
+              }
+            </div>
+          }
           @if (!closed()) {
             <div class="flex flex-wrap gap-2 pt-1">
               <button type="button" class="btn-secondary" (click)="openChange()">
@@ -558,6 +573,11 @@ export class ReservationPage implements OnInit {
     const current = this.reservation();
     return current !== null && canChangeStay(current, this.role());
   });
+  /** Arrival, departure or no-show possible today: done on the « Today » screen. */
+  protected readonly deskActions = computed((): FrontDeskAction[] => {
+    const current = this.reservation();
+    return current === null ? [] : actionsFor(current, hotelToday(new Date()));
+  });
   protected readonly roomsEditable = computed(() => {
     const current = this.reservation();
     return current !== null && canAssignRoom(current);
@@ -954,5 +974,9 @@ export class ReservationPage implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  protected deskLabel(action: FrontDeskAction): string {
+    return ACTION_LABELS[action];
   }
 }

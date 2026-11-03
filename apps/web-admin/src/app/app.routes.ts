@@ -40,6 +40,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home-page').then((m) => m.HomePage),
       },
       {
+        path: 'aujourdhui',
+        title: `Aujourd’hui · ${TITLE}`,
+        data: { heading: 'Aujourd’hui', roles: ['direction', 'reception'] },
+        canActivate: [roleGuard],
+        loadComponent: () =>
+          import('./features/front-desk/front-desk-page').then((m) => m.FrontDeskPage),
+      },
+      {
         path: 'reservations',
         title: `Réservations · ${TITLE}`,
         data: { heading: 'Réservations', roles: ['direction', 'reception'] },
