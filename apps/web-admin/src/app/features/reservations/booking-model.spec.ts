@@ -26,7 +26,10 @@ function category(changes: Partial<CategoryAvailability>): CategoryAvailability 
 
 describe('serializeGuests', () => {
   it('writes the guests as the API reads them', () => {
-    const rooms = [{ adults: 2, childrenAges: [6, 3] }, { adults: 2, childrenAges: [] }];
+    const rooms = [
+      { adults: 2, childrenAges: [6, 3] },
+      { adults: 2, childrenAges: [] },
+    ];
     expect(serializeGuests(rooms)).toBe('2-6-3_2');
   });
 });
@@ -64,7 +67,10 @@ describe('roomsTotal', () => {
 
 describe('serviceQuantity', () => {
   it('counts breakfast per guest and per night, babies excepted (RM-12)', () => {
-    const rooms = [{ adults: 2, childrenAges: [6, 1] }, { adults: 1, childrenAges: [] }];
+    const rooms = [
+      { adults: 2, childrenAges: [6, 1] },
+      { adults: 1, childrenAges: [] },
+    ];
     expect(serviceQuantity('per_person_night', rooms, 2, 1)).toBe(8);
     expect(serviceQuantity('per_unit', rooms, 2, 3)).toBe(3);
   });
