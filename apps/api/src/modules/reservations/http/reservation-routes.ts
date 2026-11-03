@@ -104,7 +104,10 @@ const listFilter = z.strictObject({
   source: z.enum(ALL_SOURCES).optional(),
   arrivalFrom: isoDate.optional(),
   arrivalTo: isoDate.optional(),
-  unassigned: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  unassigned: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
   sort: z.enum(['checkIn', 'created', 'total']).default('checkIn'),
   page: z.coerce.number().pipe(z.int().min(1).max(10_000)).default(1),
 });

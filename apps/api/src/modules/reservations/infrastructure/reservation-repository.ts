@@ -546,41 +546,40 @@ export class ReservationRepository {
     if (row === undefined) {
       return undefined;
     }
-    const [rooms, nights, charges] = await Promise.all([
-      this.#select<RoomRow>(
-        `SELECT l.id, l.category_id AS "categoryId", c.code AS "categoryCode",
-                c.name_fr AS "categoryName", l.room_id AS "roomId", m.number AS "roomNumber",
-                l.adults, l.children_ages AS "childrenAges", l.baby_cot AS "babyCot",
-                l.subtotal_cents AS "subtotalCents"
-           FROM reservation_rooms l
-           JOIN room_categories c ON c.id = l.category_id
-           LEFT JOIN rooms m ON m.id = l.room_id
-          WHERE l.reservation_id = $1
-          ORDER BY c.sort_order, l.id`,
-        [id],
-        transaction,
-      ),
-      this.#select<NightRow>(
-        `SELECT n.reservation_room_id AS "lineId", n.night::text AS night,
-                n.price_cents AS "priceCents", n.rate_label AS "rateLabel"
-           FROM reservation_nights n
-           JOIN reservation_rooms l ON l.id = n.reservation_room_id
-          WHERE l.reservation_id = $1
-          ORDER BY n.night`,
-        [id],
-        transaction,
-      ),
-      this.#select<ChargeRow>(
-        `SELECT id, kind, label, quantity::text AS quantity,
-                unit_price_cents AS "unitPriceCents", vat_rate::text AS "vatRate",
-                total_cents AS "totalCents"
-           FROM reservation_charges
-          WHERE reservation_id = $1
-          ORDER BY kind = 'tourist_tax', created_at, label`,
-        [id],
-        transaction,
-      ),
-    ]);
+    // One after the other: inside a transaction, the three reads share one connection.
+    const rooms = await this.#select<RoomRow>(
+      `SELECT l.id, l.category_id AS "categoryId", c.code AS "categoryCode",
+              c.name_fr AS "categoryName", l.room_id AS "roomId", m.number AS "roomNumber",
+              l.adults, l.children_ages AS "childrenAges", l.baby_cot AS "babyCot",
+              l.subtotal_cents AS "subtotalCents"
+         FROM reservation_rooms l
+         JOIN room_categories c ON c.id = l.category_id
+         LEFT JOIN rooms m ON m.id = l.room_id
+        WHERE l.reservation_id = $1
+        ORDER BY c.sort_order, l.id`,
+      [id],
+      transaction,
+    );
+    const nights = await this.#select<NightRow>(
+      `SELECT n.reservation_room_id AS "lineId", n.night::text AS night,
+              n.price_cents AS "priceCents", n.rate_label AS "rateLabel"
+         FROM reservation_nights n
+         JOIN reservation_rooms l ON l.id = n.reservation_room_id
+        WHERE l.reservation_id = $1
+        ORDER BY n.night`,
+      [id],
+      transaction,
+    );
+    const charges = await this.#select<ChargeRow>(
+      `SELECT id, kind, label, quantity::text AS quantity,
+              unit_price_cents AS "unitPriceCents", vat_rate::text AS "vatRate",
+              total_cents AS "totalCents"
+         FROM reservation_charges
+        WHERE reservation_id = $1
+        ORDER BY kind = 'tourist_tax', created_at, label`,
+      [id],
+      transaction,
+    );
     return {
       id: row.id,
       reference: row.reference,
