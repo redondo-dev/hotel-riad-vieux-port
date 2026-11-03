@@ -6,9 +6,9 @@ info:
     API REST du site de réservation et de l'outil de gestion (hôtel fictif, projet portfolio).
 
     **État : contrôle de santé, comptes du personnel, catalogue (public et gestion), ménage,
-    pannes, disponibilités et réservations du personnel implémentés.** Ce fichier ne décrit
-    que ce qui
-    existe réellement ; chaque module y ajoutera ses points d'accès au fur et à mesure.
+    pannes, disponibilités, réservations du personnel et leurs modifications implémentés.** Ce
+    fichier ne décrit que ce qui existe réellement ; chaque module y ajoutera ses points
+    d'accès au fur et à mesure.
     La spécification complète validée figure dans le dossier d'architecture (section 5).
 
     Conventions communes : JSON, champs en camelCase, dates `AAAA-MM-JJ`, montants en
@@ -1121,6 +1121,172 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: changeReservation
+      summary: Modifier les dates, les voyageurs ou les notes
+      description: |
+        Verrou optimiste : l'en-tête `If-Match` porte la `version` lue (428 `VERSION_REQUIRED`
+        sans lui, 412 `RESERVATION_CHANGED` si un collègue a modifié la réservation entre-temps,
+        avec son nom et l'heure). Dates et voyageurs : réservation confirmée seulement ; tout le
+        séjour est recalculé aux tarifs du jour (prestations et taxe recomptées) ; nuits ajoutées
+        fermées à la vente : 409 `CATEGORY_CLOSED` ; plus de place : 409 `NOT_AVAILABLE` ;
+        chambre attribuée prise ou hors service sur les nouvelles nuits : 409 `ROOM_NOT_FREE`.
+        Tarif non remboursable : direction seule (403 `MANAGEMENT_ONLY`), motif obligatoire.
+        `?preview=true` renvoie le nouveau prix sans rien enregistrer.
+      tags: [Réservations]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: If-Match, in: header, required: true, schema: { type: string, example: '"3"' } }
+        - { name: preview, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReservationChanges' }
+      responses:
+        '200':
+          description: La réservation modifiée, ou l'aperçu du nouveau prix (`?preview=true`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/ReservationDetail' }
+                  - { $ref: '#/components/schemas/ChangePreview' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '412': { $ref: '#/components/responses/Problem' }
+        '428': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}/cancellation:
+    get:
+      operationId: getCancellationFee
+      summary: Frais d'une annulation faite maintenant
+      tags: [Réservations]
+      security: [{ staffSession: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Frais, échéance de l'annulation gratuite, réservé à la direction ou non.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feeCents, freeCancellationUntil, managementOnly]
+                properties:
+                  feeCents: { type: integer }
+                  freeCancellationUntil: { type: [string, 'null'], format: date-time }
+                  managementOnly: { type: boolean }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}/cancel:
+    post:
+      operationId: cancelReservation
+      summary: Annuler une réservation
+      description: |
+        Avant l'arrivée seulement (409 `RESERVATION_STATE`). Tarif flexible : gratuit jusqu'à
+        l'échéance, puis la première nuit de chaque chambre (RM-15) ; non remboursable : toutes
+        les nuits restent dues et seule la direction annule (RM-16, RM-18). Les frais sont
+        enregistrés à encaisser ; `waiveFee: true` (direction seule) y renonce. Les chambres
+        sont libérées aussitôt.
+      tags: [Réservations]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500 }
+                waiveFee: { type: boolean, default: false }
+      responses:
+        '200':
+          description: La réservation annulée, avec `cancellationFeeCents`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}/rooms/{lineId}/free-rooms:
+    get:
+      operationId: listFreeRooms
+      summary: Chambres proposées par le sélecteur
+      description: |
+        Chambres actives de la catégorie réservée, libres et en service sur toutes les nuits du
+        séjour (sondes P3 et P4), avec leur propreté.
+      tags: [Réservations]
+      security: [{ staffSession: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: lineId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Chambres libres.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, number, floor, housekeepingStatus]
+                      properties:
+                        id: { type: string, format: uuid }
+                        number: { type: string }
+                        floor: { type: integer }
+                        housekeepingStatus: { type: string, enum: [clean, dirty] }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}/rooms/{lineId}/room:
+    put:
+      operationId: assignRoom
+      summary: Attribuer, changer ou retirer la chambre
+      description: |
+        `roomId: null` retire la chambre. Refusé : autre catégorie (400), chambre désactivée
+        (409 `ROOM_INACTIVE`, sonde P3), hors service sur une nuit (409 `ROOM_OUT_OF_SERVICE`,
+        sonde P4), déjà attribuée (409 `ROOM_ALREADY_ASSIGNED`, garanti aussi par la base).
+      tags: [Réservations]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: lineId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [roomId]
+              properties:
+                roomId: { type: [string, 'null'], format: uuid }
+      responses:
+        '200':
+          description: La réservation avec sa chambre.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
   /admin/customers:
     get:
       operationId: searchCustomers
@@ -1451,6 +1617,43 @@ components:
             preferredLanguage: { type: string, enum: [fr, en], default: fr }
         customerMessage: { type: string, maxLength: 500 }
         internalNotes: { type: string, maxLength: 2000 }
+    ReservationChanges:
+      type: object
+      additionalProperties: false
+      description: Un champ absent ne change pas ; une note vide ou null est effacée.
+      properties:
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        rooms:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required: [lineId, adults]
+            properties:
+              lineId: { type: string, format: uuid }
+              adults: { type: integer, minimum: 1, maximum: 4 }
+              childrenAges:
+                type: array
+                maxItems: 3
+                items: { type: integer, minimum: 0, maximum: 17 }
+              babyCot: { type: boolean, default: false }
+        internalNotes: { type: [string, 'null'], maxLength: 2000 }
+        customerMessage: { type: [string, 'null'], maxLength: 500 }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    ChangePreview:
+      type: object
+      required: [checkIn, checkOut, previousTotalCents, totalCents, differenceCents]
+      properties:
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        previousTotalCents: { type: integer }
+        totalCents: { type: integer }
+        differenceCents: { type: integer, description: Positive si le séjour coûte plus cher. }
+        rooms: { type: array, items: { type: object } }
+        charges: { type: array, items: { type: object } }
     ReservationSummary:
       type: object
       required:
@@ -1525,6 +1728,11 @@ components:
           description: Tarif flexible seulement (RM-15).
         customerMessage: { type: [string, 'null'] }
         internalNotes: { type: [string, 'null'] }
+        cancelledAt: { type: [string, 'null'], format: date-time }
+        cancellationReason: { type: [string, 'null'] }
+        cancellationFeeCents:
+          type: integer
+          description: Frais d'annulation à encaisser (0 si gratuite ou si la direction y renonce).
         version: { type: integer, description: Verrou optimiste, à renvoyer pour modifier. }
         createdAt: { type: string, format: date-time }
         createdBy: { oneOf: [{ $ref: '#/components/schemas/PersonName' }, { type: 'null' }] }

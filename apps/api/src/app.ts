@@ -16,8 +16,10 @@ import { requireStaff } from './modules/identity/http/guards.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
 import { UserRepository } from './modules/identity/infrastructure/user-repository.ts';
 import { AvailabilityService } from './modules/reservations/application/availability-service.ts';
+import { ReservationChanges } from './modules/reservations/application/reservation-changes.ts';
 import { ReservationService } from './modules/reservations/application/reservation-service.ts';
 import { availabilityRouter } from './modules/reservations/http/availability-routes.ts';
+import { reservationChangeRouter } from './modules/reservations/http/reservation-change-routes.ts';
 import { reservationRouter } from './modules/reservations/http/reservation-routes.ts';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.ts';
 import { type DatabaseCheck, healthRouter } from './shared/http/health.ts';
@@ -64,6 +66,8 @@ export interface AdminDependencies {
   adminAppUrl: string;
   /** Current day at the hotel, « YYYY-MM-DD »; the tests fix it. Default: the real clock. */
   today?: () => string;
+  /** Current instant (cancellation deadlines); the tests fix it. Default: the real clock. */
+  now?: () => Date;
 }
 
 /**
@@ -97,6 +101,9 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   router.use('/incidents', incidentRouter(new IncidentService(deps.sequelize, today), staff));
   router.use(availabilityRouter(new AvailabilityService(deps.sequelize, today), staff));
   router.use(reservationRouter(new ReservationService(deps.sequelize, today), staff));
+  const now = deps.now ?? (() => new Date());
+  const changes = new ReservationChanges(deps.sequelize, today, now);
+  router.use(reservationChangeRouter(changes, staff));
   return router;
 }
 

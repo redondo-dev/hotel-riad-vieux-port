@@ -36,9 +36,10 @@ export class IdentityHarness {
 
   /**
    * A NEW application each time: its rate-limit counters start from zero. `today` fixes the
-   * current day at the hotel (« YYYY-MM-DD »); by default, the real clock.
+   * current day at the hotel (« YYYY-MM-DD ») and `now` the current instant; by default, the
+   * real clock.
    */
-  app(options: { today?: () => string } = {}): ReturnType<typeof createApp> {
+  app(options: { today?: () => string; now?: () => Date } = {}): ReturnType<typeof createApp> {
     const logger = createLogger({ level: 'silent', pretty: false });
     return createApp({
       logger,
@@ -57,6 +58,7 @@ export class IdentityHarness {
         },
         adminAppUrl: ADMIN_APP_URL,
         ...(options.today === undefined ? {} : { today: options.today }),
+        ...(options.now === undefined ? {} : { now: options.now }),
       },
     });
   }

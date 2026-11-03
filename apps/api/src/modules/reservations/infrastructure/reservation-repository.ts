@@ -120,6 +120,10 @@ export interface ReservationDetail {
   freeCancellationUntil: Date | null;
   customerMessage: string | null;
   internalNotes: string | null;
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
+  /** Due after a cancellation (RM-15, RM-16): to collect, unless waived by the management. */
+  cancellationFeeCents: number;
   /** Increases at each change: sent back to modify the reservation (optimistic lock). */
   version: number;
   createdAt: Date;
@@ -163,6 +167,67 @@ export interface ReservationFilter {
   pageSize: number;
 }
 
+/** The reservation as a change needs it, locked until the end of the transaction. */
+export interface LockedReservation {
+  id: string;
+  reference: string;
+  status: ReservationStatus;
+  ratePlan: RatePlan;
+  checkIn: string;
+  checkOut: string;
+  version: number;
+  freeCancellationUntil: Date | null;
+}
+
+export interface LineState {
+  id: string;
+  categoryId: string;
+  roomId: string | null;
+  roomNumber: string | null;
+  adults: number;
+  childrenAges: number[];
+  babyCot: boolean;
+}
+
+/** A charge that a change of dates or guests may recount (never one already invoiced). */
+export interface ChargeState {
+  id: string;
+  kind: string;
+  pricingUnit: PricingUnit | null;
+  quantity: number;
+  unitPriceCents: number;
+  totalCents: number;
+  invoiced: boolean;
+}
+
+export interface StayChange {
+  checkIn: string;
+  checkOut: string;
+  totalCents: number;
+  freeCancellationUntil: Date | null;
+  internalNotes: string | null;
+  customerMessage: string | null;
+}
+
+export interface RoomForAssignment {
+  id: string;
+  number: string;
+  categoryId: string;
+  isActive: boolean;
+}
+
+export interface FreeRoom {
+  id: string;
+  number: string;
+  floor: number;
+  housekeepingStatus: 'clean' | 'dirty';
+}
+
+export interface LastChange {
+  actor: string | null;
+  at: Date;
+}
+
 export interface StoredResponse {
   requestHash: string;
   status: number | null;
@@ -175,6 +240,10 @@ interface SettingsRow extends Omit<BookingSettings, 'nonRefundableDiscountPct'> 
 
 interface ServiceRow extends Omit<BookableService, 'vatRate'> {
   vatRate: string;
+}
+
+interface ChargeStateRow extends Omit<ChargeState, 'quantity'> {
+  quantity: string;
 }
 
 interface DetailRow {
@@ -191,6 +260,9 @@ interface DetailRow {
   freeCancellationUntil: Date | null;
   customerMessage: string | null;
   internalNotes: string | null;
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
+  cancellationFeeCents: number;
   version: number;
   createdAt: Date;
   creatorId: string | null;
@@ -520,6 +592,280 @@ export class ReservationRepository {
     );
   }
 
+  // --- Changing a reservation ---
+
+  /** Locked until the end of the transaction: two changes of the same reservation queue up. */
+  async lockReservation(
+    id: string,
+    transaction: Transaction,
+  ): Promise<LockedReservation | undefined> {
+    const rows = await this.#select<LockedReservation>(
+      `SELECT id, reference, status, rate_plan AS "ratePlan", check_in::text AS "checkIn",
+              check_out::text AS "checkOut", lock_version AS version,
+              free_cancellation_until AS "freeCancellationUntil"
+         FROM reservations
+        WHERE id = $1
+          FOR UPDATE`,
+      [id],
+      transaction,
+    );
+    return rows[0];
+  }
+
+  lines(reservationId: string, transaction: Transaction): Promise<LineState[]> {
+    return this.#select<LineState>(
+      `SELECT l.id, l.category_id AS "categoryId", l.room_id AS "roomId",
+              m.number AS "roomNumber", l.adults, l.children_ages AS "childrenAges",
+              l.baby_cot AS "babyCot"
+         FROM reservation_rooms l
+         LEFT JOIN rooms m ON m.id = l.room_id
+        WHERE l.reservation_id = $1
+        ORDER BY l.id`,
+      [reservationId],
+      transaction,
+    );
+  }
+
+  async charges(reservationId: string, transaction: Transaction): Promise<ChargeState[]> {
+    const rows = await this.#select<ChargeStateRow>(
+      `SELECT c.id, c.kind, s.pricing_unit AS "pricingUnit", c.quantity::text AS quantity,
+              c.unit_price_cents AS "unitPriceCents", c.total_cents AS "totalCents",
+              c.invoice_id IS NOT NULL AS invoiced
+         FROM reservation_charges c
+         LEFT JOIN services s ON s.id = c.service_id
+        WHERE c.reservation_id = $1`,
+      [reservationId],
+      transaction,
+    );
+    return rows.map((row) => ({ ...row, quantity: Number(row.quantity) }));
+  }
+
+  /** Price of the first night of each room, and of every night, as frozen at booking. */
+  async nightTotals(
+    reservationId: string,
+    transaction: Transaction,
+  ): Promise<{ firstNightsCents: number; nightsCents: number }> {
+    const rows = await this.#select<{ firstNightsCents: number; nightsCents: number }>(
+      `SELECT coalesce(sum(n.price_cents) FILTER (WHERE n.night = r.check_in), 0)::int
+                AS "firstNightsCents",
+              coalesce(sum(n.price_cents), 0)::int AS "nightsCents"
+         FROM reservations r
+         JOIN reservation_rooms l ON l.reservation_id = r.id
+         JOIN reservation_nights n ON n.reservation_room_id = l.id
+        WHERE r.id = $1`,
+      [reservationId],
+      transaction,
+    );
+    return rows[0] ?? { firstNightsCents: 0, nightsCents: 0 };
+  }
+
+  /** Dates, total and notes; the dates of the rooms follow (database trigger). */
+  async updateStay(id: string, change: StayChange, transaction: Transaction): Promise<void> {
+    await this.#execute(
+      `UPDATE reservations
+          SET check_in = $2, check_out = $3, total_amount_cents = $4,
+              free_cancellation_until = $5, internal_notes = $6, customer_message = $7,
+              lock_version = lock_version + 1
+        WHERE id = $1`,
+      [
+        id,
+        change.checkIn,
+        change.checkOut,
+        change.totalCents,
+        change.freeCancellationUntil,
+        change.internalNotes,
+        change.customerMessage,
+      ],
+      transaction,
+    );
+  }
+
+  /** New guests and new prices of one room: its nights are written again. */
+  async rewriteLine(
+    lineId: string,
+    line: Omit<NewReservationRoom, 'categoryId'>,
+    transaction: Transaction,
+  ): Promise<void> {
+    await this.#execute(
+      `UPDATE reservation_rooms
+          SET adults = $2, children_ages = $3::smallint[], baby_cot = $4, subtotal_cents = $5
+        WHERE id = $1`,
+      [lineId, line.adults, line.childrenAges, line.babyCot, line.subtotalCents],
+      transaction,
+    );
+    await this.#execute(
+      'DELETE FROM reservation_nights WHERE reservation_room_id = $1',
+      [lineId],
+      transaction,
+    );
+    await this.#execute(
+      `INSERT INTO reservation_nights (reservation_room_id, night, price_cents, rate_label)
+       SELECT $1, night.night, night.price_cents, night.rate_label
+         FROM jsonb_to_recordset($2::jsonb)
+           AS night (night date, price_cents integer, rate_label text)`,
+      [
+        lineId,
+        JSON.stringify(
+          line.nights.map((night) => ({
+            night: night.night,
+            price_cents: night.priceCents,
+            rate_label: night.rateLabel,
+          })),
+        ),
+      ],
+      transaction,
+    );
+  }
+
+  async recountCharge(
+    chargeId: string,
+    quantity: number,
+    totalCents: number,
+    transaction: Transaction,
+  ): Promise<void> {
+    await this.#execute(
+      'UPDATE reservation_charges SET quantity = $2, total_cents = $3 WHERE id = $1',
+      [chargeId, quantity, totalCents],
+      transaction,
+    );
+  }
+
+  async deleteCharge(chargeId: string, transaction: Transaction): Promise<void> {
+    await this.#execute('DELETE FROM reservation_charges WHERE id = $1', [chargeId], transaction);
+  }
+
+  /** Cancelled: its rooms are freed at once (database trigger on the status). */
+  async cancel(
+    id: string,
+    reason: string,
+    feeCents: number,
+    transaction: Transaction,
+  ): Promise<void> {
+    await this.#execute(
+      `UPDATE reservations
+          SET status = 'cancelled', cancelled_at = now(), cancellation_reason = $2,
+              cancellation_fee_cents = $3, lock_version = lock_version + 1
+        WHERE id = $1`,
+      [id, reason, feeCents],
+      transaction,
+    );
+  }
+
+  /** Who changed the reservation last, and when (audit log): « changed meanwhile by … ». */
+  async lastChange(id: string, transaction?: Transaction): Promise<LastChange | undefined> {
+    const rows = await this.#select<LastChange>(
+      `SELECT CASE WHEN u.id IS NULL THEN NULL ELSE u.first_name || ' ' || u.last_name END
+                AS actor,
+              a.occurred_at AS at
+         FROM audit_logs a
+         LEFT JOIN users u ON u.id = a.actor_user_id
+        WHERE a.entity_type = 'reservation' AND a.entity_id = $1
+        ORDER BY a.id DESC
+        LIMIT 1`,
+      [id],
+      transaction,
+    );
+    return rows[0];
+  }
+
+  // --- Rooms of a reservation ---
+
+  async roomForAssignment(
+    roomId: string,
+    transaction: Transaction,
+  ): Promise<RoomForAssignment | undefined> {
+    const rows = await this.#select<RoomForAssignment>(
+      `SELECT id, number, category_id AS "categoryId", is_active AS "isActive"
+         FROM rooms
+        WHERE id = $1`,
+      [roomId],
+      transaction,
+    );
+    return rows[0];
+  }
+
+  /** Blocked (incident, maintenance) on at least one night of the stay; released blocks aside. */
+  async roomBlockedDuring(
+    roomId: string,
+    checkIn: string,
+    checkOut: string,
+    transaction: Transaction,
+  ): Promise<boolean> {
+    const rows = await this.#select<{ found: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM room_blocks
+                       WHERE room_id = $1 AND released_at IS NULL
+                         AND period && daterange($2::date, $3::date, '[)')) AS found`,
+      [roomId, checkIn, checkOut],
+      transaction,
+    );
+    return rows[0]?.found ?? false;
+  }
+
+  /** Reference of another active stay holding the room on one of these nights, if any. */
+  async roomTakenDuring(
+    roomId: string,
+    checkIn: string,
+    checkOut: string,
+    otherThanReservation: string,
+    transaction: Transaction,
+  ): Promise<string | undefined> {
+    const rows = await this.#select<{ reference: string }>(
+      `SELECT r.reference
+         FROM reservation_rooms l
+         JOIN reservations r ON r.id = l.reservation_id
+        WHERE l.room_id = $1 AND l.is_active AND l.reservation_id <> $4
+          AND l.stay && daterange($2::date, $3::date, '[)')
+        LIMIT 1`,
+      [roomId, checkIn, checkOut, otherThanReservation],
+      transaction,
+    );
+    return rows[0]?.reference;
+  }
+
+  async setRoom(
+    reservationId: string,
+    lineId: string,
+    roomId: string | null,
+    transaction: Transaction,
+  ): Promise<void> {
+    await this.#execute(
+      'UPDATE reservation_rooms SET room_id = $2 WHERE id = $1',
+      [lineId, roomId],
+      transaction,
+    );
+    await this.#execute(
+      'UPDATE reservations SET lock_version = lock_version + 1 WHERE id = $1',
+      [reservationId],
+      transaction,
+    );
+  }
+
+  /**
+   * Active rooms of the category free on every night of the stay and in service (probes P3
+   * and P4), with their cleanliness: what the room selector offers. The room of `lineId`
+   * itself is offered too.
+   */
+  freeRooms(
+    categoryId: string,
+    checkIn: string,
+    checkOut: string,
+    lineId: string,
+  ): Promise<FreeRoom[]> {
+    return this.#select<FreeRoom>(
+      `SELECT m.id, m.number, m.floor, m.housekeeping_status AS "housekeepingStatus"
+         FROM rooms m
+        WHERE m.category_id = $1 AND m.is_active
+          AND NOT EXISTS (SELECT 1 FROM room_blocks b
+                           WHERE b.room_id = m.id AND b.released_at IS NULL
+                             AND b.period && daterange($2::date, $3::date, '[)'))
+          AND NOT EXISTS (SELECT 1 FROM reservation_rooms l
+                           WHERE l.room_id = m.id AND l.is_active AND l.id <> $4
+                             AND l.stay && daterange($2::date, $3::date, '[)'))
+        ORDER BY m.floor, m.number`,
+      [categoryId, checkIn, checkOut, lineId],
+    );
+  }
+
   // --- Reading ---
 
   async detail(id: string, transaction?: Transaction): Promise<ReservationDetail | undefined> {
@@ -530,6 +876,8 @@ export class ReservationRepository {
               r.total_amount_cents AS "totalCents",
               r.free_cancellation_until AS "freeCancellationUntil",
               r.customer_message AS "customerMessage", r.internal_notes AS "internalNotes",
+              r.cancelled_at AS "cancelledAt", r.cancellation_reason AS "cancellationReason",
+              r.cancellation_fee_cents AS "cancellationFeeCents",
               r.lock_version AS version, r.created_at AS "createdAt",
               u.id AS "creatorId", u.first_name AS "creatorFirstName",
               u.last_name AS "creatorLastName",
@@ -594,6 +942,9 @@ export class ReservationRepository {
       freeCancellationUntil: row.freeCancellationUntil,
       customerMessage: row.customerMessage,
       internalNotes: row.internalNotes,
+      cancelledAt: row.cancelledAt,
+      cancellationReason: row.cancellationReason,
+      cancellationFeeCents: row.cancellationFeeCents,
       version: row.version,
       createdAt: row.createdAt,
       createdBy:

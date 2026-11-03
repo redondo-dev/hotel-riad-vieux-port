@@ -131,6 +131,21 @@ Saisie par le personnel, liste et détail ; détail dans `openapi/openapi.yaml`.
 | Liste            | Arrivées à partir d'aujourd'hui par défaut ; recherche, filtres, 25 par page ; archivées exclues              |
 | Journal          | `reservation.created` dans `audit_logs`, dans la même transaction                                             |
 
+### Modifier, annuler, attribuer une chambre
+
+| Sujet            | Règle                                                                                                                |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Version          | `PATCH` exige `If-Match` (version lue) : 428 sans lui, 412 si un collègue a modifié entre-temps (son nom et l'heure) |
+| Modifier         | Dates et voyageurs : réservation confirmée ; tout le séjour recalculé aux tarifs du jour ; `?preview=true` : aperçu  |
+| Recompté         | Prestations par personne ou par nuit et taxe de séjour suivent le nouveau séjour ; leur prix unitaire reste figé     |
+| Non remboursable | Modifier ou annuler : direction seule, motif obligatoire (RM-18) ; 403 `MANAGEMENT_ONLY`                             |
+| Annuler          | Avant l'arrivée ; flexible : gratuit jusqu'à l'échéance puis 1re nuit (RM-15) ; non remboursable : nuits dues        |
+| Frais            | Enregistrés à encaisser (`cancellationFeeCents`) ; la direction peut y renoncer ; chambres libérées aussitôt         |
+| Chambre          | Même catégorie seulement ; refus : désactivée (P3), hors service (P4), déjà attribuée (aussi refusé par la base)     |
+| Sélecteur        | `GET …/rooms/{lineId}/free-rooms` : chambres libres et en service sur tout le séjour, avec leur propreté             |
+| Dates            | Nouvelles dates refusées si la chambre attribuée n'y est pas libre : 409 `ROOM_NOT_FREE`, changer de chambre d'abord |
+| Journal          | `reservation.updated`, `reservation.cancelled`, `reservation.room_assigned`, dans la même transaction                |
+
 ## Comptes du personnel (`/api/v1/admin`)
 
 Routes détaillées dans `openapi/openapi.yaml`. Règles appliquées :
