@@ -95,7 +95,11 @@ export async function seedDemoStays(
     // A stay already begun is booked as on its arrival day: the rules refuse a past arrival.
     const asOf = stay.checkIn < today ? stay.checkIn : today;
     const service = new ReservationService(sequelize, () => asOf);
-    const changes = new ReservationChanges(sequelize, () => asOf, () => new Date());
+    const changes = new ReservationChanges(
+      sequelize,
+      () => asOf,
+      () => new Date(),
+    );
     try {
       const booking = bookingOf(stay, categoryId, breakfastId);
       const { reservation } = await service.create(reception, booking, randomUUID(), ORIGIN);

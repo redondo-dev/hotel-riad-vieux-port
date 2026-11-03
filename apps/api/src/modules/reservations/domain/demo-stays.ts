@@ -136,7 +136,7 @@ function timingFor(index: number): { from: number; nights: number; status: DemoS
     // Arriving today.
     return { from: 0, nights: 1 + (index % 3), status: 'confirmed' };
   }
-  const from = 1 + ((index - 16) * 5) % 26;
+  const from = 1 + (((index - 16) * 5) % 26);
   return { from, nights: 1 + (index % 4), status: index >= 38 ? 'cancelled' : 'confirmed' };
 }
 
