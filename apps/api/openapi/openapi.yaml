@@ -1461,6 +1461,33 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         '412': { $ref: '#/components/responses/Problem' }
         '428': { $ref: '#/components/responses/Problem' }
+  /admin/dashboard:
+    get:
+      operationId: getDashboard
+      summary: Tableau de bord de la direction
+      description: |
+        Occupation de la nuit de `date` et de son mois (chambres vendues / chambres actives hors
+        service exclu, nuit par nuit), chiffre d'affaires hébergement du mois (nuits vendues et
+        frais d'annulation ou de non-présentation des séjours prévus ce mois-là), prix moyen par
+        nuit vendue, le mois précédent pour comparer, arrivées et départs du jour (mêmes
+        compteurs que l'écran « Aujourd'hui »), pannes encore ouvertes. Direction seule.
+      tags: [Tableau de bord]
+      security: [{ staffSession: [] }]
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Le jour regardé ; aujourd'hui par défaut.
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Les chiffres.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
 components:
   securitySchemes:
     staffSession:
@@ -1794,6 +1821,54 @@ components:
           type: string
           example: Martin J.
           description: Direction et réception seulement.
+    DashboardMonth:
+      type: object
+      required:
+        - month
+        - roomNightsAvailable
+        - roomNightsSold
+        - nightsRevenueCents
+        - feesCents
+        - occupancyPct
+        - revenueCents
+        - averageRateCents
+      properties:
+        month: { type: string, example: '2026-11' }
+        roomNightsAvailable: { type: integer }
+        roomNightsSold: { type: integer }
+        nightsRevenueCents: { type: integer }
+        feesCents: { type: integer }
+        occupancyPct: { type: number, description: En %, une décimale. }
+        revenueCents: { type: integer, description: Nuits et frais. }
+        averageRateCents: { type: integer, description: Prix moyen d'une nuit vendue. }
+    Dashboard:
+      type: object
+      required: [date, today, month, previousMonth, incidents]
+      properties:
+        date: { type: string, format: date }
+        today:
+          type: object
+          required: [roomsInService, roomsSold, occupancyPct, arrivals, departures]
+          properties:
+            roomsInService: { type: integer }
+            roomsSold: { type: integer }
+            occupancyPct: { type: number }
+            arrivals: { $ref: '#/components/schemas/DoneCount' }
+            departures: { $ref: '#/components/schemas/DoneCount' }
+        month: { $ref: '#/components/schemas/DashboardMonth' }
+        previousMonth: { $ref: '#/components/schemas/DashboardMonth' }
+        incidents:
+          type: object
+          required: [open, urgent]
+          properties:
+            open: { type: integer }
+            urgent: { type: integer }
+    DoneCount:
+      type: object
+      required: [total, done]
+      properties:
+        total: { type: integer }
+        done: { type: integer }
     FrontDeskItem:
       type: object
       required:

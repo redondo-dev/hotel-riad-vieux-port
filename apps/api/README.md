@@ -6,7 +6,8 @@ lecture publique du catalogue (`/api/v1/public`) et sa gestion par le personnel
 (`/api/v1/admin/catalog`), l'état du ménage des chambres (`/api/v1/admin/housekeeping`), le
 suivi des pannes (`/api/v1/admin/incidents`), les disponibilités du personnel
 (`/api/v1/admin/availability`), les réservations du personnel (`/api/v1/admin/reservations`),
-le planning des chambres (`/api/v1/admin/planning`) et la réception (`/api/v1/admin/front-desk`).
+le planning des chambres (`/api/v1/admin/planning`), la réception (`/api/v1/admin/front-desk`)
+et le tableau de bord (`/api/v1/admin/dashboard`).
 
 ## Serveur HTTP
 
@@ -171,6 +172,19 @@ Saisie par le personnel, liste et détail ; détail dans `openapi/openapi.yaml`.
 | Non présenté | `POST …/no-show` : dès le lendemain de l'arrivée ; 1re nuit (flexible) ou toutes (RM-17) à encaisser       |
 | Version      | Les trois actions exigent `If-Match` (428, 412), comme la modification                                     |
 | Droits       | Direction et réception ; journal `reservation.checked_in`, `checked_out`, `no_show`                        |
+
+## Tableau de bord (`/api/v1/admin/dashboard`)
+
+| Sujet      | Règle                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| Adresse    | `GET /api/v1/admin/dashboard?date=…` (aujourd'hui par défaut) ; direction seule          |
+| Occupation | Chambres vendues / chambres actives hors service exclu, nuit par nuit (une décimale)     |
+| Mois       | Toutes les nuits du mois de `date`, passées et à venir ; le mois précédent pour comparer |
+| Chiffre    | Nuits vendues + frais d'annulation et de non-présentation des séjours prévus ce mois-là  |
+| Prix moyen | Prix des nuits vendues / nombre de nuits vendues (hors frais)                            |
+| Jour       | Arrivées et départs : mêmes compteurs que l'écran « Aujourd'hui »                        |
+| Pannes     | Signalées ou en cours, dont urgentes                                                     |
+| Rapidité   | Une requête par période, quelle que soit la taille de l'hôtel                            |
 
 ## Comptes du personnel (`/api/v1/admin`)
 

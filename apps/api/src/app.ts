@@ -7,6 +7,8 @@ import { hotelToday } from './modules/catalog/domain/pricing.ts';
 import { catalogAdminRouter } from './modules/catalog/http/catalog-admin-routes.ts';
 import { publicCatalogRouter } from './modules/catalog/http/public-catalog-routes.ts';
 import { CatalogRepository } from './modules/catalog/infrastructure/catalog-repository.ts';
+import { DashboardService } from './modules/dashboard/application/dashboard-service.ts';
+import { dashboardRouter } from './modules/dashboard/http/dashboard-routes.ts';
 import { HousekeepingService } from './modules/housekeeping/application/housekeeping-service.ts';
 import { housekeepingRouter } from './modules/housekeeping/http/housekeeping-routes.ts';
 import { IncidentService } from './modules/incidents/application/incident-service.ts';
@@ -110,6 +112,7 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   router.use(reservationChangeRouter(changes, staff));
   router.use(planningRouter(new PlanningService(deps.sequelize), staff));
   router.use(frontDeskRouter(new FrontDesk(deps.sequelize, today), staff, today));
+  router.use(dashboardRouter(new DashboardService(deps.sequelize, today), staff, today));
   return router;
 }
 
