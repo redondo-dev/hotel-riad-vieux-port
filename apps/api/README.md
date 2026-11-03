@@ -254,7 +254,7 @@ serveur de rendu du site public, et vérifier que l'API importe correctement `pa
 | `npm run db:status`    | Liste les migrations appliquées et en attente                                |
 | `npm run db:migrate`   | Applique les migrations en attente                                           |
 | `npm run db:rollback`  | Annule la dernière migration (**refusé en production**)                      |
-| `npm run db:seed:demo` | Charge l'hôtel fictif et 4 comptes de démonstration (exige `DEMO_MODE=true`) |
+| `npm run db:seed:demo` | Charge l'hôtel fictif, 4 comptes et ~40 séjours (exige `DEMO_MODE=true`)     |
 | `npm run db:test:sql`  | Vérifie migrations et contraintes sur une base **jetable** (voir ci-dessous) |
 
 Chaque commande affiche la base ciblée (sans mot de passe) avant d'agir.
@@ -264,6 +264,13 @@ Chaque commande affiche la base ciblée (sans mot de passe) avant d'agir.
 Hôtel fictif uniquement. `DEMO_MODE=true` et `DEMO_USER_PASSWORD` (12 caractères minimum)
 sont obligatoires ; aucun mot de passe n'est écrit dans le code. Comptes créés :
 `direction@`, `reception@`, `menage@` et `technique@riad-vieux-port.example`.
+
+La commande ajoute aussi une quarantaine de séjours autour du jour où elle est lancée (de 7 jours
+avant à 30 jours après) : partis, présents, arrivées du jour, à venir, quelques-uns sans
+chambre et deux annulés. Clients fictifs en `@example.com`. Les séjours passent par les mêmes
+règles que l'outil de gestion (prix réels du catalogue, nuits, prestations, journal). Ils ne
+se chargent qu'une fois : si un client de démonstration existe déjà, rien n'est ajouté, et
+aucune autre réservation n'est modifiée ni supprimée.
 
 ### Vérification de la base
 
