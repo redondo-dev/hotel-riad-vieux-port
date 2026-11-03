@@ -1,6 +1,7 @@
 /**
  * Loads the DEMO data of the fictional Hôtel Riad Vieux-Port (portfolio): settings,
- * 5 categories, 85 rooms, seasons, services, and one staff account per role.
+ * 5 categories, 85 rooms, seasons, services, one staff account per role, and about forty
+ * stays around today (seed-demo-stays.ts).
  *
  * Safety (decision P6):
  *   * refused unless DEMO_MODE=true — never run for a real hotel;
@@ -17,6 +18,7 @@ import { loadEnv } from '../src/config/env.ts';
 import { DEMO_ACCOUNTS } from '../src/modules/identity/domain/demo-accounts.ts';
 import { createSequelize } from '../src/shared/infrastructure/database.ts';
 import { runSqlFile } from './migrate.ts';
+import { seedDemoStays } from './seed-demo-stays.ts';
 
 const SEEDS_DIR = join(import.meta.dirname, 'seeds', 'demo');
 
@@ -59,6 +61,23 @@ async function main(): Promise<void> {
       );
       console.log(`  compte de démonstration : ${user.email} (${user.role})`);
     }
+
+    const accountOf = (role: string): string => {
+      const account = DEMO_USERS.find((user) => user.role === role);
+      if (account === undefined) {
+        throw new Error(`Aucun compte de démonstration pour le rôle ${role}.`);
+      }
+      return account.email;
+    };
+    const stays = await seedDemoStays(sequelize, {
+      direction: accountOf('direction'),
+      reception: accountOf('reception'),
+    });
+    console.log(
+      stays === 0
+        ? '  séjours de démonstration : déjà présents, rien d’ajouté'
+        : `  séjours de démonstration : ${stays} ajoutés`,
+    );
   } finally {
     await sequelize.close();
   }

@@ -61,6 +61,7 @@ Catégories, chambres, saisons et événements, fermetures de vente et services 
 | ----------- | ----------------------------------------------------------------------------------------------------------------- |
 | Droits      | Direction : tout ; réception : lecture et fermetures de vente ; ménage et technique : aucun accès                 |
 | Suppression | Jamais pour une catégorie, une chambre ou un service (désactivation) ; possible pour une période ou une fermeture |
+| Séjours     | Désactivation refusée tant que des séjours à venir l'occupent : `ROOM_HAS_STAYS`, `CATEGORY_HAS_STAYS`            |
 | Code        | Le code d'une catégorie ou d'un service ne change jamais : il figure dans les adresses du site                    |
 | Langues     | Nom, description et lits obligatoires en français et en anglais                                                   |
 | Nuits       | Données par la première et la dernière nuit, incluses ; une période dure au plus 1 100 nuits                      |
@@ -87,15 +88,16 @@ dans `openapi/openapi.yaml`.
 Liste, fiche avec historique, signalement, changement d'état, assignation et commentaires ;
 détail dans `openapi/openapi.yaml`.
 
-| Sujet        | Règle                                                                                               |
-| ------------ | --------------------------------------------------------------------------------------------------- |
-| Signaler     | Tous les rôles ; une chambre ou un lieu ; référence automatique `INC-000001`                        |
-| Inutilisable | « Chambre inutilisable » la retire de la vente aussitôt ; elle revient à la vente à la résolution   |
-| États        | Signalée → en cours → résolue → clôturée ; la direction peut rouvrir une panne résolue              |
-| Droits       | Technique : en cours et résolue ; direction : tout, dont clôturer ; réception : assigner            |
-| Assigner     | À un technicien actif et/ou à un prestataire externe nommé en texte (direction, réception)          |
-| Historique   | Chaque état, assignation et commentaire est daté dans `incident_events`, et inscrit au journal      |
-| À venir      | Photos (stockage de fichiers), e-mails pour les urgences (Brevo), alerte si la chambre est réservée |
+| Sujet        | Règle                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| Signaler     | Tous les rôles ; une chambre ou un lieu ; référence automatique `INC-000001`                      |
+| Inutilisable | « Chambre inutilisable » la retire de la vente aussitôt ; elle revient à la vente à la résolution |
+| États        | Signalée → en cours → résolue → clôturée ; la direction peut rouvrir une panne résolue            |
+| Droits       | Technique : en cours et résolue ; direction : tout, dont clôturer ; réception : assigner          |
+| Assigner     | À un technicien actif et/ou à un prestataire externe nommé en texte (direction, réception)        |
+| Historique   | Chaque état, assignation et commentaire est daté dans `incident_events`, et inscrit au journal    |
+| Séjours      | La fiche liste les séjours attribués à la chambre pendant le blocage (`affectedStays`)            |
+| À venir      | Photos (stockage de fichiers), e-mails pour les urgences (Brevo)                                  |
 
 ## Disponibilités (`/api/v1/admin/availability`)
 
@@ -252,7 +254,7 @@ serveur de rendu du site public, et vérifier que l'API importe correctement `pa
 | `npm run db:status`    | Liste les migrations appliquées et en attente                                |
 | `npm run db:migrate`   | Applique les migrations en attente                                           |
 | `npm run db:rollback`  | Annule la dernière migration (**refusé en production**)                      |
-| `npm run db:seed:demo` | Charge l'hôtel fictif et 4 comptes de démonstration (exige `DEMO_MODE=true`) |
+| `npm run db:seed:demo` | Charge l'hôtel fictif, 4 comptes et ~40 séjours (exige `DEMO_MODE=true`)     |
 | `npm run db:test:sql`  | Vérifie migrations et contraintes sur une base **jetable** (voir ci-dessous) |
 
 Chaque commande affiche la base ciblée (sans mot de passe) avant d'agir.
@@ -262,6 +264,13 @@ Chaque commande affiche la base ciblée (sans mot de passe) avant d'agir.
 Hôtel fictif uniquement. `DEMO_MODE=true` et `DEMO_USER_PASSWORD` (12 caractères minimum)
 sont obligatoires ; aucun mot de passe n'est écrit dans le code. Comptes créés :
 `direction@`, `reception@`, `menage@` et `technique@riad-vieux-port.example`.
+
+La commande ajoute aussi une quarantaine de séjours autour du jour où elle est lancée (de 7 jours
+avant à 30 jours après) : partis, présents, arrivées du jour, à venir, quelques-uns sans
+chambre et deux annulés. Clients fictifs en `@example.com`. Les séjours passent par les mêmes
+règles que l'outil de gestion (prix réels du catalogue, nuits, prestations, journal). Ils ne
+se chargent qu'une fois : si un client de démonstration existe déjà, rien n'est ajouté, et
+aucune autre réservation n'est modifiée ni supprimée.
 
 ### Vérification de la base
 

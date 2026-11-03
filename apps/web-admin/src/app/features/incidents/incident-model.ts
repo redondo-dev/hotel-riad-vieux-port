@@ -43,8 +43,18 @@ export interface IncidentEvent {
   createdAt: string;
 }
 
+/** A stay booked in the room while the incident keeps it out of service. */
+export interface AffectedStay {
+  reservationId: string;
+  reference: string;
+  checkIn: string;
+  checkOut: string;
+}
+
 export interface IncidentDetail extends Incident {
   events: IncidentEvent[];
+  /** Stays to move to another room; empty once the room is back on sale. */
+  affectedStays: AffectedStay[];
 }
 
 export interface RoomChoice {
@@ -94,6 +104,22 @@ export function statusActions(status: IncidentStatus, role: Role | undefined): S
 /** Management and reception assign an incident that is not closed. */
 export function canAssign(status: IncidentStatus, role: Role | undefined): boolean {
   return status !== 'closed' && (role === 'direction' || role === 'reception');
+}
+
+/** Management and reception move the guests to another room (and open the reservations). */
+export function movesGuests(role: Role | undefined): boolean {
+  return role === 'direction' || role === 'reception';
+}
+
+/**
+ * « Attention : la chambre 204 est attribuée à un séjour pendant la panne : changez-le de
+ * chambre. »; the other roles are asked to warn the reception.
+ */
+export function affectedTitle(room: string, count: number, canMove: boolean): string {
+  const stays = count === 1 ? 'un séjour' : `${count} séjours`;
+  const them = count === 1 ? 'changez-le' : 'changez-les';
+  const action = canMove ? `${them} de chambre` : 'prévenez la réception';
+  return `Attention : la chambre ${room} est attribuée à ${stays} pendant la panne : ${action}.`;
 }
 
 /** « Chambre 214 », or the place typed by the reporter. */

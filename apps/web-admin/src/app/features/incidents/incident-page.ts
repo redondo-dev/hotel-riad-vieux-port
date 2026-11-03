@@ -14,8 +14,12 @@ import { LucideArrowLeft, LucideCircleAlert } from '@lucide/angular';
 import { fieldMessage, type Problem, toProblem } from '../../core/api/problem';
 import { SessionService } from '../../core/auth/session.service';
 import { NotifierService } from '../../core/notifier.service';
+import { daysBetween } from '../planning/planning-model';
+import { stayText } from '../reservations/reservation-model';
 import { IncidentApi } from './incident-api';
 import {
+  type AffectedStay,
+  affectedTitle,
   assigneeText,
   canAssign,
   eventText,
@@ -23,6 +27,7 @@ import {
   fullName,
   type IncidentDetail,
   type IncidentEvent,
+  movesGuests,
   type PersonName,
   placeOf,
   PRIORITY_LABELS,
@@ -55,6 +60,31 @@ import {
       </div>
     } @else if (incident(); as current) {
       <div class="flex max-w-3xl flex-col gap-4">
+        @if (current.affectedStays.length > 0) {
+          <div class="alert-error" role="alert">
+            <svg lucideCircleAlert class="mt-0.5 shrink-0 text-danger"></svg>
+            <div class="flex flex-col gap-1">
+              <p class="font-semibold">{{ affected() }}</p>
+              <ul>
+                @for (stay of current.affectedStays; track stay.reservationId) {
+                  <li>
+                    @if (canMove()) {
+                      <a
+                        class="font-medium underline"
+                        [routerLink]="['/reservations', stay.reservationId]"
+                      >
+                        {{ stay.reference }}
+                      </a>
+                    } @else {
+                      <span class="font-medium">{{ stay.reference }}</span>
+                    }
+                    {{ stayDates(stay) }}
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+        }
         <section class="card flex flex-col gap-3 p-5" [class.incident-urgent]="isUrgent()">
           <p class="flex flex-wrap items-center gap-2 text-sm">
             <span class="text-muted">{{ current.reference }}</span>
@@ -257,6 +287,15 @@ export class IncidentPage implements OnInit {
   protected readonly assignProblem = signal<Problem | null>(null);
 
   protected readonly isUrgent = computed(() => this.incident()?.priority === 'urgent');
+  protected readonly canMove = computed(() => movesGuests(this.role()));
+  protected readonly affected = computed(() => {
+    const current = this.incident();
+    if (current === null) {
+      return '';
+    }
+    const room = current.room?.number ?? '';
+    return affectedTitle(room, current.affectedStays.length, this.canMove());
+  });
   protected readonly priority = computed(() => {
     const current = this.incident();
     return current === null ? '' : PRIORITY_LABELS[current.priority];
@@ -406,5 +445,10 @@ export class IncidentPage implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /** « du 5 au 8 novembre 2026 · 3 nuits ». */
+  protected stayDates(stay: AffectedStay): string {
+    return stayText(stay.checkIn, stay.checkOut, daysBetween(stay.checkIn, stay.checkOut));
   }
 }

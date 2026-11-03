@@ -92,6 +92,12 @@ function checkNights(firstNight: string, lastNight: string): void {
   }
 }
 
+/** « 76ZKYETV, 4BQ7MRTA… »: the stays to move first, 5 at most. */
+function referencesText(rows: readonly { reference: string }[]): string {
+  const references = rows.map((row) => row.reference).join(', ');
+  return rows.length >= 5 ? `${references}…` : references;
+}
+
 function ratePeriodOverlap(): ConflictError {
   return new ConflictError(
     'RATE_PERIOD_OVERLAP',
@@ -183,6 +189,22 @@ export class CatalogAdmin {
           },
         ]);
       }
+      if (before.isActive && !after.isActive) {
+        // Closing the category to sales is always possible; removing it is not while it is booked.
+        const stays = await this.#repository.upcomingStays(
+          { categoryId: id },
+          this.#today(),
+          transaction,
+        );
+        if (stays.length > 0) {
+          throw new ConflictError(
+            'CATEGORY_HAS_STAYS',
+            'Catégorie réservée',
+            `Des séjours à venir sont réservés dans cette catégorie (${referencesText(stays)}) : ` +
+              'déplacez-les ou annulez-les d’abord, ou fermez la catégorie à la vente.',
+          );
+        }
+      }
       await this.#repository.updateCategory(id, after, transaction);
       await this.#audit(
         actor,
@@ -237,6 +259,23 @@ export class CatalogAdmin {
       const after: RoomFields = merge(before, changes);
       if (after.categoryId !== before.categoryId) {
         await this.#existingCategory(after.categoryId, transaction);
+      }
+      const leaves = before.isActive && !after.isActive;
+      if (leaves || after.categoryId !== before.categoryId) {
+        // An assigned room must stay active and in the category booked.
+        const stays = await this.#repository.upcomingStays(
+          { roomId: id },
+          this.#today(),
+          transaction,
+        );
+        if (stays.length > 0) {
+          throw new ConflictError(
+            'ROOM_HAS_STAYS',
+            'Chambre attribuée',
+            `La chambre ${before.number} est attribuée à des séjours à venir ` +
+              `(${referencesText(stays)}) : changez-les de chambre d’abord.`,
+          );
+        }
       }
       await this.#repository.updateRoom(id, after, transaction);
       await this.#audit(

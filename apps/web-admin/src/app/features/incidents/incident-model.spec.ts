@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  affectedTitle,
   assigneeText,
   canAssign,
   eventText,
@@ -69,6 +70,17 @@ describe('texts', () => {
   it('writes the date at the hotel time', () => {
     // 13:05 UTC is 14:05 in Marseille in November (UTC+1).
     expect(formatDateTime('2026-11-01T13:05:00Z')).toBe('1 nov. 2026 à 14:05');
+  });
+
+  it('warns about the stays booked in a room out of service', () => {
+    expect(affectedTitle('204', 1, true)).toBe(
+      'Attention : la chambre 204 est attribuée à un séjour pendant la panne : changez-le de ' +
+        'chambre.',
+    );
+    expect(affectedTitle('204', 2, false)).toBe(
+      'Attention : la chambre 204 est attribuée à 2 séjours pendant la panne : prévenez la ' +
+        'réception.',
+    );
   });
 
   it('says what each line of the history is', () => {

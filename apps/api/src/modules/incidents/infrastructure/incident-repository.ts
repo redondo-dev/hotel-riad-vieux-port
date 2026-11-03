@@ -32,6 +32,14 @@ export interface IncidentView {
   closedAt: Date | null;
 }
 
+/** A stay booked in the room while the incident keeps it out of service. */
+export interface AffectedStay {
+  reservationId: string;
+  reference: string;
+  checkIn: string;
+  checkOut: string;
+}
+
 export interface IncidentEventView {
   id: string;
   type: 'status_change' | 'assignment' | 'comment';
@@ -369,6 +377,27 @@ export class IncidentRepository {
   }
 
   /** Takes the room out of sale from `firstNight`, until released. */
+  /**
+   * Stays not over yet that hold the room on a night this incident keeps it out of service:
+   * the guests must be moved to another room.
+   */
+  affectedStays(incidentId: string, today: string): Promise<AffectedStay[]> {
+    return this.#select<AffectedStay>(
+      `SELECT r.id AS "reservationId", r.reference,
+              r.check_in::text AS "checkIn", r.check_out::text AS "checkOut"
+         FROM room_blocks b
+         JOIN reservation_rooms l ON l.room_id = b.room_id AND l.is_active AND l.stay && b.period
+         JOIN reservations r ON r.id = l.reservation_id
+        WHERE b.incident_id = $1
+          AND b.released_at IS NULL
+          AND r.status IN ('pending_payment', 'confirmed', 'checked_in')
+          AND upper(l.stay) > $2::date
+        GROUP BY r.id, r.reference, r.check_in, r.check_out
+        ORDER BY r.check_in, r.reference`,
+      [incidentId, today],
+    );
+  }
+
   async blockRoom(
     incidentId: string,
     roomId: string,

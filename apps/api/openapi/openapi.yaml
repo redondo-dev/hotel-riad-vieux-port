@@ -366,6 +366,8 @@ paths:
         Textes (français ET anglais), prix, capacité, équipements, ordre d'affichage, activation.
         Le code ne change jamais (il figure dans les adresses du site). Une modification de prix ne
         touche que les futures réservations. Inscrit au journal d'audit (avant → après).
+        Désactivation refusée tant que des séjours à venir sont réservés dans la catégorie :
+        409 `CATEGORY_HAS_STAYS` (la fermeture à la vente reste possible).
       tags: [Catalogue]
       security: [{ staffSession: [], csrfToken: [] }]
       parameters:
@@ -385,6 +387,7 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
   /admin/catalog/rooms:
     get:
       operationId: listCatalogRooms
@@ -439,6 +442,8 @@ paths:
       summary: Modifier une chambre (direction)
       description: |
         Numéro, étage, catégorie, activation. Aucune suppression : une chambre se désactive.
+        Désactivation ou changement de catégorie refusés tant que la chambre est attribuée à des
+        séjours à venir : 409 `ROOM_HAS_STAYS` (changez-les de chambre d'abord).
       tags: [Catalogue]
       security: [{ staffSession: [], csrfToken: [] }]
       parameters:
@@ -1435,8 +1440,21 @@ components:
       allOf:
         - $ref: '#/components/schemas/Incident'
         - type: object
-          required: [events]
+          required: [events, affectedStays]
           properties:
+            affectedStays:
+              description: |
+                Séjours à venir ou en cours attribués à la chambre pendant qu'elle est hors
+                service à cause de cette panne : à changer de chambre.
+              type: array
+              items:
+                type: object
+                required: [reservationId, reference, checkIn, checkOut]
+                properties:
+                  reservationId: { type: string, format: uuid }
+                  reference: { type: string }
+                  checkIn: { type: string, format: date }
+                  checkOut: { type: string, format: date }
             events:
               type: array
               items:

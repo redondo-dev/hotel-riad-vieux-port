@@ -7,7 +7,8 @@ import { hasTestDatabase } from '../support/test-database.ts';
  * Incidents against the test database: reporting, room blocks, changes of state by role,
  * assignment, comments and history. Skipped without TEST_DATABASE_URL.
  *
- * This file owns floor 6 (rooms P601 and P602); the other files use other floors.
+ * This file owns floor 6 (rooms P601 and P602) and the references « PANN… »; the other files use
+ * other floors.
  */
 
 const INCIDENTS = `${ADMIN}/incidents`;
@@ -303,6 +304,52 @@ describe.skipIf(!hasTestDatabase)('incidents', () => {
 
     it('answers 404 for an unknown incident', async () => {
       expect((await reception.agent.get(`${INCIDENTS}/${UNKNOWN_ID}`)).status).toBe(404);
+    });
+  });
+
+  describe('room already given to a stay', () => {
+    it('still blocks the room, and lists the stays to move until it is resolved', async () => {
+      await harness.execute(
+        `INSERT INTO customers (first_name, last_name, email)
+         VALUES ('Paul', 'Panne', 'pann-paul@test.example')`,
+      );
+      await harness.execute(
+        `INSERT INTO reservations (reference, customer_id, source, check_in, check_out, status,
+                                   rate_plan, total_amount_cents, free_cancellation_until)
+         SELECT 'PANN0001', id, 'phone', '2034-03-10', '2034-03-12', 'confirmed', 'flexible',
+                0, '2034-03-08T14:00:00Z'
+           FROM customers WHERE email = 'pann-paul@test.example'`,
+      );
+      await harness.execute(
+        `INSERT INTO reservation_rooms (reservation_id, category_id, room_id, adults,
+                                        subtotal_cents)
+         SELECT r.id, m.category_id, m.id, 2, 0
+           FROM reservations r, rooms m
+          WHERE r.reference = 'PANN0001' AND m.id = $1`,
+        [otherRoom],
+      );
+
+      const reported = await send(reception, '').send({
+        roomId: otherRoom,
+        title: 'Climatisation en panne',
+        description: 'La climatisation ne démarre plus.',
+        priority: 'normal',
+        blocksRoom: true,
+      });
+      expect(reported.status).toBe(201);
+      expect(reported.body.roomBlocked).toBe(true);
+      expect(reported.body.affectedStays).toEqual([
+        expect.objectContaining({
+          reference: 'PANN0001',
+          checkIn: '2034-03-10',
+          checkOut: '2034-03-12',
+        }),
+      ]);
+
+      const id = reported.body.id as string;
+      await send(technician, `/${id}/status`).send({ status: 'in_progress' });
+      const resolved = await send(technician, `/${id}/status`).send({ status: 'resolved' });
+      expect(resolved.body.affectedStays).toEqual([]);
     });
   });
 });

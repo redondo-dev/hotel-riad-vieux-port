@@ -7,6 +7,7 @@ import { hasTestDatabase } from '../support/test-database.ts';
  * Catalogue management against the test database: roles, CSRF, validation, conflicts and audit
  * log. Skipped without TEST_DATABASE_URL.
  *
+ * Rooms: floor 8 (G8xx); references « GEST… ».
  * Dates: this file uses the years 2031–2032 (future) and 2020 (past), and only rate periods of
  * its own categories, so that it never collides with public-catalog.spec.ts (January–February
  * 2030, periods of every category).
@@ -307,6 +308,74 @@ describe.skipIf(!hasTestDatabase)('catalogue management', () => {
     it('offers no way to delete a room', async () => {
       const response = await send(manager, 'delete', `/rooms/${roomId}`);
       expect(response.status).toBe(404);
+    });
+  });
+
+  describe('rooms and categories holding stays', () => {
+    let bookedCategory: string;
+    let bookedRoom: string;
+    let pastRoom: string;
+
+    beforeAll(async () => {
+      bookedCategory = await insertCategory('gestion-reservee', 12);
+      const rooms = await harness.rows<{ id: string; number: string }>(
+        `INSERT INTO rooms (number, floor, category_id) VALUES
+           ('G811', 8, $1), ('G812', 8, $1)
+         RETURNING id, number`,
+        [bookedCategory],
+      );
+      bookedRoom = rooms.find((room) => room.number === 'G811')?.id ?? '';
+      pastRoom = rooms.find((room) => room.number === 'G812')?.id ?? '';
+      await harness.execute(
+        `INSERT INTO customers (first_name, last_name, email)
+         VALUES ('Lina', 'Gestion', 'gest-lina@test.example')`,
+      );
+      // A stay to come on G811; a stay over long ago on G812.
+      await harness.execute(
+        `INSERT INTO reservations (reference, customer_id, source, check_in, check_out, status,
+                                   rate_plan, total_amount_cents, free_cancellation_until)
+         SELECT v.reference, c.id, 'desk', v.check_in::date, v.check_out::date, v.status,
+                'flexible', 0, '2020-01-01T00:00:00Z'
+           FROM customers c,
+                (VALUES ('GEST0001', '2031-03-10', '2031-03-12', 'confirmed'),
+                        ('GEST0002', '2020-03-10', '2020-03-12', 'checked_out'))
+                  AS v (reference, check_in, check_out, status)
+          WHERE c.email = 'gest-lina@test.example'`,
+      );
+      await harness.execute(
+        `INSERT INTO reservation_rooms (reservation_id, category_id, room_id, adults,
+                                        subtotal_cents)
+         SELECT r.id, $1, CASE WHEN r.reference = 'GEST0001' THEN $2::uuid ELSE $3::uuid END,
+                2, 0
+           FROM reservations r
+          WHERE r.reference IN ('GEST0001', 'GEST0002')`,
+        [bookedCategory, bookedRoom, pastRoom],
+      );
+    });
+
+    it('refuses to deactivate or move a room given to a stay to come', async () => {
+      const off = await send(manager, 'patch', `/rooms/${bookedRoom}`).send({ isActive: false });
+      expect(off.status).toBe(409);
+      expect(off.body.code).toBe('ROOM_HAS_STAYS');
+      expect(off.body.detail).toContain('GEST0001');
+
+      const moved = await send(manager, 'patch', `/rooms/${bookedRoom}`).send({
+        categoryId: otherCategoryId,
+      });
+      expect(moved.body.code).toBe('ROOM_HAS_STAYS');
+
+      // A stay over does not hold the room any more.
+      const past = await send(manager, 'patch', `/rooms/${pastRoom}`).send({ isActive: false });
+      expect(past.status).toBe(200);
+    });
+
+    it('refuses to deactivate a category booked for a stay to come', async () => {
+      const off = await send(manager, 'patch', `/categories/${bookedCategory}`).send({
+        isActive: false,
+      });
+      expect(off.status).toBe(409);
+      expect(off.body.code).toBe('CATEGORY_HAS_STAYS');
+      expect(off.body.detail).toContain('GEST0001');
     });
   });
 
