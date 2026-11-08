@@ -56,8 +56,8 @@ const NO_TEXT: LocalizedText = { fr: '', en: '' };
       <div class="flex flex-col gap-1">
         <h3 id="titre-photos" class="font-semibold">Photos</h3>
         <p class="text-sm text-muted">
-          Enregistrées dès chaque action, sans le bouton « Enregistrer ». La première est la
-          photo principale du site.
+          Enregistrées dès chaque action, sans le bouton « Enregistrer ». La première est la photo
+          principale du site.
         </p>
         @if (photos(); as list) {
           <p class="text-sm font-semibold" role="status">{{ count(list.length) }}</p>
@@ -289,7 +289,9 @@ const NO_TEXT: LocalizedText = { fr: '', en: '' };
     <dialog #removeDialog class="dialog-panel" aria-labelledby="titre-suppression-photo">
       @if (removal(); as photo) {
         <div class="flex flex-col gap-4 p-6">
-          <h2 id="titre-suppression-photo" class="text-lg font-semibold">Supprimer cette photo ?</h2>
+          <h2 id="titre-suppression-photo" class="text-lg font-semibold">
+            Supprimer cette photo ?
+          </h2>
           <img
             class="aspect-[4/3] w-64 rounded-md object-cover"
             [src]="smallest(photo)"
@@ -320,8 +322,7 @@ export class CategoryPhotosSection implements OnInit {
   private readonly notifier = inject(NotifierService);
   private readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
   private readonly textsDialog = viewChild.required<ElementRef<HTMLDialogElement>>('textsDialog');
-  private readonly removeDialog =
-    viewChild.required<ElementRef<HTMLDialogElement>>('removeDialog');
+  private readonly removeDialog = viewChild.required<ElementRef<HTMLDialogElement>>('removeDialog');
 
   readonly categoryId = input.required<string>();
 
