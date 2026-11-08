@@ -63,9 +63,20 @@ import { ZelligeStar } from '../shared/ui/zellige-star';
         <div
           class="container-page flex flex-col gap-2 py-5 text-sm text-white/75 sm:flex-row sm:items-center sm:justify-between"
         >
-          <p i18n="@@footer.demoNotice">
-            Hôtel fictif : site de démonstration réalisé pour un portfolio.
-          </p>
+          <div class="flex flex-col gap-1">
+            <p i18n="@@footer.demoNotice">
+              Hôtel fictif : site de démonstration réalisé pour un portfolio.
+            </p>
+            <p>
+              <span i18n="@@footer.photosBy">Photos :</span>
+              <a
+                class="font-medium text-white hover:underline"
+                href="https://unsplash.com/?utm_source=hotel_riad_vieux_port&amp;utm_medium=referral"
+                rel="noopener"
+                >Unsplash</a
+              >
+            </p>
+          </div>
           <a
             class="inline-flex min-h-11 items-center font-medium text-white hover:underline"
             [href]="otherLanguage.href"

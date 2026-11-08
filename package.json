@@ -31,6 +31,7 @@
     "db:status": "npm run db:status --workspace=@riad/api",
     "db:seed:demo": "npm run db:seed:demo --workspace=@riad/api",
     "db:test:sql": "npm run db:test:sql --workspace=@riad/api",
+    "images:site": "node apps/web-public/scripts/images-site.mts",
     "prepare": "husky"
   },
   "devDependencies": {

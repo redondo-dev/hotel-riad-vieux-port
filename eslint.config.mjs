@@ -34,7 +34,7 @@ export default tseslint.config(
   },
   {
     // Command-line scripts (migrations, demo data) write their progress to the console.
-    files: ['apps/api/db/**/*.ts'],
+    files: ['apps/api/db/**/*.ts', 'apps/web-public/scripts/**/*.mts'],
     rules: { 'no-console': 'off' },
   },
   // Désactive les règles de mise en forme, laissées à Prettier.

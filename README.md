@@ -93,6 +93,26 @@ deux commandes ci-dessus. Les traductions anglaises sont dans
 `apps/web-public/src/locale/messages.en.json` ; toute traduction manquante fait échouer la
 compilation, pour ne jamais publier une page à moitié traduite.
 
+### Site public : photos
+
+- **Photos des chambres** : envoyées depuis l'outil de gestion (fiche d'une catégorie, carte
+  « Photos »), converties en WebP par l'API et relayées par le serveur du site sous `/media/…`.
+- **Photos fixes de l'accueil** (`hero`, `hotel`, `quartier`) : les originaux restent hors du
+  dépôt. Depuis la racine :
+
+  ```powershell
+  npm run images:site -- "C:\chemin\vers\photos-unsplash\site"
+  ```
+
+  Le script écrit trois tailles WebP sans métadonnées dans
+  `apps/web-public/public/images/site/` et met à jour
+  `apps/web-public/src/app/core/data/site-photos.generated.ts`. Ces fichiers sont enregistrés
+  dans git. Une photo absente garde le bloc « Photo à venir ».
+- **Crédits** : toutes les photos viennent d'Unsplash (« Photos : Unsplash » dans le pied de
+  page). Les noms des photographes sont listés dans
+  `apps/web-public/src/app/core/data/photo-credits.ts`, en attendant la page des mentions
+  légales.
+
 ## Branches et contributions
 
 ```
