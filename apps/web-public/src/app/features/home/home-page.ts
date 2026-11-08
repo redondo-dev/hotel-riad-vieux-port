@@ -70,9 +70,9 @@ export class HomePage {
   };
   protected readonly stars = [1, 2, 3, 4, 5];
 
-  protected readonly heroAlt = $localize`:@@home.hero.photoAlt:Façade de l'hôtel face aux bateaux du Vieux-Port`;
-  protected readonly aboutAlt = $localize`:@@home.about.photoAlt:Patio intérieur de l'hôtel, carreaux de zellige et plantes`;
-  protected readonly neighbourhoodAlt = $localize`:@@home.neighbourhood.photoAlt:Le Vieux-Port de Marseille et Notre-Dame-de-la-Garde au coucher du soleil`;
+  protected readonly heroAlt = $localize`:@@home.hero.photoAlt:Les maisons de Marseille au-dessus des bateaux du Vieux-Port, au crépuscule`;
+  protected readonly aboutAlt = $localize`:@@home.about.photoAlt:Le hall de l'hôtel : porte en arche, lustre, fauteuils et plantes`;
+  protected readonly neighbourhoodAlt = $localize`:@@home.neighbourhood.photoAlt:Une ruelle étroite aux façades ocre, avec volets et lanternes`;
   /** null until « npm run images:site » has made them: the placeholders stay. */
   protected readonly heroPhoto = sitePhoto('hero', this.heroAlt);
   protected readonly aboutPhoto = sitePhoto('hotel', this.aboutAlt);
