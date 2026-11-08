@@ -24,6 +24,7 @@ import {
   parseEuros,
   parseWhole,
 } from './catalog-model';
+import { CategoryPhotosSection } from './category-photos-section';
 
 type TextKey = 'name' | 'description' | 'beds';
 type Language = keyof LocalizedText;
@@ -87,11 +88,12 @@ function draftOf(category: Category): Draft {
 /**
  * One room category, management only (UI/UX specification, section 5.K): texts in French AND
  * English side by side, prices, capacity, equipment, display order. Deactivating asks for a
- * confirmation. The code never changes: it is part of the addresses of the public site.
+ * confirmation. The code never changes: it is part of the addresses of the public site. The
+ * photos have their own card, outside the form: each of their changes is saved at once.
  */
 @Component({
   selector: 'adm-category-edit-page',
-  imports: [RouterLink, LucideArrowLeft, LucideCircleAlert],
+  imports: [RouterLink, LucideArrowLeft, LucideCircleAlert, CategoryPhotosSection],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a routerLink="/catalogue/categories" class="mb-4 -ml-3 btn-quiet">
@@ -221,7 +223,12 @@ function draftOf(category: Category): Draft {
             {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
           </button>
         </div>
+      </form>
 
+      <!-- Outside the form: each change of the photos is saved at once. -->
+      <adm-category-photos-section class="mt-6 block max-w-4xl" [categoryId]="current.id" />
+
+      <div class="mt-6 flex max-w-4xl flex-col">
         <section class="card flex flex-col gap-3 p-5" aria-labelledby="titre-statut">
           <h3 id="titre-statut" class="font-semibold">Vente</h3>
           @if (current.isActive) {
@@ -240,7 +247,7 @@ function draftOf(category: Category): Draft {
             </button>
           }
         </section>
-      </form>
+      </div>
 
       <dialog #confirmDialog class="dialog-panel" aria-labelledby="titre-confirmation">
         <div class="flex flex-col gap-4 p-6">
