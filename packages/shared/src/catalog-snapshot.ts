@@ -1,17 +1,21 @@
 import type {
   BookingRules,
   CatalogSnapshot,
+  CategoryPhoto,
   HotelInfo,
   HotelOption,
   LocalizedText,
+  PhotoFile,
   PricingUnit,
   RoomCategory,
 } from './catalog.js';
+import { MEDIA_FILE_PATTERN } from './media.js';
 
 /**
  * Reads the three answers of the public API (GET /public/hotel, /public/room-categories,
  * /public/services) into one CatalogSnapshot, checking each field on the way: an answer of an
- * unexpected shape is refused as a whole rather than half displayed.
+ * unexpected shape is refused as a whole rather than half displayed. Of a photo address, only
+ * an expected file name is kept: the site never displays an address chosen by the API.
  */
 
 export class CatalogFormatError extends Error {
@@ -102,6 +106,42 @@ function bookingRulesOf(body: Fields): BookingRules {
   };
 }
 
+/** A width or a height: a whole number of pixels, or null when unknown. */
+function size(value: unknown, path: string): number | null {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+    throw new CatalogFormatError(path);
+  }
+  return value;
+}
+
+/** Where the API serves the files; only the file name is kept, and only an expected one. */
+const API_MEDIA_PREFIX = '/api/v1/public/media/';
+
+function photoFileOf(value: unknown, path: string): PhotoFile {
+  const item = fields(value, path);
+  const url = text(item['url'], `${path}.url`);
+  const file = url.startsWith(API_MEDIA_PREFIX) ? url.slice(API_MEDIA_PREFIX.length) : '';
+  if (!MEDIA_FILE_PATTERN.test(file)) {
+    throw new CatalogFormatError(`${path}.url`);
+  }
+  return { width: amount(item['width'], `${path}.width`), file };
+}
+
+function photoOf(value: unknown, path: string): CategoryPhoto {
+  const item = fields(value, path);
+  return {
+    alt: localized(item['alt'], `${path}.alt`),
+    width: size(item['width'], `${path}.width`),
+    height: size(item['height'], `${path}.height`),
+    files: list(item['sources'], `${path}.sources`).map((source, position) => {
+      return photoFileOf(source, `${path}.sources[${position}]`);
+    }),
+  };
+}
+
 function categoryOf(value: unknown, index: number): RoomCategory {
   const path = `categories[${index}]`;
   const item = fields(value, path);
@@ -120,6 +160,9 @@ function categoryOf(value: unknown, index: number): RoomCategory {
     fromPriceCents: amount(item['fromPriceCents'], `${path}.fromPriceCents`),
     amenities: list(item['amenities'], `${path}.amenities`).map((code, position) => {
       return text(code, `${path}.amenities[${position}]`);
+    }),
+    photos: list(item['photos'], `${path}.photos`).map((photo, position) => {
+      return photoOf(photo, `${path}.photos[${position}]`);
     }),
   };
 }

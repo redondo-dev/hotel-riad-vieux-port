@@ -36,6 +36,22 @@ function categoryBody(): Record<string, unknown> {
     extraAdultCents: 2500,
     extraChildCents: 1500,
     fromPriceCents: 8550,
+    photos: [],
+  };
+}
+
+const PHOTO_ID = '0b9f6a3e-2c4d-4e8f-9a1b-3c5d7e9f1a2b';
+
+/** A photo as the API gives it: three versions served under /api/v1/public/media. */
+function photoBody(): Record<string, unknown> {
+  return {
+    alt: { fr: 'Lit double face au port', en: 'Double bed facing the harbour' },
+    width: 1600,
+    height: 1067,
+    sources: [400, 800, 1600].map((width) => ({
+      width,
+      url: `/api/v1/public/media/${PHOTO_ID}-${width}.webp`,
+    })),
   };
 }
 
@@ -77,6 +93,38 @@ describe('parseCatalogSnapshot', () => {
   it('refuses an answer of an unexpected shape, naming the field', () => {
     const broken = { ...categoryBody(), fromPriceCents: '85,50' };
     expect(parseWith([broken], [])).toThrow(new CatalogFormatError('categories[0].fromPriceCents'));
+  });
+
+  it('keeps only the file names of the photos', () => {
+    const category = { ...categoryBody(), photos: [photoBody()] };
+    const snapshot = parseCatalogSnapshot(hotelBody(), { items: [category] }, { items: [] }, AT);
+
+    expect(snapshot.categories[0]?.photos).toEqual([
+      {
+        alt: { fr: 'Lit double face au port', en: 'Double bed facing the harbour' },
+        width: 1600,
+        height: 1067,
+        files: [
+          { width: 400, file: `${PHOTO_ID}-400.webp` },
+          { width: 800, file: `${PHOTO_ID}-800.webp` },
+          { width: 1600, file: `${PHOTO_ID}-1600.webp` },
+        ],
+      },
+    ]);
+  });
+
+  it('refuses a photo address that is not an expected file of the API', () => {
+    const path = 'categories[0].photos[0].sources[0].url';
+    for (const url of [
+      'https://example.com/photo.webp',
+      `/api/v1/public/media/../${PHOTO_ID}-400.webp`,
+      `/api/v1/public/media/${PHOTO_ID}-400.png`,
+      `/api/v1/public/media/${PHOTO_ID}-500.webp`,
+    ]) {
+      const photo = { ...photoBody(), sources: [{ width: 400, url }] };
+      const category = { ...categoryBody(), photos: [photo] };
+      expect(parseWith([category], [])).toThrow(new CatalogFormatError(path));
+    }
   });
 
   it('refuses an error answer of the API instead of a list', () => {

@@ -16,6 +16,7 @@ import { injectLocale } from '../i18n/locale';
 import { readCatalogSnapshot } from './catalog-snapshot';
 import { DEMO_REVIEWS } from './demo-reviews.data';
 import { AMENITY_LABELS, HOTEL_HIGHLIGHTS } from './hotel-content';
+import { type PhotoView, photoViewOf } from './photo-view';
 
 /** A room category ready to display, in the current language. */
 export interface CategoryView {
@@ -28,6 +29,8 @@ export interface CategoryView {
   amenities: { code: AmenityCode; label: string }[];
   /** Lowest price of a night bookable online now, non-refundable rate (computed by the API). */
   fromPriceCents: number;
+  /** In display order: the first one is the main photo. */
+  photos: PhotoView[];
 }
 
 export interface ServiceView {
@@ -116,6 +119,9 @@ export class CatalogService {
       label: AMENITY_LABELS[code][this.locale],
     })),
     fromPriceCents: category.fromPriceCents,
+    photos: category.photos
+      .map((photo) => photoViewOf(photo, this.locale))
+      .filter((photo) => photo !== null),
   }));
 
   readonly services: ServiceView[] = HOTEL_HIGHLIGHTS.map((highlight) => ({
