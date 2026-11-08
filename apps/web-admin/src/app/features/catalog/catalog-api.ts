@@ -13,6 +13,7 @@ import type {
   Room,
   SalesClosure,
 } from './catalog-model';
+import type { Photo } from './photo-model';
 
 export interface CategoryChanges {
   name?: LocalizedText;
@@ -140,5 +141,48 @@ export class CatalogApi {
 
   updateService(id: string, changes: ServiceChanges): Promise<HotelService> {
     return firstValueFrom(this.http.patch<HotelService>(`${this.base}/services/${id}`, changes));
+  }
+
+  // --- Photos of a category: every call answers the photos of the category, in order ---
+
+  async photos(categoryId: string): Promise<Photo[]> {
+    const result = await firstValueFrom(
+      this.http.get<Items<Photo>>(`${this.base}/categories/${categoryId}/photos`),
+    );
+    return result.items;
+  }
+
+  /** Multipart: the browser sets the content type (with its boundary) itself. */
+  async addPhoto(categoryId: string, file: File, alt: LocalizedText): Promise<Photo[]> {
+    const form = new FormData();
+    form.append('altFr', alt.fr);
+    form.append('altEn', alt.en);
+    form.append('file', file);
+    const result = await firstValueFrom(
+      this.http.post<Items<Photo>>(`${this.base}/categories/${categoryId}/photos`, form),
+    );
+    return result.items;
+  }
+
+  /** `ids`: every photo of the category in the new order; the first one is the main photo. */
+  async reorderPhotos(categoryId: string, ids: string[]): Promise<Photo[]> {
+    const result = await firstValueFrom(
+      this.http.put<Items<Photo>>(`${this.base}/categories/${categoryId}/photos/order`, { ids }),
+    );
+    return result.items;
+  }
+
+  async changePhotoAlt(photoId: string, alt: LocalizedText): Promise<Photo[]> {
+    const result = await firstValueFrom(
+      this.http.patch<Items<Photo>>(`${this.base}/photos/${photoId}`, { alt }),
+    );
+    return result.items;
+  }
+
+  async removePhoto(photoId: string): Promise<Photo[]> {
+    const result = await firstValueFrom(
+      this.http.delete<Items<Photo>>(`${this.base}/photos/${photoId}`),
+    );
+    return result.items;
   }
 }
