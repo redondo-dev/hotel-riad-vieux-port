@@ -9,4 +9,8 @@ export interface SitePhotoFiles {
   height: number;
 }
 
-export const SITE_PHOTO_FILES: Partial<Record<string, SitePhotoFiles>> = {};
+export const SITE_PHOTO_FILES: Partial<Record<string, SitePhotoFiles>> = {
+  hero: { widths: [800, 1280, 1920], width: 1920, height: 1440 },
+  hotel: { widths: [400, 800, 1200], width: 1200, height: 1600 },
+  quartier: { widths: [400, 800, 1200], width: 1200, height: 1800 },
+};
