@@ -1,8 +1,9 @@
 import { inject } from '@angular/core';
 import type { Routes } from '@angular/router';
 import { CatalogService } from './core/data/catalog.service';
-import { BOOKING_PATH, ROOMS_PATH } from './core/navigation';
+import { BOOKING_PATH, CHOICE_PATH, ROOMS_PATH } from './core/navigation';
 import { PAGE_DESCRIPTION } from './core/seo/page-meta-strategy';
+import { searchResolver } from './features/booking/booking-route';
 import {
   categoryDescription,
   categoryExists,
@@ -25,8 +26,19 @@ export const routes: Routes = [
   {
     path: BOOKING_PATH,
     title: $localize`:@@title.booking:Votre recherche · Hôtel Riad Vieux-Port`,
+    // The availability is read before the page is shown, again at each new search.
+    resolve: { search: searchResolver },
+    runGuardsAndResolvers: 'paramsOrQueryParamsChange',
     loadComponent: () =>
-      import('./features/booking/booking-in-progress-page').then((m) => m.BookingInProgressPage),
+      import('./features/booking/booking-results-page').then((m) => m.BookingResultsPage),
+  },
+  {
+    path: `${BOOKING_PATH}/${CHOICE_PATH}`,
+    title: $localize`:@@title.bookingChoice:Votre choix · Hôtel Riad Vieux-Port`,
+    resolve: { search: searchResolver },
+    runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+    loadComponent: () =>
+      import('./features/booking/booking-choice-page').then((m) => m.BookingChoicePage),
   },
   {
     path: `${ROOMS_PATH}/:code`,

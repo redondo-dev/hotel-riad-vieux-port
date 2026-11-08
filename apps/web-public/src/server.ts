@@ -8,6 +8,12 @@ import express from 'express';
 import helmet from 'helmet';
 import { MEDIA_PATH } from '@riad/shared';
 import { join } from 'node:path';
+import {
+  AVAILABILITY_RELAY_PATH,
+  type AvailabilityQuery,
+  availabilityQueryOf,
+  BookingRelay,
+} from './booking-relay';
 import { CatalogSource } from './catalog-source';
 import { MediaRelay } from './media-relay';
 
@@ -27,7 +33,8 @@ import { MediaRelay } from './media-relay';
  * catalog-source.ts for the memory and the behaviour when the API is down).
  *
  * Photos: the files are relayed from the API under /media/<file> (see media-relay.ts), so the
- * browser only ever talks to this site.
+ * browser only ever talks to this site. Same for the booking (see booking-relay.ts): the search
+ * of availability is relayed under /reservation-api/availability, with the visitor's address.
  */
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -55,6 +62,14 @@ const media = new MediaRelay({
   },
 });
 
+const booking = new BookingRelay({
+  apiUrl,
+  onError: (error) => {
+    // eslint-disable-next-line no-console -- the SSR server has no logger yet
+    console.error('Réservation : lecture de l’API impossible.', error);
+  },
+});
+
 /** A photo file never changes (a new photo has a new name): cached for a year. */
 const MEDIA_CACHE = 'public, max-age=31536000, immutable';
 
@@ -62,6 +77,8 @@ const app = express();
 const angularApp = new AngularNodeAppEngine();
 
 app.disable('x-powered-by');
+// Proxies in front of this server (SITE_TRUST_PROXY): needed to know the visitor's address.
+app.set('trust proxy', Number(process.env['SITE_TRUST_PROXY'] ?? 0));
 
 app.use((req, res, next) => {
   // Express gives no host name when the Host header is missing.
@@ -111,6 +128,16 @@ app.get(`${MEDIA_PATH}/:file`, (req, res, next) => {
     .catch(next);
 });
 
+app.get(AVAILABILITY_RELAY_PATH, (req, res, next) => {
+  const query = availabilityQueryOf((name) => req.query[name]);
+  booking
+    .availability(query, req.ip)
+    .then((answer) => {
+      res.status(answer.status).set('Cache-Control', 'no-store').json(answer.body);
+    })
+    .catch(next);
+});
+
 app.use(
   express.static(browserDistFolder, {
     maxAge: '1y',
@@ -122,7 +149,13 @@ app.use(
 app.use((req, res, next) => {
   catalog
     .get()
-    .then((snapshot) => angularApp.handle(req, { catalog: snapshot }))
+    .then((snapshot) =>
+      angularApp.handle(req, {
+        catalog: snapshot,
+        // The results page reads the availability on the server, with the visitor's address.
+        searchAvailability: (query: AvailabilityQuery) => booking.availability(query, req.ip),
+      }),
+    )
     .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))
     .catch(next);
 });
