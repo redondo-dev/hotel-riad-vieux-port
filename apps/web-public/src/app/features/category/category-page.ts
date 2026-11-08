@@ -92,9 +92,7 @@ const THUMBNAILS = 2;
         <div class="mt-10 grid gap-10 lg:grid-cols-3">
           <div class="flex flex-col gap-8 lg:col-span-2">
             <section aria-labelledby="category-about">
-              <h2 id="category-about" class="section-title" i18n="@@category.about">
-                La chambre
-              </h2>
+              <h2 id="category-about" class="section-title" i18n="@@category.about">La chambre</h2>
               <p class="mt-4 whitespace-pre-line">{{ room.description }}</p>
               <p class="mt-4">
                 <span class="font-semibold" i18n="@@category.beds">Lits :</span> {{ room.beds }}
