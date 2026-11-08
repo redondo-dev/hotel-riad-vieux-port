@@ -6,8 +6,10 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import helmet from 'helmet';
+import { MEDIA_PATH } from '@riad/shared';
 import { join } from 'node:path';
 import { CatalogSource } from './catalog-source';
+import { MediaRelay } from './media-relay';
 
 /**
  * Server-side rendering of the public site: pages arrive already filled in, which search
@@ -23,6 +25,9 @@ import { CatalogSource } from './catalog-source';
  * Catalogue: read from the API by this server (API_INTERNAL_URL) and handed to each page
  * through the request context; the visitor's browser never calls the API (see
  * catalog-source.ts for the memory and the behaviour when the API is down).
+ *
+ * Photos: the files are relayed from the API under /media/<file> (see media-relay.ts), so the
+ * browser only ever talks to this site.
  */
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -31,14 +36,27 @@ const allowedHosts = (process.env['ALLOWED_HOSTS'] ?? '')
   .map((host) => host.trim().toLowerCase())
   .filter((host) => host !== '');
 
+// An empty value (copied from .env.example) means « not set ».
+const apiUrl = process.env['API_INTERNAL_URL'] || 'http://localhost:3000/api/v1';
+
 const catalog = new CatalogSource({
-  // An empty value (copied from .env.example) means « not set ».
-  apiUrl: process.env['API_INTERNAL_URL'] || 'http://localhost:3000/api/v1',
+  apiUrl,
   onError: (error) => {
     // eslint-disable-next-line no-console -- the SSR server has no logger yet
     console.error('Catalogue : lecture de l’API impossible.', error);
   },
 });
+
+const media = new MediaRelay({
+  apiUrl,
+  onError: (error) => {
+    // eslint-disable-next-line no-console -- the SSR server has no logger yet
+    console.error('Photos : lecture de l’API impossible.', error);
+  },
+});
+
+/** A photo file never changes (a new photo has a new name): cached for a year. */
+const MEDIA_CACHE = 'public, max-age=31536000, immutable';
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
@@ -77,6 +95,21 @@ app.use(
     },
   }),
 );
+
+app.get(`${MEDIA_PATH}/:file`, (req, res, next) => {
+  media
+    .read(req.params['file'] ?? '')
+    .then((answer) => {
+      if (answer.status !== 200) {
+        res.status(answer.status).set('Cache-Control', 'no-store').end();
+        return;
+      }
+      res
+        .set({ 'Content-Type': 'image/webp', 'Cache-Control': MEDIA_CACHE })
+        .send(Buffer.from(answer.body));
+    })
+    .catch(next);
+});
 
 app.use(
   express.static(browserDistFolder, {

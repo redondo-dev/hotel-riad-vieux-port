@@ -6,6 +6,7 @@
     "title.home": "Hôtel Riad Vieux-Port · 3-star hotel on Marseille's Old Port",
     "title.booking": "Your search · Hôtel Riad Vieux-Port",
     "title.notFound": "Page not found · Hôtel Riad Vieux-Port",
+    "title.category": "{$name} · Hôtel Riad Vieux-Port",
 
     "route.booking": "book",
     "route.hotel": "hotel",
@@ -114,6 +115,7 @@
     "room.priceNote": "Indicative price: non-refundable rate, low season, tourist tax excluded.",
     "room.checkAvailability": "Check availability",
     "room.photoAlt": "Photo of the {$name} category",
+    "room.details": "Details",
 
     "home.metaDescription": "3-star hotel with {$rooms} rooms on Marseille's Old Port. Book online, free cancellation up to 48 hours before arrival with the flexible rate, 24-hour reception.",
     "home.hero.photoAlt": "Hotel façade facing the boats of the Old Port",
@@ -151,6 +153,18 @@
     "booking.roomLine": "Room {$number}: {$guests}",
     "booking.invalidSearch": "This search is incomplete or invalid. Start a new search from the home page.",
     "booking.editSearch": "Edit my search",
+
+    "category.metaDescription": "{$name} at Hôtel Riad Vieux-Port, on Marseille's Old Port. {$guests}, {$area} m². From {$price} per night.",
+    "category.back": "All our rooms",
+    "category.about": "The room",
+    "category.beds": "Beds:",
+    "category.amenities": "Amenities",
+    "category.price": "Price",
+    "category.gallery.label": "Photos of the room",
+    "category.gallery.enlarge": "Enlarge photo {$number} of {$total}",
+    "category.gallery.showAll": "See the {$total} photos",
+    "category.gallery.previous": "Previous photo",
+    "category.gallery.next": "Next photo",
 
     "notFound.code": "Error 404",
     "notFound.title": "This page does not exist or has moved",

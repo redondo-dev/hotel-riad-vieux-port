@@ -8,6 +8,9 @@
 
 export const BOOKING_PATH = $localize`:@@route.booking:reserver`;
 
+/** `/fr/chambres/<code>`, `/en/rooms/<code>`: the page of a room category. */
+export const ROOMS_PATH = $localize`:@@route.rooms:chambres`;
+
 /** Id of the stay search section, target of every "Book" button. */
 export const SEARCH_ANCHOR = 'search';
 
@@ -25,7 +28,7 @@ export const PUBLIC_NAV: NavItem[] = [
   },
   {
     label: $localize`:@@nav.rooms:Chambres`,
-    path: $localize`:@@route.rooms:chambres`,
+    path: ROOMS_PATH,
     available: false,
   },
   {

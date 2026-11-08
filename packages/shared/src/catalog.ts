@@ -42,6 +42,24 @@ export interface RoomCategory {
   fromPriceCents: number;
   /** Equipment codes; a code unknown to the site is simply not displayed. */
   amenities: string[];
+  /** In display order: the first one is the main photo. Empty while none is chosen. */
+  photos: CategoryPhoto[];
+}
+
+/** One stored version of a photo: its width and its file name (see media.ts). */
+export interface PhotoFile {
+  width: number;
+  file: string;
+}
+
+export interface CategoryPhoto {
+  /** Alternative text: what the photo shows, for those who cannot see it. */
+  alt: LocalizedText;
+  /** Size of the largest version; null for a photo stored before sizes were recorded. */
+  width: number | null;
+  height: number | null;
+  /** Smallest first. */
+  files: PhotoFile[];
 }
 
 export type HotelServiceCode =
