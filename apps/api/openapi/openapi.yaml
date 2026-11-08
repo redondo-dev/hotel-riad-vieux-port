@@ -115,6 +115,40 @@ paths:
                   items:
                     type: array
                     items: { $ref: '#/components/schemas/PublicService' }
+  /public/availability:
+    get:
+      operationId: searchPublicAvailability
+      summary: Disponibilités et prix pour un visiteur
+      description: |
+        Catégories pouvant accueillir TOUTES les chambres demandées, chaque nuit du séjour, dans
+        l'ordre d'affichage ; prix de l'ensemble aux deux tarifs, taxe de séjour à part. Les
+        catégories fermées à la vente une des nuits ne sont jamais proposées. Aucun identifiant
+        ni numéro de chambre ; le stock n'est indiqué (`roomsLeft`) qu'à 3 chambres ou moins.
+        Règles en ligne (RM-06) : durée maximale, réservation jusqu'à N jours à l'avance, et
+        arrivée le soir même jusqu'à l'heure limite. Sans session ; `Cache-Control: no-store` ;
+        30 recherches par minute et par adresse IP au plus (429).
+      tags: [Catalogue public]
+      parameters:
+        - { name: checkIn, in: query, required: true, schema: { type: string, format: date } }
+        - { name: checkOut, in: query, required: true, schema: { type: string, format: date } }
+        - name: guests
+          in: query
+          required: true
+          description: Même format que pour le personnel, par exemple « 2-6_3 ».
+          schema: { type: string, maxLength: 60, example: '2_2' }
+      responses:
+        '200':
+          description: Offres du séjour.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicAvailability' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+        '503':
+          description: L'hôtel n'est pas encore configuré (code `HOTEL_NOT_CONFIGURED`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /admin/session:
     post:
       operationId: logIn
@@ -2627,6 +2661,41 @@ components:
         pricingUnit:
           type: string
           enum: [per_person_night, per_night, per_stay, per_unit]
+    PublicOffer:
+      type: object
+      required: [code, roomsLeft, flexibleCents, nonRefundableCents, touristTaxCents]
+      properties:
+        code: { type: string, example: double-standard }
+        roomsLeft:
+          type: [integer, 'null']
+          description: Chambres restantes, seulement à 3 ou moins ; `null` sinon.
+          example: 2
+        flexibleCents:
+          type: integer
+          description: Toutes les chambres demandées, tarif flexible.
+        nonRefundableCents:
+          type: integer
+          description: Toutes les chambres demandées, tarif non remboursable.
+        touristTaxCents:
+          type: integer
+          description: Taxe de séjour, identique aux deux tarifs.
+    PublicAvailability:
+      type: object
+      required: [checkIn, checkOut, nights, rooms, freeCancellationUntil, offers]
+      properties:
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        nights: { type: integer, example: 3 }
+        rooms:
+          type: array
+          items: { $ref: '#/components/schemas/Occupancy' }
+        freeCancellationUntil:
+          type: [string, 'null']
+          format: date-time
+          description: Fin de l'annulation gratuite au tarif flexible (RM-15).
+        offers:
+          type: array
+          items: { $ref: '#/components/schemas/PublicOffer' }
     Role:
       type: string
       enum: [direction, reception, housekeeping, technician]

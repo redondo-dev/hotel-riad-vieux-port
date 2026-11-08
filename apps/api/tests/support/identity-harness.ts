@@ -71,7 +71,12 @@ export class IdentityHarness {
         ...(options.today === undefined ? {} : { today: options.today }),
         ...(options.now === undefined ? {} : { now: options.now }),
       },
-      public: { sequelize: this.sequelize, storage: this.storage },
+      public: {
+        sequelize: this.sequelize,
+        storage: this.storage,
+        ...(options.today === undefined ? {} : { today: options.today }),
+        ...(options.now === undefined ? {} : { now: options.now }),
+      },
     });
   }
 
