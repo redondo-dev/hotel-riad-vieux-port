@@ -108,6 +108,7 @@ compilation, pour ne jamais publier une page à moitié traduite.
   `apps/web-public/public/images/site/` et met à jour
   `apps/web-public/src/app/core/data/site-photos.generated.ts`. Ces fichiers sont enregistrés
   dans git. Une photo absente garde le bloc « Photo à venir ».
+
 - **Crédits** : toutes les photos viennent d'Unsplash (« Photos : Unsplash » dans le pied de
   page). Les noms des photographes sont listés dans
   `apps/web-public/src/app/core/data/photo-credits.ts`, en attendant la page des mentions
