@@ -1,6 +1,13 @@
 <!-- 1. Hero: photo, title, and the search form overlapping its bottom edge on large screens -->
 <section class="on-dark relative isolate" aria-labelledby="home-title">
-  <rvp-photo tone="dark" class="absolute inset-0 -z-20" [alt]="heroAlt" />
+  <rvp-photo
+    tone="dark"
+    class="absolute inset-0 -z-20"
+    sizes="100vw"
+    [alt]="heroAlt"
+    [photo]="heroPhoto"
+    [eager]="true"
+  />
   <div
     class="absolute inset-0 -z-10 bg-linear-to-t from-ink/85 via-ink/45 to-ink/10"
     aria-hidden="true"
@@ -93,7 +100,12 @@
   class="container-page mt-20 grid items-center gap-8 lg:grid-cols-2"
   aria-labelledby="home-about-title"
 >
-  <rvp-photo class="aspect-[4/3] rounded-xl" [alt]="aboutAlt" />
+  <rvp-photo
+    class="aspect-[4/3] rounded-xl"
+    sizes="(min-width: 1024px) 584px, 100vw"
+    [alt]="aboutAlt"
+    [photo]="aboutPhoto"
+  />
   <div>
     <h2 id="home-about-title" class="section-title" i18n="@@home.about.title">
       Un riad au bord de la Méditerranée
@@ -133,7 +145,12 @@
   aria-labelledby="home-area-title"
 >
   <div class="lg:order-2">
-    <rvp-photo class="aspect-[4/3] rounded-xl" [alt]="neighbourhoodAlt" />
+    <rvp-photo
+      class="aspect-[4/3] rounded-xl"
+      sizes="(min-width: 1024px) 584px, 100vw"
+      [alt]="neighbourhoodAlt"
+      [photo]="neighbourhoodPhoto"
+    />
   </div>
   <div class="lg:order-1">
     <h2 id="home-area-title" class="section-title" i18n="@@home.neighbourhood.title">

@@ -36,6 +36,7 @@
     "footer.checkOut": "Check-out before {$time}",
     "footer.reception": "Reception open 24 hours a day",
     "footer.demoNotice": "Fictional hotel: demonstration website built for a portfolio.",
+    "footer.photosBy": "Photos:",
 
     "photo.placeholder": "Photo coming soon",
 

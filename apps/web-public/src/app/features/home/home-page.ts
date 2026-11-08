@@ -25,6 +25,7 @@ import {
   type LucideIconData,
 } from 'lucide-angular';
 import { CatalogService } from '../../core/data/catalog.service';
+import { sitePhoto } from '../../core/data/site-photos';
 import { SEARCH_ANCHOR } from '../../core/navigation';
 import { Photo } from '../../shared/ui/photo';
 import { RoomCard } from '../../shared/ui/room-card';
@@ -72,6 +73,10 @@ export class HomePage {
   protected readonly heroAlt = $localize`:@@home.hero.photoAlt:Façade de l'hôtel face aux bateaux du Vieux-Port`;
   protected readonly aboutAlt = $localize`:@@home.about.photoAlt:Patio intérieur de l'hôtel, carreaux de zellige et plantes`;
   protected readonly neighbourhoodAlt = $localize`:@@home.neighbourhood.photoAlt:Le Vieux-Port de Marseille et Notre-Dame-de-la-Garde au coucher du soleil`;
+  /** null until « npm run images:site » has made them: the placeholders stay. */
+  protected readonly heroPhoto = sitePhoto('hero', this.heroAlt);
+  protected readonly aboutPhoto = sitePhoto('hotel', this.aboutAlt);
+  protected readonly neighbourhoodPhoto = sitePhoto('quartier', this.neighbourhoodAlt);
   protected readonly roomsListLabel = $localize`:@@home.rooms.listLabel:Nos catégories de chambres, faire défiler horizontalement`;
   protected readonly aboutText = $localize`:@@home.about.text:Un hôtel indépendant de ${this.totalRooms}:rooms: chambres, entre la lumière de Marseille et l'esprit des riads : un patio au calme, une équipe à l'écoute et le Vieux-Port au bout de la rue.`;
 
