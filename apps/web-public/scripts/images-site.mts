@@ -115,7 +115,17 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  const folderFiles = await readdir(folder);
+  let folderFiles: string[];
+  try {
+    folderFiles = await readdir(folder);
+  } catch {
+    console.error(`Dossier introuvable : ${folder}`);
+    console.error(
+      'Astuce : dans l’Explorateur, clic droit sur le dossier, « Copier en tant que chemin d’accès ».',
+    );
+    process.exitCode = 1;
+    return;
+  }
   await mkdir(OUTPUT, { recursive: true });
   let failed = false;
   for (const target of TARGETS) {
