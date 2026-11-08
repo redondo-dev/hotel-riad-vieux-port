@@ -121,6 +121,22 @@ Disponibilités et prix d'un séjour pour la saisie au comptoir ou au téléphon
 | Taxe           | Taxe de séjour à part : par adulte et par nuit, au taux des paramètres (RM-13, à confirmer)                |
 | Rien de retenu | La réservation (étape suivante) revérifie la disponibilité dans sa transaction (RM-03)                     |
 
+## Disponibilités pour les visiteurs (`/api/v1/public/availability`)
+
+Même calcul que pour le personnel, filtré pour le public ; détail dans `openapi/openapi.yaml`.
+Exemple : `?checkIn=2026-05-12&checkOut=2026-05-15&guests=2_2` (deux chambres doubles).
+
+| Sujet      | Règle                                                                                              |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| Accès      | Sans session ; appelée par le serveur du site, qui transmet l'adresse du visiteur                  |
+| Limites    | Règles en ligne (RM-06) : durée maximale, jours à l'avance, heure limite pour arriver le soir même |
+| Offres     | Seules les catégories pouvant accueillir toutes les chambres demandées, chaque nuit du séjour      |
+| Fermeture  | Une catégorie fermée à la vente une des nuits n'est jamais proposée                                |
+| Prix       | Total de toutes les chambres aux deux tarifs ; taxe de séjour à part ; même calcul que le comptoir |
+| Stock      | `roomsLeft` seulement à 3 chambres ou moins (« Plus que 2 chambres ») ; jamais le détail par nuit  |
+| Annulation | `freeCancellationUntil` : fin de l'annulation gratuite au tarif flexible (RM-15)                   |
+| Robots     | 30 recherches par minute et par adresse IP (429) ; `Cache-Control: no-store`                       |
+
 ## Réservations (`/api/v1/admin/reservations`)
 
 Saisie par le personnel, liste et détail ; détail dans `openapi/openapi.yaml`.

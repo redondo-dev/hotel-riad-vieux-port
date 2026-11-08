@@ -23,11 +23,13 @@ import { UserRepository } from './modules/identity/infrastructure/user-repositor
 import { AvailabilityService } from './modules/reservations/application/availability-service.ts';
 import { FrontDesk } from './modules/reservations/application/front-desk.ts';
 import { PlanningService } from './modules/reservations/application/planning-service.ts';
+import { PublicAvailability } from './modules/reservations/application/public-availability.ts';
 import { ReservationChanges } from './modules/reservations/application/reservation-changes.ts';
 import { ReservationService } from './modules/reservations/application/reservation-service.ts';
 import { availabilityRouter } from './modules/reservations/http/availability-routes.ts';
 import { frontDeskRouter } from './modules/reservations/http/front-desk-routes.ts';
 import { planningRouter } from './modules/reservations/http/planning-routes.ts';
+import { publicSearchRouter } from './modules/reservations/http/public-availability-routes.ts';
 import { reservationChangeRouter } from './modules/reservations/http/reservation-change-routes.ts';
 import { reservationRouter } from './modules/reservations/http/reservation-routes.ts';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.ts';
@@ -65,6 +67,8 @@ export interface PublicDependencies {
   storage?: FileStorage;
   /** Current day at the hotel, « YYYY-MM-DD »; the tests fix it. Default: the real clock. */
   today?: () => string;
+  /** Current instant (online booking limits, RM-06); the tests fix it. Default: the real clock. */
+  now?: () => Date;
 }
 
 export interface AdminDependencies {
@@ -128,7 +132,7 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   return router;
 }
 
-/** Public part of the API: no session, read-only catalogue for the public site. */
+/** Public part of the API: no session; catalogue and availability for the public site. */
 function publicRouter(deps: PublicDependencies): Router {
   const catalog = new PublicCatalog(
     new CatalogRepository(deps.sequelize),
@@ -137,6 +141,8 @@ function publicRouter(deps: PublicDependencies): Router {
   );
   const router = Router();
   router.use(publicCatalogRouter(catalog));
+  const now = deps.now ?? (() => new Date());
+  router.use(publicSearchRouter(new PublicAvailability(deps.sequelize, now)));
   if (deps.storage !== undefined) {
     router.use(mediaRouter(deps.storage));
   }
