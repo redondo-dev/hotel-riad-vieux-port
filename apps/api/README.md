@@ -137,6 +137,23 @@ Exemple : `?checkIn=2026-05-12&checkOut=2026-05-15&guests=2_2` (deux chambres do
 | Annulation | `freeCancellationUntil` : fin de l'annulation gratuite au tarif flexible (RM-15)                   |
 | Robots     | 30 recherches par minute et par adresse IP (429) ; `Cache-Control: no-store`                       |
 
+## Réservation en ligne (`/api/v1/public/bookings`)
+
+Clé Stripe de test (`STRIPE_SECRET_KEY=sk_test_…`) dans le `.env` racine ; sans elle, la route
+répond `PAYMENT_NOT_CONFIGURED`. Les tests n'appellent jamais Stripe (faux service de paiement).
+
+| Sujet      | Règle                                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------------- |
+| Accès      | Sans session ; appelée par le serveur du site, clé `Idempotency-Key` obligatoire                     |
+| Contrôles  | Règles en ligne, disponibilité et prix revérifiés ; jamais le prix du navigateur                     |
+| Blocage    | Réservation « en attente de paiement » (source `website`), chambres bloquées 33 min                  |
+| Paiement   | Page Stripe Checkout valable 31 min : séjour payé (non remboursable) ou carte en garantie (flexible) |
+| Taxe       | Taxe de séjour payée à l'hôtel, comme sur les sites de réservation                                   |
+| Panne      | Stripe ne répond pas : chambres rendues aussitôt, rien n'est réservé (503)                           |
+| Conditions | Case obligatoire ; date d'acceptation notée au journal d'audit                                       |
+| Robots     | 5 réservations par 10 minutes et par adresse IP (429)                                                |
+| Cartes     | Jamais de donnée de carte : seuls des identifiants Stripe sont gardés                                |
+
 ## Réservations (`/api/v1/admin/reservations`)
 
 Saisie par le personnel, liste et détail ; détail dans `openapi/openapi.yaml`.

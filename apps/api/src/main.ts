@@ -9,7 +9,9 @@ import { join } from 'node:path';
 import pg from 'pg';
 import { createApp } from './app.ts';
 import { describeDatabase } from './config/database-url.ts';
-import { DEFAULT_ADMIN_APP_URL, loadEnv } from './config/env.ts';
+import { DEFAULT_ADMIN_APP_URL, DEFAULT_PUBLIC_SITE_URL, loadEnv } from './config/env.ts';
+import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
+import { stripeGateway } from './modules/reservations/infrastructure/stripe-gateway.ts';
 import { createSessionStore } from './shared/http/session.ts';
 import { createSequelize } from './shared/infrastructure/database.ts';
 import { createLogger } from './shared/infrastructure/logger.ts';
@@ -42,6 +44,15 @@ function createMailer(): Mailer {
   return outboxMailer(OUTBOX_DIR);
 }
 
+/** Required in production by the configuration check; optional while developing. */
+function createPayments(): { payments?: PaymentGateway } {
+  if (env.STRIPE_SECRET_KEY === undefined) {
+    logger.warn('STRIPE_SECRET_KEY absente : la réservation en ligne répond « non configurée »');
+    return {};
+  }
+  return { payments: stripeGateway(env.STRIPE_SECRET_KEY) };
+}
+
 const sequelize = createSequelize(env.DATABASE_URL);
 // Required in production by the configuration check (loadEnv).
 const storage = localFileStorage(env.STORAGE_DIR ?? DEFAULT_STORAGE_DIR);
@@ -63,7 +74,12 @@ const app = createApp({
     storage,
     adminAppUrl: env.ADMIN_APP_URL ?? DEFAULT_ADMIN_APP_URL,
   },
-  public: { sequelize, storage },
+  public: {
+    sequelize,
+    storage,
+    ...createPayments(),
+    publicSiteUrl: env.PUBLIC_SITE_URL ?? DEFAULT_PUBLIC_SITE_URL,
+  },
 });
 
 // Express 5 also calls this function when listening fails (port taken…): the error is then

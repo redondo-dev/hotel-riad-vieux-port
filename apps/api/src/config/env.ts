@@ -61,6 +61,8 @@ const REQUIRED_IN_PRODUCTION = [
   'SESSION_SECRET',
   'ADMIN_APP_URL',
   'STORAGE_DIR',
+  'STRIPE_SECRET_KEY',
+  'PUBLIC_SITE_URL',
 ] as const;
 
 const EnvSchema = z
@@ -120,9 +122,34 @@ const EnvSchema = z
      * an S3-compatible storage is set up.
      */
     STORAGE_DIR: emptyAsMissing(z.string().min(1).optional()),
+    /**
+     * Secret key of Stripe (online payment, step R-3): « sk_test_… » outside production. Without
+     * it in development, online bookings answer « paiement non configuré ». Never in Git.
+     */
+    STRIPE_SECRET_KEY: emptyAsMissing(
+      z
+        .string()
+        .regex(/^sk_(test|live)_[A-Za-z0-9]+$/, 'doit être une clé secrète Stripe (sk_…)')
+        .optional(),
+    ),
+    /**
+     * Address of the public site: the payment page sends visitors back there, and only there.
+     * Defaults to the local public site in development.
+     */
+    PUBLIC_SITE_URL: emptyAsMissing(
+      z.url({ protocol: /^https?$/, error: 'doit être une adresse http(s) valide' }).optional(),
+    ),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') {
+      // A real payment must never be taken from a development machine or by the tests.
+      if (env.STRIPE_SECRET_KEY?.startsWith('sk_live_') === true) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['STRIPE_SECRET_KEY'],
+          message: 'ne doit pas être une clé de production (sk_live_) hors production',
+        });
+      }
       return;
     }
     for (const name of REQUIRED_IN_PRODUCTION) {
@@ -130,6 +157,13 @@ const EnvSchema = z
       if (value === undefined || (Array.isArray(value) && value.length === 0)) {
         ctx.addIssue({ code: 'custom', path: [name], message: 'est obligatoire en production' });
       }
+    }
+    if (env.PUBLIC_SITE_URL?.startsWith('http:') === true) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PUBLIC_SITE_URL'],
+        message: 'doit utiliser https en production',
+      });
     }
     if (env.ADMIN_APP_URL?.startsWith('http:') === true) {
       ctx.addIssue({
@@ -142,6 +176,9 @@ const EnvSchema = z
 
 /** Staff tool served by `ng serve` in development (port reserved in API_ALLOWED_ORIGINS). */
 export const DEFAULT_ADMIN_APP_URL = 'http://localhost:4300';
+
+/** Public site served by `ng serve` in development. */
+export const DEFAULT_PUBLIC_SITE_URL = 'http://localhost:4200';
 
 export type Env = z.infer<typeof EnvSchema>;
 
