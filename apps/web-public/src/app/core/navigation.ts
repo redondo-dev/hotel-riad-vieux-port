@@ -8,6 +8,9 @@
 
 export const BOOKING_PATH = $localize`:@@route.booking:reserver`;
 
+/** `/fr/reserver/choix`: the rate chosen, before the guest's details (step R-4). */
+export const CHOICE_PATH = $localize`:@@route.bookingChoice:choix`;
+
 /** `/fr/chambres/<code>`, `/en/rooms/<code>`: the page of a room category. */
 export const ROOMS_PATH = $localize`:@@route.rooms:chambres`;
 

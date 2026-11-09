@@ -31,3 +31,15 @@ export function formatTime(time: string, locale: Locale): string {
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(1970, 0, 1, hours, minutes)));
 }
+
+/** An instant shown at the hotel's time: « lundi 10 mai à 15:00 ». */
+export function formatInstant(
+  instant: string,
+  locale: Locale,
+  timeZone: string,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], { ...options, timeZone }).format(
+    new Date(instant),
+  );
+}
