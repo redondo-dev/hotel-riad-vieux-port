@@ -12,9 +12,10 @@ import { hasTestDatabase } from '../support/test-database.ts';
  * Bookings made on the website (step R-3) against the test database, with a fake payment
  * service: Stripe is never called. Skipped without TEST_DATABASE_URL.
  *
- * This file owns floor 11 (rooms N11xx), the categories « onl-… » and January 2037, with the
- * current instant fixed on 1 December 2036 at 11:00 in Marseille. It sets the hotel settings it
- * needs and puts the previous ones back at the end.
+ * This file owns floor 11 (rooms N11xx), the categories « onl-… », January 2037 and the
+ * customers « Enligne » (a name no other file searches for), with the current instant fixed on
+ * 1 December 2036 at 11:00 in Marseille. It sets the hotel settings it needs and puts the
+ * previous ones back at the end.
  */
 
 const BOOKINGS = `${API_PREFIX}/public/bookings`;
@@ -71,8 +72,8 @@ function bookingBody(changes: Record<string, unknown> = {}): Record<string, unkn
     ratePlan: 'non_refundable',
     customer: {
       firstName: 'Lina',
-      lastName: 'Martin',
-      email: 'lina.martin@test.example',
+      lastName: 'Enligne',
+      email: 'lina.enligne@test.example',
       phone: '+33 6 12 34 56 78',
       countryCode: 'FR',
     },
@@ -205,7 +206,7 @@ describe.skipIf(!hasTestDatabase)('online booking', () => {
         amountCents: 3 * 7200,
         description: 'Double en ligne · 3 nuits',
         locale: 'fr',
-        customer: { email: 'lina.martin@test.example', name: 'Lina Martin' },
+        customer: { email: 'lina.enligne@test.example', name: 'Lina Enligne' },
         successUrl: `${PUBLIC_SITE_URL}/reserver/confirmation`,
       });
       expect(call?.expiresAt.toISOString()).toBe('2036-12-01T10:31:00.000Z');
@@ -325,7 +326,7 @@ describe.skipIf(!hasTestDatabase)('online booking', () => {
 
     it('requires a phone number and a key for each booking', async () => {
       const app = harness.app({ now: () => NOW, payments: fakePayments().gateway });
-      const customer = { firstName: 'Lina', lastName: 'Martin', email: 'l@test.example' };
+      const customer = { firstName: 'Lina', lastName: 'Enligne', email: 'l@test.example' };
 
       const noPhone = await post(app, bookingBody({ customer }));
       expect(noPhone.status).toBe(400);
