@@ -282,7 +282,10 @@ describe.skipIf(!hasTestDatabase)('online booking', () => {
     it('gives the rooms back at once when Stripe fails, and the key can be used again', async () => {
       const stay = { category: 'onl-unique', checkIn: '2037-01-26', checkOut: '2037-01-28' };
       const key = newKey();
-      const broken = harness.app({ now: () => NOW, payments: fakePayments({ fail: true }).gateway });
+      const broken = harness.app({
+        now: () => NOW,
+        payments: fakePayments({ fail: true }).gateway,
+      });
 
       const failed = await post(broken, bookingBody(stay), key);
 

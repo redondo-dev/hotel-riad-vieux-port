@@ -17,11 +17,7 @@ import type { Occupancy } from '../domain/quote.ts';
 import type { RatePlan } from '../domain/reservation-rules.ts';
 import { ReservationRepository } from '../infrastructure/reservation-repository.ts';
 import type { CheckoutSession, PaymentGateway } from './payment-gateway.ts';
-import type {
-  ActionOrigin,
-  BookedReservation,
-  ReservationService,
-} from './reservation-service.ts';
+import type { ActionOrigin, BookedReservation, ReservationService } from './reservation-service.ts';
 
 /** A booking sent by the public site (relayed by its server, step R-4). */
 export interface OnlineBookingRequest {
