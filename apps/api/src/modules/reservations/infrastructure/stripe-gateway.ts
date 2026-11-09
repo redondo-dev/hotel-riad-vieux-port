@@ -69,7 +69,8 @@ export function stripeGateway(secretKey: string): PaymentGateway {
           ...common,
           mode: 'setup',
           customer: customer.id,
-          payment_method_types: ['card'],
+          // Setup mode: the currency of the future charges (payment methods chosen by Stripe).
+          currency: 'eur',
           setup_intent_data: { metadata, description: request.description },
         },
         { idempotencyKey: key },

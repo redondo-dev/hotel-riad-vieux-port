@@ -45,12 +45,12 @@ function createMailer(): Mailer {
 }
 
 /** Required in production by the configuration check; optional while developing. */
-function createPayments(): PaymentGateway | undefined {
+function createPayments(): { payments?: PaymentGateway } {
   if (env.STRIPE_SECRET_KEY === undefined) {
     logger.warn('STRIPE_SECRET_KEY absente : la réservation en ligne répond « non configurée »');
-    return undefined;
+    return {};
   }
-  return stripeGateway(env.STRIPE_SECRET_KEY);
+  return { payments: stripeGateway(env.STRIPE_SECRET_KEY) };
 }
 
 const sequelize = createSequelize(env.DATABASE_URL);
@@ -77,7 +77,7 @@ const app = createApp({
   public: {
     sequelize,
     storage,
-    payments: createPayments(),
+    ...createPayments(),
     publicSiteUrl: env.PUBLIC_SITE_URL ?? DEFAULT_PUBLIC_SITE_URL,
   },
 });

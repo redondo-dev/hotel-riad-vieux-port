@@ -1,10 +1,10 @@
 import { QueryTypes, type Sequelize, type Transaction } from 'sequelize';
 import type { PricedCategory } from '../domain/quote.ts';
 import type {
-  BookingSource,
   PaymentStatus,
   PricingUnit,
   RatePlan,
+  ReservationSource,
   ReservationStatus,
 } from '../domain/reservation-rules.ts';
 
@@ -57,7 +57,7 @@ export interface CustomerView extends CustomerFields {
 export interface NewReservation {
   reference: string;
   customerId: string;
-  source: BookingSource;
+  source: ReservationSource;
   checkIn: string;
   checkOut: string;
   ratePlan: RatePlan;

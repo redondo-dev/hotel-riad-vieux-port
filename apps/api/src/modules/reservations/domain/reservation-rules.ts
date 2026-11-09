@@ -12,6 +12,8 @@ export type RatePlan = (typeof RATE_PLANS)[number];
 export const ALL_SOURCES = ['website', 'phone', 'desk'] as const;
 export const BOOKING_SOURCES = ['phone', 'desk'] as const;
 export type BookingSource = (typeof BOOKING_SOURCES)[number];
+/** Any source, the website included (online bookings, step R-3). */
+export type ReservationSource = (typeof ALL_SOURCES)[number];
 
 export const RESERVATION_STATUSES = [
   'pending_payment',

@@ -13,11 +13,11 @@ import { CatalogRepository } from '../../catalog/infrastructure/catalog-reposito
 import type { StaffUser } from '../../identity/domain/identity-rules.ts';
 import { countedGuests, fitsIn, nightsOf, type Occupancy, quoteRoom } from '../domain/quote.ts';
 import {
-  type BookingSource,
   freeCancellationUntil,
   newReference,
   nightLabel,
   type RatePlan,
+  type ReservationSource,
   serviceQuantity,
 } from '../domain/reservation-rules.ts';
 import { stayDateErrors } from '../domain/stay-rules.ts';
@@ -52,7 +52,7 @@ export interface NewBooking {
   checkIn: string;
   checkOut: string;
   ratePlan: RatePlan;
-  source: BookingSource;
+  source: ReservationSource;
   rooms: RequestedRoom[];
   services: RequestedService[];
   /** An existing customer, or the details of a new one. */
