@@ -7,6 +7,7 @@ import { QueryTypes, type Sequelize } from 'sequelize';
 import request from 'supertest';
 import { API_PREFIX, createApp } from '../../src/app.ts';
 import type { Role } from '../../src/modules/identity/domain/identity-rules.ts';
+import type { PaymentGateway } from '../../src/modules/reservations/application/payment-gateway.ts';
 import { hashPassword } from '../../src/modules/identity/infrastructure/password-hasher.ts';
 import { createSessionStore } from '../../src/shared/http/session.ts';
 import { createSequelize } from '../../src/shared/infrastructure/database.ts';
@@ -23,6 +24,15 @@ import { testDatabaseUrl } from './test-database.ts';
 export const ADMIN = `${API_PREFIX}/admin`;
 export const ADMIN_APP_URL = 'http://localhost:4300';
 export const STRONG_PASSWORD = 'Vieux-Port-2026!';
+
+export const PUBLIC_SITE_URL = 'http://localhost:4200';
+
+export interface AppOptions {
+  today?: () => string;
+  now?: () => Date;
+  /** A fake payment service: the tests never call Stripe. */
+  payments?: PaymentGateway;
+}
 
 export interface TestStaff {
   id: string;
@@ -49,7 +59,7 @@ export class IdentityHarness {
    * current day at the hotel (« YYYY-MM-DD ») and `now` the current instant; by default, the
    * real clock.
    */
-  app(options: { today?: () => string; now?: () => Date } = {}): ReturnType<typeof createApp> {
+  app(options: AppOptions = {}): ReturnType<typeof createApp> {
     const logger = createLogger({ level: 'silent', pretty: false });
     return createApp({
       logger,
@@ -76,6 +86,8 @@ export class IdentityHarness {
         storage: this.storage,
         ...(options.today === undefined ? {} : { today: options.today }),
         ...(options.now === undefined ? {} : { now: options.now }),
+        ...(options.payments === undefined ? {} : { payments: options.payments }),
+        publicSiteUrl: PUBLIC_SITE_URL,
       },
     });
   }

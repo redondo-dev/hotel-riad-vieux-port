@@ -46,6 +46,8 @@ export interface CustomerFields {
   email: string;
   phone: string | null;
   preferredLanguage: 'fr' | 'en';
+  /** ISO 3166 code (« FR »); asked by the website only, optional. */
+  countryCode?: string | null;
 }
 
 export interface CustomerView extends CustomerFields {
@@ -63,7 +65,10 @@ export interface NewReservation {
   freeCancellationUntil: Date | null;
   customerMessage: string | null;
   internalNotes: string | null;
-  createdBy: string;
+  /** null for a booking made by a visitor on the website. */
+  createdBy: string | null;
+  /** Set for a booking waiting for its payment: the rooms are held until then (RM-05). */
+  paymentExpiresAt?: Date | null;
 }
 
 export interface NewReservationRoom {
@@ -383,6 +388,51 @@ export class ReservationRepository {
     );
   }
 
+  /** The key is given back: the request failed before any answer could be kept. */
+  async forgetIdempotencyKey(key: string, transaction: Transaction): Promise<void> {
+    await this.#execute('DELETE FROM idempotency_keys WHERE key = $1', [key], transaction);
+  }
+
+  // --- Online booking (website) ---
+
+  /** An active category by the code of the public site's addresses. */
+  async activeCategoryByCode(
+    code: string,
+  ): Promise<{ id: string; nameFr: string; nameEn: string } | undefined> {
+    const rows = await this.#select<{ id: string; nameFr: string; nameEn: string }>(
+      `SELECT id, name_fr AS "nameFr", name_en AS "nameEn"
+         FROM room_categories
+        WHERE code = $1 AND is_active`,
+      [code],
+    );
+    return rows[0];
+  }
+
+  /** The Stripe page opened for a reservation waiting for its payment. */
+  async attachCheckout(
+    reservationId: string,
+    checkout: { sessionId: string; stripeCustomerId: string | null },
+    transaction: Transaction,
+  ): Promise<void> {
+    await this.#execute(
+      `UPDATE reservations
+          SET stripe_checkout_session_id = $2, stripe_customer_id = $3
+        WHERE id = $1`,
+      [reservationId, checkout.sessionId, checkout.stripeCustomerId],
+      transaction,
+    );
+  }
+
+  /** Gives the rooms back at once: the payment page could not be opened. */
+  async expireUnpaid(reservationId: string, transaction: Transaction): Promise<void> {
+    await this.#execute(
+      `UPDATE reservations SET status = 'expired'
+        WHERE id = $1 AND status = 'pending_payment'`,
+      [reservationId],
+      transaction,
+    );
+  }
+
   // --- What a booking reads ---
 
   async bookingSettings(transaction: Transaction): Promise<BookingSettings | undefined> {
@@ -463,10 +513,18 @@ export class ReservationRepository {
 
   async insertCustomer(fields: CustomerFields, transaction: Transaction): Promise<string> {
     const rows = await this.#select<{ id: string }>(
-      `INSERT INTO customers (first_name, last_name, email, phone, preferred_language)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO customers (first_name, last_name, email, phone, preferred_language,
+                             country_code)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id`,
-      [fields.firstName, fields.lastName, fields.email, fields.phone, fields.preferredLanguage],
+      [
+        fields.firstName,
+        fields.lastName,
+        fields.email,
+        fields.phone,
+        fields.preferredLanguage,
+        fields.countryCode ?? null,
+      ],
       transaction,
     );
     const id = rows[0]?.id;
@@ -497,8 +555,11 @@ export class ReservationRepository {
     const rows = await this.#select<{ id: string }>(
       `INSERT INTO reservations (reference, customer_id, source, check_in, check_out, status,
                                  rate_plan, total_amount_cents, free_cancellation_until,
-                                 customer_message, internal_notes, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'confirmed', $6, $7, $8, $9, $10, $11)
+                                 customer_message, internal_notes, created_by,
+                                 payment_expires_at)
+       VALUES ($1, $2, $3, $4, $5,
+               CASE WHEN $12::timestamptz IS NULL THEN 'confirmed' ELSE 'pending_payment' END,
+               $6, $7, $8, $9, $10, $11, $12::timestamptz)
        RETURNING id`,
       [
         fields.reference,
@@ -512,6 +573,7 @@ export class ReservationRepository {
         fields.customerMessage,
         fields.internalNotes,
         fields.createdBy,
+        fields.paymentExpiresAt ?? null,
       ],
       transaction,
     );
@@ -570,7 +632,7 @@ export class ReservationRepository {
   async insertCharge(
     reservationId: string,
     charge: NewCharge,
-    actorId: string,
+    actorId: string | null,
     transaction: Transaction,
   ): Promise<void> {
     await this.#execute(

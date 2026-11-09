@@ -23,6 +23,8 @@ import { UserRepository } from './modules/identity/infrastructure/user-repositor
 import { AvailabilityService } from './modules/reservations/application/availability-service.ts';
 import { FrontDesk } from './modules/reservations/application/front-desk.ts';
 import { PlanningService } from './modules/reservations/application/planning-service.ts';
+import { OnlineBooking } from './modules/reservations/application/online-booking.ts';
+import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
 import { PublicAvailability } from './modules/reservations/application/public-availability.ts';
 import { ReservationChanges } from './modules/reservations/application/reservation-changes.ts';
 import { ReservationService } from './modules/reservations/application/reservation-service.ts';
@@ -30,6 +32,7 @@ import { availabilityRouter } from './modules/reservations/http/availability-rou
 import { frontDeskRouter } from './modules/reservations/http/front-desk-routes.ts';
 import { planningRouter } from './modules/reservations/http/planning-routes.ts';
 import { publicSearchRouter } from './modules/reservations/http/public-availability-routes.ts';
+import { publicBookingRouter } from './modules/reservations/http/public-booking-routes.ts';
 import { reservationChangeRouter } from './modules/reservations/http/reservation-change-routes.ts';
 import { reservationRouter } from './modules/reservations/http/reservation-routes.ts';
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.ts';
@@ -40,6 +43,7 @@ import { corsPolicy, jsonBody, securityHeaders } from './shared/http/security.ts
 import { type SessionStore, staffSessions } from './shared/http/session.ts';
 import type { FileStorage } from './shared/infrastructure/file-storage.ts';
 import type { Mailer } from './shared/infrastructure/mailer.ts';
+import { DEFAULT_PUBLIC_SITE_URL } from './config/env.ts';
 
 /** Prefix of every route of the API, version included. */
 export const API_PREFIX = '/api/v1';
@@ -69,6 +73,10 @@ export interface PublicDependencies {
   today?: () => string;
   /** Current instant (online booking limits, RM-06); the tests fix it. Default: the real clock. */
   now?: () => Date;
+  /** Stripe, or a fake in the tests; without it, online bookings answer 503. */
+  payments?: PaymentGateway;
+  /** Address of the public site: the payment page may only send visitors back there. */
+  publicSiteUrl?: string;
 }
 
 export interface AdminDependencies {
@@ -133,7 +141,7 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
 }
 
 /** Public part of the API: no session; catalogue and availability for the public site. */
-function publicRouter(deps: PublicDependencies): Router {
+function publicRouter(deps: PublicDependencies, logger: Logger): Router {
   const catalog = new PublicCatalog(
     new CatalogRepository(deps.sequelize),
     deps.today ?? (() => hotelToday()),
@@ -143,6 +151,18 @@ function publicRouter(deps: PublicDependencies): Router {
   router.use(publicCatalogRouter(catalog));
   const now = deps.now ?? (() => new Date());
   router.use(publicSearchRouter(new PublicAvailability(deps.sequelize, now)));
+  const today = deps.today ?? (() => hotelToday());
+  const booking = new OnlineBooking({
+    sequelize: deps.sequelize,
+    reservations: new ReservationService(deps.sequelize, today),
+    payments: deps.payments,
+    siteUrl: deps.publicSiteUrl ?? DEFAULT_PUBLIC_SITE_URL,
+    now,
+    logError: (error) => {
+      logger.error({ err: error }, 'Stripe : ouverture de la page de paiement impossible');
+    },
+  });
+  router.use(publicBookingRouter(booking));
   if (deps.storage !== undefined) {
     router.use(mediaRouter(deps.storage));
   }
@@ -175,7 +195,7 @@ export function createApp(deps: AppDependencies): Express {
     api.use('/admin', adminRouter(deps.admin, deps.logger));
   }
   if (deps.public !== undefined) {
-    api.use('/public', publicRouter(deps.public));
+    api.use('/public', publicRouter(deps.public, deps.logger));
   }
   deps.mountRoutes?.(api);
   app.use(API_PREFIX, api);

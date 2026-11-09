@@ -149,6 +149,51 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+  /public/bookings:
+    post:
+      operationId: createOnlineBooking
+      summary: Réservation en ligne, en attente de paiement
+      description: |
+        Appelée par le serveur du site public. Revérifie les règles en ligne, la disponibilité
+        et le prix (jamais repris du navigateur), crée la réservation « en attente de paiement »
+        (source `website`) qui bloque ses chambres 33 minutes, puis ouvre la page Stripe
+        Checkout : paiement du séjour au tarif non remboursable (taxe de séjour payée à
+        l'hôtel), carte enregistrée en garantie au tarif flexible (aucun débit). Si Stripe
+        échoue, les chambres sont rendues aussitôt (503). La même clé `Idempotency-Key` renvoie
+        la même page. 5 réservations par 10 minutes et par adresse IP au plus (429).
+      tags: [Catalogue public]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{16,128}$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OnlineBooking' }
+      responses:
+        '201':
+          description: Réservation en attente ; adresse de la page de paiement.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnlineBookingAnswer' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '409':
+          description: |
+            `NO_LONGER_AVAILABLE` (chambre prise entre-temps) ou `BOOKING_IN_PROGRESS` (même clé
+            en cours de traitement).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+        '503':
+          description: |
+            `PAYMENT_NOT_CONFIGURED`, `PAYMENT_UNAVAILABLE` (rien n'est réservé) ou
+            `HOTEL_NOT_CONFIGURED`.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
   /admin/session:
     post:
       operationId: logIn
@@ -2696,6 +2741,59 @@ components:
         offers:
           type: array
           items: { $ref: '#/components/schemas/PublicOffer' }
+    OnlineBooking:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          checkIn,
+          checkOut,
+          guests,
+          category,
+          ratePlan,
+          customer,
+          language,
+          acceptTerms,
+          successUrl,
+          cancelUrl,
+        ]
+      properties:
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        guests: { type: string, example: '2-6_2' }
+        category: { type: string, example: double-standard }
+        ratePlan: { type: string, enum: [flexible, non_refundable] }
+        customer:
+          type: object
+          additionalProperties: false
+          required: [firstName, lastName, email, phone]
+          properties:
+            firstName: { type: string, maxLength: 100 }
+            lastName: { type: string, maxLength: 100 }
+            email: { type: string, format: email, maxLength: 254 }
+            phone: { type: string, example: '+33 6 12 34 56 78' }
+            countryCode: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
+        language: { type: string, enum: [fr, en] }
+        message: { type: [string, 'null'], maxLength: 500 }
+        acceptTerms:
+          type: boolean
+          const: true
+          description: Conditions de vente et d'annulation acceptées (date notée au journal).
+        successUrl:
+          type: string
+          format: uri
+          description: Page du site public après le paiement (refusée hors du site).
+        cancelUrl: { type: string, format: uri }
+    OnlineBookingAnswer:
+      type: object
+      required: [reference, checkoutUrl, paymentExpiresAt]
+      properties:
+        reference: { type: string, example: 5MRAE5RQ }
+        checkoutUrl: { type: string, format: uri, description: Page de paiement Stripe. }
+        paymentExpiresAt:
+          type: string
+          format: date-time
+          description: Fin du blocage des chambres.
     Role:
       type: string
       enum: [direction, reception, housekeeping, technician]

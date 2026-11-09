@@ -61,6 +61,22 @@ export interface NewBooking {
   internalNotes: string | null;
 }
 
+/** Who makes a booking: a staff member, or a visitor on the website (no account). */
+export type BookingAuthor = { kind: 'staff'; user: StaffUser } | { kind: 'website' };
+
+/** A booking waiting for its payment: its rooms are held until then (RM-05). */
+export interface BookingHold {
+  paymentExpiresAt: Date;
+}
+
+export interface BookedReservation {
+  id: string;
+  reference: string;
+  /** Rooms, services and tourist tax. */
+  totalCents: number;
+  touristTaxCents: number;
+}
+
 /** The answer of a creation: replayed as is when the same request comes again. */
 export interface BookingResult {
   status: number;
@@ -146,8 +162,9 @@ export class ReservationService {
           requestHash,
           transaction,
         );
-        const id = await this.#book(actor, booking, origin, transaction);
-        const detail = await this.#found(id, transaction);
+        const author = { kind: 'staff', user: actor } as const;
+        const booked = await this.book(author, booking, origin, transaction);
+        const detail = await this.#found(booked.id, transaction);
         await this.#repository.storeIdempotentResponse(idempotencyKey, 201, detail, transaction);
         return detail;
       });
@@ -180,12 +197,19 @@ export class ReservationService {
     };
   }
 
-  async #book(
-    actor: StaffUser,
+  /**
+   * Writes a booking inside the caller's transaction, after checking it again with the
+   * categories locked. Shared by the staff (confirmed at once) and the website (`hold`: waiting
+   * for the payment).
+   */
+  async book(
+    author: BookingAuthor,
     booking: NewBooking,
     origin: ActionOrigin,
     transaction: Transaction,
-  ): Promise<string> {
+    hold?: BookingHold,
+  ): Promise<BookedReservation> {
+    const staffId = author.kind === 'staff' ? author.user.id : null;
     const { checkIn, checkOut } = booking;
     const settings = await this.#repository.bookingSettings(transaction);
     if (settings === undefined) {
@@ -335,7 +359,8 @@ export class ReservationService {
         }),
         customerMessage: booking.customerMessage,
         internalNotes: booking.internalNotes,
-        createdBy: actor.id,
+        createdBy: staffId,
+        paymentExpiresAt: hold?.paymentExpiresAt ?? null,
       },
       transaction,
     );
@@ -343,13 +368,14 @@ export class ReservationService {
       await this.#repository.insertRoom(reservationId, room, transaction);
     }
     for (const charge of charges) {
-      await this.#repository.insertCharge(reservationId, charge, actor.id, transaction);
+      await this.#repository.insertCharge(reservationId, charge, staffId, transaction);
     }
     await recordAudit(
       this.#sequelize,
       {
-        actorType: 'staff',
-        actorUserId: actor.id,
+        ...(staffId === null
+          ? { actorType: 'system' as const }
+          : { actorType: 'staff' as const, actorUserId: staffId }),
         action: 'reservation.created',
         entityType: 'reservation',
         entityId: reservationId,
@@ -362,12 +388,16 @@ export class ReservationService {
           rooms: rooms.length,
           totalCents,
           customerId: customer.id,
+          ...(hold === undefined ? {} : { paymentExpiresAt: hold.paymentExpiresAt }),
         },
         ipAddress: origin.ip,
       },
       transaction,
     );
-    return reservationId;
+    const touristTaxCents = charges
+      .filter((charge) => charge.kind === 'tourist_tax')
+      .reduce((sum, charge) => sum + charge.totalCents, 0);
+    return { id: reservationId, reference, totalCents, touristTaxCents };
   }
 
   /**

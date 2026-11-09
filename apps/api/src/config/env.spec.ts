@@ -81,6 +81,19 @@ describe('loadEnv', () => {
     );
   });
 
+  it('requires Stripe and the public site in production, and refuses a live key elsewhere', () => {
+    const production = errorOf({ ...base, NODE_ENV: 'production', PUBLIC_SITE_URL: 'http://a.b' });
+    expect(production.includes('STRIPE_SECRET_KEY est obligatoire en production')).toBe(true);
+    expect(production.includes('PUBLIC_SITE_URL doit utiliser https en production')).toBe(true);
+
+    const live = errorOf({ ...base, STRIPE_SECRET_KEY: 'sk_live_abc123' });
+    expect(live.includes('STRIPE_SECRET_KEY ne doit pas être une clé de production')).toBe(true);
+    expect(live.includes('abc123')).toBe(false);
+    expect(loadEnv({ ...base, STRIPE_SECRET_KEY: 'sk_test_abc123' }).STRIPE_SECRET_KEY).toBe(
+      'sk_test_abc123',
+    );
+  });
+
   it('never repeats a secret value in its error message', () => {
     const message = errorOf({ DATABASE_URL: 'mysql://user:s3cret@host/db' });
     expect(message.includes('DATABASE_URL')).toBe(true);
