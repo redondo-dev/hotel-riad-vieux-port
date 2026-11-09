@@ -65,6 +65,8 @@ export class StaySearch implements OnInit {
   protected readonly icons = { search: Search, alert: CircleAlert };
   /** Days that can be clicked in the calendar: the booking horizon plus the longest stay. */
   protected readonly selectableDays = this.rules.bookingHorizonDays + this.rules.maxStayNights;
+  /** Arrivals only up to the booking horizon: later days can only be departures. */
+  protected readonly arrivalDays = this.rules.bookingHorizonDays;
 
   protected readonly checkIn = signal<IsoDate | null>(null);
   protected readonly checkOut = signal<IsoDate | null>(null);

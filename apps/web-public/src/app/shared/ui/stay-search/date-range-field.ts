@@ -56,6 +56,11 @@ export class DateRangeField {
    * search form.
    */
   readonly selectableDays = input.required<number>();
+  /**
+   * Last day, counted from today, that can be clicked as an ARRIVAL (booking horizon); later
+   * days can only end a stay. null: same limit as `selectableDays`.
+   */
+  readonly arrivalDays = input<number | null>(null);
   readonly invalid = input(false);
   readonly describedBy = input<string | null>(null);
   readonly checkIn = model<IsoDate | null>(null);
@@ -78,6 +83,9 @@ export class DateRangeField {
   protected readonly today = linkedSignal(() => nowInTimeZone(this.timeZone()).date);
   protected readonly lastSelectableDate = computed(() =>
     addDays(this.today(), this.selectableDays()),
+  );
+  private readonly lastArrivalDate = computed(() =>
+    addDays(this.today(), this.arrivalDays() ?? this.selectableDays()),
   );
   protected readonly isOpen = signal(false);
   protected readonly monthsShown = signal(1);
@@ -268,8 +276,14 @@ export class DateRangeField {
     return date === null ? '' : formatTypedDate(date);
   }
 
+  /** A day too far ahead for an arrival can only be clicked as the departure (see `pick`). */
   protected isSelectable(date: IsoDate): boolean {
-    return date >= this.today() && date <= this.lastSelectableDate();
+    if (date < this.today() || date > this.lastSelectableDate()) {
+      return false;
+    }
+    const checkIn = this.checkIn();
+    const choosingDeparture = checkIn !== null && this.checkOut() === null && date > checkIn;
+    return choosingDeparture || date <= this.lastArrivalDate();
   }
 
   protected isEndpoint(date: IsoDate): boolean {

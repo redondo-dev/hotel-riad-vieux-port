@@ -70,7 +70,7 @@ import { ZelligeStar } from '../shared/ui/zellige-star';
             <p>
               <span i18n="@@footer.photosBy">Photos :</span>
               <a
-                class="font-medium text-white hover:underline"
+                class="ml-1 font-medium text-white hover:underline"
                 href="https://unsplash.com/?utm_source=hotel_riad_vieux_port&amp;utm_medium=referral"
                 rel="noopener"
                 >Unsplash</a
