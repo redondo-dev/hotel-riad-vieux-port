@@ -8,8 +8,14 @@
 
 export const BOOKING_PATH = $localize`:@@route.booking:reserver`;
 
-/** `/fr/reserver/choix`: the rate chosen, before the guest's details (step R-4). */
+/** `/fr/reserver/choix`: the rate chosen and the guest's details (step R-4). */
 export const CHOICE_PATH = $localize`:@@route.bookingChoice:choix`;
+
+/** `/fr/reserver/confirmation`: back from the payment page of Stripe (step R-4). */
+export const CONFIRMATION_PATH = $localize`:@@route.bookingConfirmation:confirmation`;
+
+/** `/fr/conditions-de-vente`: conditions of sale and cancellation. */
+export const TERMS_PATH = $localize`:@@route.terms:conditions-de-vente`;
 
 /** `/fr/chambres/<code>`, `/en/rooms/<code>`: the page of a room category. */
 export const ROOMS_PATH = $localize`:@@route.rooms:chambres`;

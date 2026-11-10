@@ -1,9 +1,16 @@
 import { inject } from '@angular/core';
 import type { Routes } from '@angular/router';
 import { CatalogService } from './core/data/catalog.service';
-import { BOOKING_PATH, CHOICE_PATH, ROOMS_PATH } from './core/navigation';
+import {
+  BOOKING_PATH,
+  CHOICE_PATH,
+  CONFIRMATION_PATH,
+  ROOMS_PATH,
+  TERMS_PATH,
+} from './core/navigation';
 import { PAGE_DESCRIPTION } from './core/seo/page-meta-strategy';
 import { searchResolver } from './features/booking/booking-route';
+import { confirmationResolver } from './features/booking/confirmation-route';
 import {
   categoryDescription,
   categoryExists,
@@ -34,11 +41,28 @@ export const routes: Routes = [
   },
   {
     path: `${BOOKING_PATH}/${CHOICE_PATH}`,
-    title: $localize`:@@title.bookingChoice:Votre choix · Hôtel Riad Vieux-Port`,
+    title: $localize`:@@title.bookingChoice:Finaliser votre réservation · Hôtel Riad Vieux-Port`,
     resolve: { search: searchResolver },
     runGuardsAndResolvers: 'paramsOrQueryParamsChange',
     loadComponent: () =>
       import('./features/booking/booking-choice-page').then((m) => m.BookingChoicePage),
+  },
+  {
+    path: `${BOOKING_PATH}/${CONFIRMATION_PATH}`,
+    title: $localize`:@@title.bookingConfirmation:Votre réservation · Hôtel Riad Vieux-Port`,
+    resolve: { data: confirmationResolver },
+    runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+    loadComponent: () =>
+      import('./features/booking/booking-confirmation-page').then((m) => m.BookingConfirmationPage),
+  },
+  {
+    path: TERMS_PATH,
+    title: $localize`:@@title.terms:Conditions de vente et d'annulation · Hôtel Riad Vieux-Port`,
+    resolve: {
+      [PAGE_DESCRIPTION]: () =>
+        $localize`:@@terms.metaDescription:Tarifs, annulation, non-présentation, paiement et taxe de séjour de l'Hôtel Riad Vieux-Port, à Marseille.`,
+    },
+    loadComponent: () => import('./features/legal/terms-page').then((m) => m.TermsPage),
   },
   {
     path: `${ROOMS_PATH}/:code`,
