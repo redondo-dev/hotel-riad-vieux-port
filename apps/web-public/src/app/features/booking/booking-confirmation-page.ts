@@ -82,7 +82,13 @@ import type { ConfirmationData } from './confirmation-route';
               </div>
               @if (booking.paidOnline; as paid) {
                 <div>
-                  <dt class="text-sm text-muted" i18n="@@confirmation.paidOnline">Payé en ligne</dt>
+                  <dt class="text-sm text-muted">
+                    @if (booking.status === 'pending') {
+                      <ng-container i18n="@@confirmation.dueOnline">À payer en ligne</ng-container>
+                    } @else {
+                      <ng-container i18n="@@confirmation.paidOnline">Payé en ligne</ng-container>
+                    }
+                  </dt>
                   <dd class="mt-1 font-semibold tabular-nums">{{ paid }}</dd>
                 </div>
               }

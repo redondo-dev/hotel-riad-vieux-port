@@ -239,6 +239,7 @@
     "confirmation.rate": "Rate",
     "confirmation.rooms": "{$count} × {$name} · {$nights}",
     "confirmation.paidOnline": "Paid online",
+    "confirmation.dueOnline": "To pay online",
     "confirmation.dueAtHotel": "To pay at the hotel",
     "confirmation.email": "A confirmation email will be sent to you. Keep your reference: you will be asked for it at the reception.",
     "confirmation.missingTitle": "Booking not found",
