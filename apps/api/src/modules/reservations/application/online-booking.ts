@@ -303,7 +303,8 @@ export class OnlineBooking {
       await recordAudit(
         this.#sequelize,
         {
-          actorType: 'customer',
+          // An anonymous visitor: « system », as for the other actions without an account.
+          actorType: 'system',
           action: 'reservation.payment_abandoned',
           entityType: 'reservation',
           entityId: booking.id,
