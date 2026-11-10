@@ -62,6 +62,7 @@ const REQUIRED_IN_PRODUCTION = [
   'ADMIN_APP_URL',
   'STORAGE_DIR',
   'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
   'PUBLIC_SITE_URL',
 ] as const;
 
@@ -130,6 +131,17 @@ const EnvSchema = z
       z
         .string()
         .regex(/^sk_(test|live)_[A-Za-z0-9]+$/, 'doit être une clé secrète Stripe (sk_…)')
+        .optional(),
+    ),
+    /**
+     * Secret of the notifications of Stripe (webhook, step R-5): « whsec_… », given by
+     * « stripe listen » in development and by the dashboard of Stripe in production. Without it
+     * in development, the bookings paid stay « en attente ». Never in Git.
+     */
+    STRIPE_WEBHOOK_SECRET: emptyAsMissing(
+      z
+        .string()
+        .regex(/^whsec_[A-Za-z0-9]+$/, 'doit être un secret de webhook Stripe (whsec_…)')
         .optional(),
     ),
     /**

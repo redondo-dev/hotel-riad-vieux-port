@@ -156,6 +156,22 @@ répond `PAYMENT_NOT_CONFIGURED`. Les tests n'appellent jamais Stripe (faux serv
 | Retour     | « ← Retour » sur Stripe : page fermée, chambres rendues aussitôt                                     |
 | Lecture    | Page de confirmation : référence, séjour, montants, état ; aucune donnée personnelle                 |
 
+## Notifications de Stripe (`POST /api/v1/webhooks/stripe`)
+
+Secret `STRIPE_WEBHOOK_SECRET=whsec_…` dans le `.env` racine (affiché par `stripe listen`) ; sans
+lui, la route n'existe pas et les réservations payées restent « en attente ». Les tests utilisent
+un faux lecteur ; les vraies signatures sont vérifiées avec la bibliothèque Stripe, sans réseau.
+
+| Sujet        | Règle                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| Signature    | Vérifiée sur le corps exact reçu, avant le lecteur JSON ; sinon 400, rien n'est enregistré  |
+| Doublons     | Chaque notification traitée une fois (`webhook_events`), dans la transaction du traitement  |
+| Payé         | Paiement enregistré (`card_online`) ; réservation confirmée, « payée partiellement » (taxe) |
+| Garantie     | Client et carte Stripe enregistrés ; réservation confirmée, rien n'est débité               |
+| Expiré       | Page fermée ou paiement différé refusé : réservation expirée, chambres rendues              |
+| Retardataire | Paiement reçu après l'expiration : enregistré et signalé au journal, remboursé à la main    |
+| Erreur       | Réponse 500 : Stripe renvoie la notification plus tard                                      |
+
 ## Réservations (`/api/v1/admin/reservations`)
 
 Saisie par le personnel, liste et détail ; détail dans `openapi/openapi.yaml`.

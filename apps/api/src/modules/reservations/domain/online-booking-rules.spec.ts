@@ -4,6 +4,7 @@ import {
   dueNowCents,
   holdUntil,
   isSiteAddress,
+  paymentStatusAfterOnlinePayment,
   publicStatusOf,
   stayDescription,
   withBookingReference,
@@ -19,6 +20,11 @@ describe('online booking rules', () => {
   it('takes the stay at once at the non-refundable rate, the tax being paid at the hotel', () => {
     expect(dueNowCents('non_refundable', 34_020 + 1500, 1500)).toBe(34_020);
     expect(dueNowCents('flexible', 37_800 + 1500, 1500)).toBe(0);
+  });
+
+  it('leaves the payment partly due while the tourist tax is to be paid at the hotel', () => {
+    expect(paymentStatusAfterOnlinePayment(1500)).toBe('partially_paid');
+    expect(paymentStatusAfterOnlinePayment(0)).toBe('paid');
   });
 
   it('describes the stay in the language of the visitor', () => {

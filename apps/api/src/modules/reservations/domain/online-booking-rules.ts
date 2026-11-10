@@ -1,4 +1,4 @@
-import type { RatePlan, ReservationStatus } from './reservation-rules.ts';
+import type { PaymentStatus, RatePlan, ReservationStatus } from './reservation-rules.ts';
 
 /**
  * Pure rules of a booking made on the website (step R-3): no clock, no database, no Stripe.
@@ -33,6 +33,14 @@ export function dueNowCents(
   touristTaxCents: number,
 ): number {
   return ratePlan === 'non_refundable' ? totalCents - touristTaxCents : 0;
+}
+
+/**
+ * State of the payment once the stay is paid online (decision « 2a » of step R-5): « partly
+ * paid » while the tourist tax is still to be paid at the hotel, « paid » when there is none.
+ */
+export function paymentStatusAfterOnlinePayment(touristTaxCents: number): PaymentStatus {
+  return touristTaxCents > 0 ? 'partially_paid' : 'paid';
 }
 
 /** « Double standard · 3 nuits », « Double standard · 3 nights ». */

@@ -24,12 +24,15 @@ import { AvailabilityService } from './modules/reservations/application/availabi
 import { FrontDesk } from './modules/reservations/application/front-desk.ts';
 import { PlanningService } from './modules/reservations/application/planning-service.ts';
 import { OnlineBooking } from './modules/reservations/application/online-booking.ts';
+import { OnlinePayments } from './modules/reservations/application/online-payments.ts';
+import type { PaymentEventReader } from './modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
 import { PublicAvailability } from './modules/reservations/application/public-availability.ts';
 import { ReservationChanges } from './modules/reservations/application/reservation-changes.ts';
 import { ReservationService } from './modules/reservations/application/reservation-service.ts';
 import { availabilityRouter } from './modules/reservations/http/availability-routes.ts';
 import { frontDeskRouter } from './modules/reservations/http/front-desk-routes.ts';
+import { paymentWebhookRouter } from './modules/reservations/http/payment-webhook-routes.ts';
 import { planningRouter } from './modules/reservations/http/planning-routes.ts';
 import { publicSearchRouter } from './modules/reservations/http/public-availability-routes.ts';
 import { publicBookingRouter } from './modules/reservations/http/public-booking-routes.ts';
@@ -77,6 +80,11 @@ export interface PublicDependencies {
   payments?: PaymentGateway;
   /** Address of the public site: the payment page may only send visitors back there. */
   publicSiteUrl?: string;
+  /**
+   * Notifications of Stripe, or a fake in the tests (step R-5); without it (no webhook secret
+   * in development), POST /webhooks/stripe does not exist and bookings stay « en attente ».
+   */
+  paymentEvents?: PaymentEventReader;
 }
 
 export interface AdminDependencies {
@@ -172,9 +180,10 @@ function publicRouter(deps: PublicDependencies, logger: Logger): Router {
 /**
  * Builds the Express application (architecture, section 7). The order matters:
  *  1. trace identifier and request log, so that every response, even an error, has one;
- *  2. security headers, CORS, overall rate limit, JSON body limited in size;
- *  3. routes;
- *  4. 404 for unknown addresses, then the single error handler, always last.
+ *  2. security headers, CORS, overall rate limit;
+ *  3. notifications of Stripe, read as raw bytes for their signature: before the JSON reader;
+ *  4. JSON body limited in size, then the routes;
+ *  5. 404 for unknown addresses, then the single error handler, always last.
  *
  * The application does not listen on a port itself (see main.ts): the tests drive it directly.
  */
@@ -187,6 +196,22 @@ export function createApp(deps: AppDependencies): Express {
   app.use(securityHeaders());
   app.use(corsPolicy(deps.allowedOrigins));
   app.use(rateLimiter(deps.globalRateLimit ?? GLOBAL_RATE_LIMIT));
+  const paymentEvents = deps.public?.paymentEvents;
+  if (deps.public !== undefined && paymentEvents !== undefined) {
+    const { logger } = deps;
+    const payments = new OnlinePayments({
+      sequelize: deps.public.sequelize,
+      log: {
+        warn: (details, message) => {
+          logger.warn(details, message);
+        },
+        error: (details, message) => {
+          logger.error(details, message);
+        },
+      },
+    });
+    app.use(API_PREFIX, paymentWebhookRouter(paymentEvents, payments));
+  }
   app.use(jsonBody());
 
   const api = Router();

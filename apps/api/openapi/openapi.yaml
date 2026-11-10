@@ -241,6 +241,52 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '429': { $ref: '#/components/responses/Problem' }
         '503': { $ref: '#/components/responses/Problem' }
+  /webhooks/stripe:
+    post:
+      operationId: receiveStripeNotification
+      summary: Notification de Stripe (webhook)
+      description: |
+        Appelé par Stripe seul, jamais par un navigateur. La signature (en-tête
+        `Stripe-Signature`, secret `STRIPE_WEBHOOK_SECRET`) est vérifiée sur le corps exact reçu,
+        avant toute lecture : sans signature valide, réponse 400 `INVALID_SIGNATURE` et rien
+        n'est enregistré. Chaque notification n'est traitée qu'une fois (table `webhook_events`).
+
+        - `checkout.session.completed` / `async_payment_succeeded` : paiement enregistré
+          (tarif non remboursable) ou carte de garantie enregistrée (tarif flexible) ; la
+          réservation passe à « confirmée » ;
+        - `checkout.session.expired` / `async_payment_failed` : la réservation expire et rend
+          ses chambres ;
+        - toute autre notification : acceptée et ignorée.
+
+        Un paiement reçu pour une réservation qui ne retient plus de chambre est enregistré et
+        signalé au journal, pour un remboursement par la réception. En cas d'erreur (500),
+        Stripe renvoie la notification plus tard. Absent tant que le secret n'est pas configuré.
+      tags: [Paiement]
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, description: Événement Stripe (format de Stripe). }
+      responses:
+        '200':
+          description: Notification reçue.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [received, handling]
+                properties:
+                  received: { type: boolean, const: true }
+                  handling:
+                    type: string
+                    enum: [processed, duplicate, ignored]
+                    description: Traitée, déjà traitée, ou sans objet pour l'hôtel.
+        '400': { $ref: '#/components/responses/Problem' }
   /admin/session:
     post:
       operationId: logIn
