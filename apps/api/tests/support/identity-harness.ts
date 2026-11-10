@@ -7,6 +7,7 @@ import { QueryTypes, type Sequelize } from 'sequelize';
 import request from 'supertest';
 import { API_PREFIX, createApp } from '../../src/app.ts';
 import type { Role } from '../../src/modules/identity/domain/identity-rules.ts';
+import type { PaymentEventReader } from '../../src/modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from '../../src/modules/reservations/application/payment-gateway.ts';
 import { hashPassword } from '../../src/modules/identity/infrastructure/password-hasher.ts';
 import { createSessionStore } from '../../src/shared/http/session.ts';
@@ -32,6 +33,8 @@ export interface AppOptions {
   now?: () => Date;
   /** A fake payment service: the tests never call Stripe. */
   payments?: PaymentGateway;
+  /** A fake reader of the notifications of Stripe, with a signature of its own. */
+  paymentEvents?: PaymentEventReader;
 }
 
 export interface TestStaff {
@@ -87,6 +90,7 @@ export class IdentityHarness {
         ...(options.today === undefined ? {} : { today: options.today }),
         ...(options.now === undefined ? {} : { now: options.now }),
         ...(options.payments === undefined ? {} : { payments: options.payments }),
+        ...(options.paymentEvents === undefined ? {} : { paymentEvents: options.paymentEvents }),
         publicSiteUrl: PUBLIC_SITE_URL,
       },
     });

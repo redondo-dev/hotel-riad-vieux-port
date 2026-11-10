@@ -10,8 +10,13 @@ import pg from 'pg';
 import { createApp } from './app.ts';
 import { describeDatabase } from './config/database-url.ts';
 import { DEFAULT_ADMIN_APP_URL, DEFAULT_PUBLIC_SITE_URL, loadEnv } from './config/env.ts';
+import type { PaymentEventReader } from './modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
-import { stripeGateway } from './modules/reservations/infrastructure/stripe-gateway.ts';
+import { stripeEvents } from './modules/reservations/infrastructure/stripe-events.ts';
+import {
+  stripeClient,
+  stripeGateway,
+} from './modules/reservations/infrastructure/stripe-gateway.ts';
 import { createSessionStore } from './shared/http/session.ts';
 import { createSequelize } from './shared/infrastructure/database.ts';
 import { createLogger } from './shared/infrastructure/logger.ts';
@@ -45,12 +50,20 @@ function createMailer(): Mailer {
 }
 
 /** Required in production by the configuration check; optional while developing. */
-function createPayments(): { payments?: PaymentGateway } {
+function createPayments(): { payments?: PaymentGateway; paymentEvents?: PaymentEventReader } {
   if (env.STRIPE_SECRET_KEY === undefined) {
     logger.warn('STRIPE_SECRET_KEY absente : la réservation en ligne répond « non configurée »');
     return {};
   }
-  return { payments: stripeGateway(env.STRIPE_SECRET_KEY) };
+  const stripe = stripeClient(env.STRIPE_SECRET_KEY);
+  if (env.STRIPE_WEBHOOK_SECRET === undefined) {
+    logger.warn('STRIPE_WEBHOOK_SECRET absent : les réservations payées restent « en attente »');
+    return { payments: stripeGateway(stripe) };
+  }
+  return {
+    payments: stripeGateway(stripe),
+    paymentEvents: stripeEvents(stripe, env.STRIPE_WEBHOOK_SECRET),
+  };
 }
 
 const sequelize = createSequelize(env.DATABASE_URL);

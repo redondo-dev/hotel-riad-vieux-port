@@ -84,6 +84,7 @@ describe('loadEnv', () => {
   it('requires Stripe and the public site in production, and refuses a live key elsewhere', () => {
     const production = errorOf({ ...base, NODE_ENV: 'production', PUBLIC_SITE_URL: 'http://a.b' });
     expect(production.includes('STRIPE_SECRET_KEY est obligatoire en production')).toBe(true);
+    expect(production.includes('STRIPE_WEBHOOK_SECRET est obligatoire en production')).toBe(true);
     expect(production.includes('PUBLIC_SITE_URL doit utiliser https en production')).toBe(true);
 
     const live = errorOf({ ...base, STRIPE_SECRET_KEY: 'sk_live_abc123' });
@@ -92,6 +93,18 @@ describe('loadEnv', () => {
     expect(loadEnv({ ...base, STRIPE_SECRET_KEY: 'sk_test_abc123' }).STRIPE_SECRET_KEY).toBe(
       'sk_test_abc123',
     );
+  });
+
+  it('accepts only a webhook secret of Stripe, without repeating it', () => {
+    const wrong = errorOf({ ...base, STRIPE_WEBHOOK_SECRET: 'sk_test_abc123' });
+    expect(wrong.includes('STRIPE_WEBHOOK_SECRET doit être un secret de webhook Stripe')).toBe(
+      true,
+    );
+    expect(wrong.includes('abc123')).toBe(false);
+    expect(loadEnv({ ...base, STRIPE_WEBHOOK_SECRET: 'whsec_abc123' }).STRIPE_WEBHOOK_SECRET).toBe(
+      'whsec_abc123',
+    );
+    expect(loadEnv({ ...base, STRIPE_WEBHOOK_SECRET: '' }).STRIPE_WEBHOOK_SECRET).toBe(undefined);
   });
 
   it('never repeats a secret value in its error message', () => {

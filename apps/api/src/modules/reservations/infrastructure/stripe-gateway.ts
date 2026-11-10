@@ -5,6 +5,11 @@ import type {
   PaymentGateway,
 } from '../application/payment-gateway.ts';
 
+/** One client of Stripe, shared by the payment pages and the notifications (step R-5). */
+export function stripeClient(secretKey: string): Stripe {
+  return new Stripe(secretKey);
+}
+
 /**
  * Stripe Checkout (decision « 2a » of 8 November 2026): the visitor pays, or saves a card,
  * on a page of Stripe, in French or in English, with 3-D Secure handled by Stripe.
@@ -16,9 +21,7 @@ import type {
  * Each call carries an idempotency key built from the reservation: a retry never opens a
  * second page nor creates a second customer.
  */
-export function stripeGateway(secretKey: string): PaymentGateway {
-  const stripe = new Stripe(secretKey);
-
+export function stripeGateway(stripe: Stripe): PaymentGateway {
   return {
     async createCheckout(request: CheckoutRequest): Promise<CheckoutSession> {
       const metadata = { reservationId: request.reservationId, reference: request.reference };
