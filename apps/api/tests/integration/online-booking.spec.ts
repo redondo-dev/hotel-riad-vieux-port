@@ -45,18 +45,18 @@ function sessionIdOf(reservationId: string): string {
 
 /**
  * Opens a pretend page, or fails like Stripe out of order; `paid`: the pages are already paid
- * when the visitor comes back.
+ * (1 night at 72 €) when the visitor comes back.
  */
 function fakePayments(options: { fail?: boolean; paid?: boolean } = {}): Fake {
   const calls: CheckoutRequest[] = [];
   const expired: string[] = [];
   const gateway: PaymentGateway = {
-    expireCheckout: async (sessionId) => {
+    closeCheckout: async (sessionId) => {
       if (options.paid === true) {
-        return 'already_complete';
+        return { kind: 'paid', paymentIntentId: `pi_test_${sessionId}`, amountCents: 7200 };
       }
       expired.push(sessionId);
-      return 'expired';
+      return { kind: 'expired' };
     },
     createCheckout: async (checkout) => {
       calls.push(checkout);
@@ -372,15 +372,15 @@ describe.skipIf(!hasTestDatabase)('online booking', () => {
       expect((await post(app, bookingBody(stay))).status).toBe(201);
     });
 
-    it('changes nothing when the page was paid meanwhile', async () => {
+    it('confirms the booking at once when the page was paid meanwhile', async () => {
       const app = harness.app({ now: () => NOW, payments: fakePayments({ paid: true }).gateway });
       const stay = { checkIn: '2037-01-25', checkOut: '2037-01-26' };
       const booked = await post(app, bookingBody(stay));
 
       const abandoned = await request(app).post(`${BOOKINGS}/${booked.body.reference}/abandon`);
 
-      expect(abandoned.body.status).toBe('pending');
-      expect((await reservationOf(booked.body.reference))?.['status']).toBe('pending_payment');
+      expect(abandoned.body.status).toBe('confirmed');
+      expect((await reservationOf(booked.body.reference))?.['status']).toBe('confirmed');
     });
   });
 

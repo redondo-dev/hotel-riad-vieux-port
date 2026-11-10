@@ -57,7 +57,7 @@ const gateway: PaymentGateway = {
     url: `https://checkout.stripe.test/${checkout.reference}`,
     customerId: checkout.mode === 'setup' ? `cus_test_${checkout.reference}` : null,
   }),
-  expireCheckout: async () => 'expired',
+  closeCheckout: async () => ({ kind: 'expired' }),
 };
 
 /** Reads the bytes received exactly as Stripe's library does: untouched, or refused. */

@@ -24,7 +24,10 @@ import { AvailabilityService } from './modules/reservations/application/availabi
 import { FrontDesk } from './modules/reservations/application/front-desk.ts';
 import { PlanningService } from './modules/reservations/application/planning-service.ts';
 import { OnlineBooking } from './modules/reservations/application/online-booking.ts';
-import { OnlinePayments } from './modules/reservations/application/online-payments.ts';
+import {
+  OnlinePayments,
+  type PaymentLog,
+} from './modules/reservations/application/online-payments.ts';
 import type { PaymentEventReader } from './modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
 import { PublicAvailability } from './modules/reservations/application/public-availability.ts';
@@ -148,8 +151,24 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   return router;
 }
 
+/** Server log of the payments: the cases the reception must look at. */
+export function paymentLogOf(logger: Logger): PaymentLog {
+  return {
+    warn: (details, message) => {
+      logger.warn(details, message);
+    },
+    error: (details, message) => {
+      logger.error(details, message);
+    },
+  };
+}
+
 /** Public part of the API: no session; catalogue and availability for the public site. */
-function publicRouter(deps: PublicDependencies, logger: Logger): Router {
+function publicRouter(
+  deps: PublicDependencies,
+  logger: Logger,
+  settlement: OnlinePayments,
+): Router {
   const catalog = new PublicCatalog(
     new CatalogRepository(deps.sequelize),
     deps.today ?? (() => hotelToday()),
@@ -164,6 +183,7 @@ function publicRouter(deps: PublicDependencies, logger: Logger): Router {
     sequelize: deps.sequelize,
     reservations: new ReservationService(deps.sequelize, today),
     payments: deps.payments,
+    settlement,
     siteUrl: deps.publicSiteUrl ?? DEFAULT_PUBLIC_SITE_URL,
     now,
     logError: (error) => {
@@ -196,21 +216,13 @@ export function createApp(deps: AppDependencies): Express {
   app.use(securityHeaders());
   app.use(corsPolicy(deps.allowedOrigins));
   app.use(rateLimiter(deps.globalRateLimit ?? GLOBAL_RATE_LIMIT));
+  const settlement =
+    deps.public === undefined
+      ? undefined
+      : new OnlinePayments({ sequelize: deps.public.sequelize, log: paymentLogOf(deps.logger) });
   const paymentEvents = deps.public?.paymentEvents;
-  if (deps.public !== undefined && paymentEvents !== undefined) {
-    const { logger } = deps;
-    const payments = new OnlinePayments({
-      sequelize: deps.public.sequelize,
-      log: {
-        warn: (details, message) => {
-          logger.warn(details, message);
-        },
-        error: (details, message) => {
-          logger.error(details, message);
-        },
-      },
-    });
-    app.use(API_PREFIX, paymentWebhookRouter(paymentEvents, payments));
+  if (settlement !== undefined && paymentEvents !== undefined) {
+    app.use(API_PREFIX, paymentWebhookRouter(paymentEvents, settlement));
   }
   app.use(jsonBody());
 
@@ -219,8 +231,8 @@ export function createApp(deps: AppDependencies): Express {
   if (deps.admin !== undefined) {
     api.use('/admin', adminRouter(deps.admin, deps.logger));
   }
-  if (deps.public !== undefined) {
-    api.use('/public', publicRouter(deps.public, deps.logger));
+  if (deps.public !== undefined && settlement !== undefined) {
+    api.use('/public', publicRouter(deps.public, deps.logger, settlement));
   }
   deps.mountRoutes?.(api);
   app.use(API_PREFIX, api);

@@ -224,8 +224,8 @@ paths:
       summary: Abandon du paiement (« ← Retour » sur la page Stripe)
       description: |
         Ferme la page Stripe et rend aussitôt les chambres d'une réservation en attente de
-        paiement. Déjà payée entre-temps : rien ne change (`pending`). Déjà terminée : renvoyée
-        telle quelle. 30 demandes par minute et par adresse IP.
+        paiement. Payée (ou carte enregistrée) entre-temps : confirmée aussitôt (`confirmed`).
+        Déjà terminée : renvoyée telle quelle. 30 demandes par minute et par adresse IP.
       tags: [Catalogue public]
       parameters:
         - name: reference

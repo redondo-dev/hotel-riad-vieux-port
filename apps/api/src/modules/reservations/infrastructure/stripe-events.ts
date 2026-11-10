@@ -11,6 +11,12 @@ export type PaymentMethodLookup = (setupIntentId: string) => Promise<string | nu
 
 type Expandable = string | { id: string } | null | undefined;
 
+/** The card saved by a guarantee page, read at Stripe. */
+export function savedCardLookup(stripe: Stripe): PaymentMethodLookup {
+  return async (setupIntentId) =>
+    idOf((await stripe.setupIntents.retrieve(setupIntentId)).payment_method);
+}
+
 function idOf(value: Expandable): string | null {
   if (value === null || value === undefined) {
     return null;
@@ -33,8 +39,7 @@ function idOf(value: Expandable): string | null {
 export function stripeEvents(
   stripe: Stripe,
   webhookSecret: string,
-  paymentMethodOf: PaymentMethodLookup = async (setupIntentId) =>
-    idOf((await stripe.setupIntents.retrieve(setupIntentId)).payment_method),
+  paymentMethodOf: PaymentMethodLookup = savedCardLookup(stripe),
 ): PaymentEventReader {
   return {
     async read(rawBody: Buffer, signature: string | undefined): Promise<PaymentEvent> {

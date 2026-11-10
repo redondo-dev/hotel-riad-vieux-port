@@ -7,11 +7,13 @@
  */
 import { join } from 'node:path';
 import pg from 'pg';
-import { createApp } from './app.ts';
+import { createApp, paymentLogOf } from './app.ts';
 import { describeDatabase } from './config/database-url.ts';
 import { DEFAULT_ADMIN_APP_URL, DEFAULT_PUBLIC_SITE_URL, loadEnv } from './config/env.ts';
+import { OnlinePayments } from './modules/reservations/application/online-payments.ts';
 import type { PaymentEventReader } from './modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
+import { UnpaidExpiry } from './modules/reservations/application/unpaid-expiry.ts';
 import { stripeEvents } from './modules/reservations/infrastructure/stripe-events.ts';
 import {
   stripeClient,
@@ -21,6 +23,7 @@ import { createSessionStore } from './shared/http/session.ts';
 import { createSequelize } from './shared/infrastructure/database.ts';
 import { createLogger } from './shared/infrastructure/logger.ts';
 import { localFileStorage } from './shared/infrastructure/file-storage.ts';
+import { type Jobs, startJobs } from './shared/infrastructure/jobs.ts';
 import { type Mailer, outboxMailer } from './shared/infrastructure/mailer.ts';
 
 /** Time left to the requests in progress when the hosting asks the API to stop. */
@@ -70,6 +73,7 @@ const sequelize = createSequelize(env.DATABASE_URL);
 // Required in production by the configuration check (loadEnv).
 const storage = localFileStorage(env.STORAGE_DIR ?? DEFAULT_STORAGE_DIR);
 const sessionPool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 5 });
+const paymentServices = createPayments();
 
 const app = createApp({
   logger,
@@ -90,7 +94,7 @@ const app = createApp({
   public: {
     sequelize,
     storage,
-    ...createPayments(),
+    ...paymentServices,
     publicSiteUrl: env.PUBLIC_SITE_URL ?? DEFAULT_PUBLIC_SITE_URL,
   },
 });
@@ -112,6 +116,41 @@ const server = app.listen(env.API_PORT, (error?: Error) => {
   );
 });
 
+// Bookings of the website not paid in time: looked at every minute (step R-5b).
+const expiry = new UnpaidExpiry({
+  sequelize,
+  payments: paymentServices.payments,
+  settlement: new OnlinePayments({ sequelize, log: paymentLogOf(logger) }),
+  now: () => new Date(),
+  log: paymentLogOf(logger),
+});
+let jobs: Jobs | undefined;
+startJobs({
+  connectionString: env.DATABASE_URL,
+  logger,
+  expireUnpaid: async () => {
+    try {
+      const report = await expiry.run();
+      if (report.confirmed + report.expired + report.kept > 0) {
+        logger.info(report, 'réservations en ligne non payées à temps revues');
+      }
+    } catch (error) {
+      logger.error({ err: error }, 'expiration des réservations non payées en erreur');
+      throw error;
+    }
+  },
+})
+  .then((started) => {
+    jobs = started;
+  })
+  .catch((error: unknown) => {
+    // Without the task, the rooms of the unpaid bookings would stay held: never in production.
+    logger.fatal({ err: error }, 'les tâches de fond n’ont pas pu démarrer');
+    if (env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
+  });
+
 server.on('error', (error) => {
   logger.fatal({ err: error }, 'le serveur HTTP n’a pas pu démarrer');
   process.exit(1);
@@ -119,7 +158,10 @@ server.on('error', (error) => {
 
 let stopping = false;
 
-/** Stops accepting connections, lets the requests in progress finish, then closes the database. */
+/**
+ * Stops accepting connections, lets the requests and the task in progress finish, then closes
+ * the database.
+ */
 function shutdown(signal: string): void {
   if (stopping) {
     return;
@@ -131,7 +173,11 @@ function shutdown(signal: string): void {
     process.exit(1);
   }, SHUTDOWN_GRACE_MS).unref();
   server.close((error) => {
-    Promise.all([sequelize.close(), sessionPool.end()])
+    (jobs?.stop() ?? Promise.resolve())
+      .catch((stopError: unknown) => {
+        logger.error({ err: stopError }, 'arrêt des tâches de fond en erreur');
+      })
+      .then(() => Promise.all([sequelize.close(), sessionPool.end()]))
       .catch((closeError: unknown) => {
         logger.error({ err: closeError }, 'fermeture de la base de données en erreur');
       })

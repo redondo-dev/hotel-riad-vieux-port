@@ -1,6 +1,12 @@
 import { QueryTypes, type Sequelize, type Transaction } from 'sequelize';
 import type { PaymentStatus } from '../domain/reservation-rules.ts';
 
+/** A booking at the end of the hold of its rooms, with its payment page. */
+export interface DueBooking {
+  reference: string;
+  sessionId: string | null;
+}
+
 /**
  * What the notifications of the payment service write (step R-5), in plain SQL with bound
  * parameters: the notifications already handled, the payments received online and the
@@ -29,6 +35,21 @@ export class OnlinePaymentRepository {
       { bind: [eventId, type], type: QueryTypes.SELECT, transaction },
     );
     return rows.length > 0;
+  }
+
+  /**
+   * Bookings of the website still waiting for their payment at the end of the hold of their
+   * rooms (step R-5b), the oldest first.
+   */
+  dueUnpaid(now: Date, limit: number): Promise<DueBooking[]> {
+    return this.#sequelize.query<DueBooking>(
+      `SELECT reference, stripe_checkout_session_id AS "sessionId"
+         FROM reservations
+        WHERE status = 'pending_payment' AND source = 'website' AND payment_expires_at <= $1
+        ORDER BY payment_expires_at
+        LIMIT $2`,
+      { bind: [now, limit], type: QueryTypes.SELECT },
+    );
   }
 
   /** The stay paid online; once only per payment of Stripe, even notified twice. */

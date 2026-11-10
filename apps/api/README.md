@@ -153,7 +153,7 @@ répond `PAYMENT_NOT_CONFIGURED`. Les tests n'appellent jamais Stripe (faux serv
 | Conditions | Case obligatoire ; date d'acceptation notée au journal d'audit                                       |
 | Robots     | 5 réservations par 10 minutes et par adresse IP (429)                                                |
 | Cartes     | Jamais de donnée de carte : seuls des identifiants Stripe sont gardés                                |
-| Retour     | « ← Retour » sur Stripe : page fermée, chambres rendues aussitôt                                     |
+| Retour     | « ← Retour » sur Stripe : page fermée, chambres rendues ; payée entre-temps : confirmée aussitôt     |
 | Lecture    | Page de confirmation : référence, séjour, montants, état ; aucune donnée personnelle                 |
 
 ## Notifications de Stripe (`POST /api/v1/webhooks/stripe`)
@@ -171,6 +171,30 @@ un faux lecteur ; les vraies signatures sont vérifiées avec la bibliothèque S
 | Expiré       | Page fermée ou paiement différé refusé : réservation expirée, chambres rendues              |
 | Retardataire | Paiement reçu après l'expiration : enregistré et signalé au journal, remboursé à la main    |
 | Erreur       | Réponse 500 : Stripe renvoie la notification plus tard                                      |
+
+### Essai en local avec la Stripe CLI
+
+1. Télécharger `stripe_…_windows_x86_64.zip` (github.com/stripe/stripe-cli/releases), l'extraire.
+2. `stripe login`, puis :
+   `stripe listen --events checkout.session.completed,checkout.session.expired,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed --forward-to localhost:3000/api/v1/webhooks/stripe`
+3. `stripe listen --print-secret` : copier le `whsec_…` dans `STRIPE_WEBHOOK_SECRET` du `.env`
+   (jamais dans Git ni sur une capture), puis redémarrer l'API.
+4. Payer avec la carte de test `4242 4242 4242 4242` : `stripe listen` affiche `[200]`.
+
+## Réservations non payées à temps (tâche de fond)
+
+Tâche pg-boss lancée chaque minute dans le processus de l'API (`src/shared/infrastructure/jobs.ts`).
+pg-boss crée et met à jour son propre schéma `pgboss` au démarrage, sans toucher aux tables de
+l'hôtel ; il n'est jamais démarré par les tests, qui lancent la tâche eux-mêmes.
+
+| Sujet      | Règle                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| Quand      | Réservations du site « en attente de paiement » dont les 33 min de blocage sont passées  |
+| Stripe     | Interrogé d'abord : payée ou carte enregistrée entre-temps, la réservation est confirmée |
+| Expiration | Page encore ouverte : fermée chez Stripe ; réservation expirée, chambres rendues         |
+| Panne      | Stripe ne répond pas : réservation laissée telle quelle, revue la minute suivante        |
+| Volume     | 50 réservations au plus par passage, les plus anciennes d'abord                          |
+| Production | L'API refuse de démarrer si la tâche ne peut pas démarrer (chambres bloquées sinon)      |
 
 ## Réservations (`/api/v1/admin/reservations`)
 
