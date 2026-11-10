@@ -1,6 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  type OnInit,
+  PLATFORM_ID,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { daysBetween } from '@riad/shared';
+import { browserSessionStorage, clearGuestDraft } from '../../core/booking/guest-draft';
 import { CatalogService } from '../../core/data/catalog.service';
 import { nightsLabel } from '../../core/i18n/counts';
 import { formatDate, formatPrice } from '../../core/i18n/format';
@@ -117,17 +127,26 @@ import type { ConfirmationData } from './confirmation-route';
     </div>
   `,
 })
-export class BookingConfirmationPage {
+export class BookingConfirmationPage implements OnInit {
   /** Read by confirmationResolver before the page is shown. */
   readonly data = input.required<ConfirmationData>();
 
   private readonly catalog = inject(CatalogService);
   private readonly locale = injectLocale();
   protected readonly searchAnchor = SEARCH_ANCHOR;
+  private readonly inBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   private readonly phone = this.catalog.hotel.phone.display;
   protected readonly missingText = $localize`:@@confirmation.missingText:Aucune réservation ne correspond à cette adresse. Si vous avez payé, appelez la réception au ${this.phone}:phone: avec votre e-mail.`;
   protected readonly unavailableText = $localize`:@@confirmation.unavailableText:Votre réservation est enregistrée, mais son détail ne peut pas être affiché pour l'instant. Vous recevrez un e-mail de confirmation ; pour toute question, appelez la réception au ${this.phone}:phone:.`;
+
+  ngOnInit(): void {
+    const data = this.data();
+    // The booking is recorded: the details kept in the tab are no longer needed.
+    if (this.inBrowser && data.kind === 'found' && data.summary.status !== 'cancelled') {
+      clearGuestDraft(browserSessionStorage());
+    }
+  }
 
   protected readonly view = computed(() => {
     const data = this.data();

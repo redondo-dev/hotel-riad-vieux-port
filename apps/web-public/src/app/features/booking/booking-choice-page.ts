@@ -12,6 +12,11 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { serializeGuests, toSearchQueryParams } from '@riad/shared';
 import { BOOKING_RELAY_PATH } from '../../../booking-relay';
+import {
+  browserSessionStorage,
+  loadGuestDraft,
+  saveGuestDraft,
+} from '../../core/booking/guest-draft';
 import { bookingAnswerOf } from '../../core/booking/online-booking';
 import { CatalogService } from '../../core/data/catalog.service';
 import { countryOptions } from '../../core/i18n/countries';
@@ -335,8 +340,20 @@ export class BookingChoicePage implements OnInit {
   });
 
   ngOnInit(): void {
+    if (!this.inBrowser) {
+      return;
+    }
+    // Back from the payment page: the details typed before are given back.
+    const draft = loadGuestDraft(browserSessionStorage());
+    if (draft !== null) {
+      this.firstName.set(draft.firstName);
+      this.lastName.set(draft.lastName);
+      this.email.set(draft.email);
+      this.phone.set(draft.phone);
+      this.country.set(draft.country);
+    }
     const reference = this.booking();
-    if (!this.inBrowser || reference === undefined) {
+    if (reference === undefined) {
       return;
     }
     this.cancelled.set(true);
@@ -414,6 +431,13 @@ export class BookingChoicePage implements OnInit {
       return;
     }
     this.sending.set(true);
+    saveGuestDraft(browserSessionStorage(), {
+      firstName: this.firstName().trim(),
+      lastName: this.lastName().trim(),
+      email: this.email().trim(),
+      phone: this.phone().trim(),
+      country: this.country(),
+    });
     const message = this.message().trim();
     const body = {
       checkIn: criteria.checkIn,
