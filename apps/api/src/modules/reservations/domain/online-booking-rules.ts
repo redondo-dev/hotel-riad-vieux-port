@@ -1,4 +1,4 @@
-import type { RatePlan } from './reservation-rules.ts';
+import type { RatePlan, ReservationStatus } from './reservation-rules.ts';
 
 /**
  * Pure rules of a booking made on the website (step R-3): no clock, no database, no Stripe.
@@ -53,4 +53,30 @@ export function isSiteAddress(address: string, siteUrl: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** What a visitor is told of the state of a booking made on the website. */
+export type PublicBookingStatus = 'pending' | 'confirmed' | 'cancelled';
+
+export function publicStatusOf(status: ReservationStatus): PublicBookingStatus {
+  switch (status) {
+    case 'pending_payment':
+      return 'pending';
+    case 'confirmed':
+    case 'checked_in':
+    case 'checked_out':
+      return 'confirmed';
+    default:
+      return 'cancelled';
+  }
+}
+
+/**
+ * The page « ← Retour » of the payment page leads to, with the reference of the booking: the
+ * site gives its rooms back at once (decision « 3a » of step R-4).
+ */
+export function withBookingReference(address: string, reference: string): string {
+  const url = new URL(address);
+  url.searchParams.set('booking', reference);
+  return url.href;
 }

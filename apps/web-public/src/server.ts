@@ -12,7 +12,9 @@ import {
   AVAILABILITY_RELAY_PATH,
   type AvailabilityQuery,
   availabilityQueryOf,
+  BOOKING_RELAY_PATH,
   BookingRelay,
+  type RelayAnswer,
 } from './booking-relay';
 import { CatalogSource } from './catalog-source';
 import { MediaRelay } from './media-relay';
@@ -128,14 +130,35 @@ app.get(`${MEDIA_PATH}/:file`, (req, res, next) => {
     .catch(next);
 });
 
-app.get(AVAILABILITY_RELAY_PATH, (req, res, next) => {
-  const query = availabilityQueryOf((name) => req.query[name]);
-  booking
-    .availability(query, req.ip)
-    .then((answer) => {
-      res.status(answer.status).set('Cache-Control', 'no-store').json(answer.body);
+/** Sends back the answer of the API as it is, never kept by a cache. */
+function relayed(
+  answer: Promise<RelayAnswer>,
+  res: express.Response,
+  next: express.NextFunction,
+): void {
+  answer
+    .then((result) => {
+      res.status(result.status).set('Cache-Control', 'no-store').json(result.body);
     })
     .catch(next);
+}
+
+app.get(AVAILABILITY_RELAY_PATH, (req, res, next) => {
+  const query = availabilityQueryOf((name) => req.query[name]);
+  relayed(booking.availability(query, req.ip), res, next);
+});
+
+// JSON only: a form of another site cannot post here without the browser asking first (CORS).
+app.post(BOOKING_RELAY_PATH, express.json({ limit: '8kb' }), (req, res, next) => {
+  relayed(booking.book(req.body, req.get('Idempotency-Key'), req.ip), res, next);
+});
+
+app.get(`${BOOKING_RELAY_PATH}/checkout/:sessionId`, (req, res, next) => {
+  relayed(booking.checkout(req.params['sessionId'] ?? '', req.ip), res, next);
+});
+
+app.post(`${BOOKING_RELAY_PATH}/:reference/abandon`, (req, res, next) => {
+  relayed(booking.abandon(req.params['reference'] ?? '', req.ip), res, next);
 });
 
 app.use(
@@ -154,6 +177,8 @@ app.use((req, res, next) => {
         catalog: snapshot,
         // The results page reads the availability on the server, with the visitor's address.
         searchAvailability: (query: AvailabilityQuery) => booking.availability(query, req.ip),
+        // The confirmation page reads its booking on the server too.
+        readCheckout: (sessionId: string) => booking.checkout(sessionId, req.ip),
       }),
     )
     .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))

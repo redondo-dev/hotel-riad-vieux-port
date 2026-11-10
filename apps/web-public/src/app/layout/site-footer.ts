@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { LucideAngularModule, Mail, MapPin, Phone } from 'lucide-angular';
 import { CatalogService } from '../core/data/catalog.service';
 import { formatTime } from '../core/i18n/format';
 import { injectLocale, OTHER_LANGUAGE } from '../core/i18n/locale';
+import { TERMS_PATH } from '../core/navigation';
 import { Logo } from '../shared/ui/logo';
 import { ZelligeStar } from '../shared/ui/zellige-star';
 
@@ -12,7 +14,7 @@ import { ZelligeStar } from '../shared/ui/zellige-star';
  */
 @Component({
   selector: 'rvp-site-footer',
-  imports: [LucideAngularModule, Logo, ZelligeStar],
+  imports: [LucideAngularModule, RouterLink, Logo, ZelligeStar],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <footer class="on-dark relative mt-24 overflow-hidden bg-port-dark text-white">
@@ -76,6 +78,14 @@ import { ZelligeStar } from '../shared/ui/zellige-star';
                 >Unsplash</a
               >
             </p>
+            <p>
+              <a
+                class="font-medium text-white hover:underline"
+                [routerLink]="termsLink"
+                i18n="@@footer.terms"
+                >Conditions de vente et d'annulation</a
+              >
+            </p>
           </div>
           <a
             class="inline-flex min-h-11 items-center font-medium text-white hover:underline"
@@ -97,6 +107,7 @@ export class SiteFooter {
   protected readonly address = this.catalog.address;
   protected readonly otherLanguage = OTHER_LANGUAGE[this.locale];
   protected readonly icons = { phone: Phone, mail: Mail, mapPin: MapPin };
+  protected readonly termsLink = ['/', TERMS_PATH];
 
   protected readonly checkInText = $localize`:@@footer.checkIn:Arrivée à partir de ${formatTime(this.hotel.checkInFrom, this.locale)}:time:`;
   protected readonly checkOutText = $localize`:@@footer.checkOut:Départ avant ${formatTime(this.hotel.checkOutBefore, this.locale)}:time:`;

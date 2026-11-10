@@ -77,6 +77,17 @@ export function stripeGateway(secretKey: string): PaymentGateway {
       );
       return { id: session.id, url: urlOf(session), customerId: customer.id };
     },
+
+    async expireCheckout(sessionId: string): Promise<'expired' | 'already_complete'> {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (session.status === 'complete') {
+        return 'already_complete';
+      }
+      if (session.status === 'open') {
+        await stripe.checkout.sessions.expire(sessionId);
+      }
+      return 'expired';
+    },
   };
 }
 
