@@ -194,6 +194,53 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+  /public/bookings/checkout/{sessionId}:
+    get:
+      operationId: getOnlineBookingByCheckout
+      summary: Réservation en ligne, pour la page de confirmation
+      description: |
+        Retrouvée par l'identifiant de la page Stripe, que Stripe redonne au site après le
+        paiement. Aucune donnée personnelle (ni nom, ni e-mail, ni téléphone). État simplifié :
+        `pending` (paiement en cours de vérification), `confirmed`, `cancelled`. 30 lectures par
+        minute et par adresse IP.
+      tags: [Catalogue public]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^cs_(test|live)_[A-Za-z0-9]{10,200}$' }
+      responses:
+        '200':
+          description: La réservation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnlineBookingSummary' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+  /public/bookings/{reference}/abandon:
+    post:
+      operationId: abandonOnlineBooking
+      summary: Abandon du paiement (« ← Retour » sur la page Stripe)
+      description: |
+        Ferme la page Stripe et rend aussitôt les chambres d'une réservation en attente de
+        paiement. Déjà payée entre-temps : rien ne change (`pending`). Déjà terminée : renvoyée
+        telle quelle. 30 demandes par minute et par adresse IP.
+      tags: [Catalogue public]
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-HJ-NP-Z2-9]{8}$' }
+      responses:
+        '200':
+          description: La réservation après l'abandon.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnlineBookingSummary' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
   /admin/session:
     post:
       operationId: logIn
@@ -2794,6 +2841,34 @@ components:
           type: string
           format: date-time
           description: Fin du blocage des chambres.
+    OnlineBookingSummary:
+      type: object
+      required:
+        [
+          reference,
+          status,
+          checkIn,
+          checkOut,
+          category,
+          roomCount,
+          ratePlan,
+          paidOnlineCents,
+          dueAtHotelCents,
+        ]
+      properties:
+        reference: { type: string, example: B4NE72CB }
+        status: { type: string, enum: [pending, confirmed, cancelled] }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        category: { type: [string, 'null'], example: double-standard }
+        roomCount: { type: integer, example: 1 }
+        ratePlan: { type: string, enum: [flexible, non_refundable] }
+        paidOnlineCents:
+          type: integer
+          description: Payé en ligne (tarif non remboursable), taxe de séjour à part.
+        dueAtHotelCents:
+          type: integer
+          description: À régler à l'hôtel (séjour au tarif flexible, taxe de séjour).
     Role:
       type: string
       enum: [direction, reception, housekeeping, technician]

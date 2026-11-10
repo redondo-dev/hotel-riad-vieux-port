@@ -35,4 +35,9 @@ export interface CheckoutSession {
 
 export interface PaymentGateway {
   createCheckout(request: CheckoutRequest): Promise<CheckoutSession>;
+  /**
+   * Closes a payment page the visitor left (« ← Retour »): « expired » when it can no longer
+   * be paid, « already_complete » when it was paid meanwhile (then nothing is closed).
+   */
+  expireCheckout(sessionId: string): Promise<'expired' | 'already_complete'>;
 }

@@ -11,13 +11,26 @@ import { parseGuests } from '../domain/stay-rules.ts';
  * Bookings made on the website, under /api/v1/public (no session), called by the server of
  * the public site (step R-4):
  *
- *   POST /bookings     header Idempotency-Key required; answers the page of payment
+ *   POST /bookings                       header Idempotency-Key required; the payment page
+ *   GET  /bookings/checkout/:sessionId   for the confirmation page (no personal data)
+ *   POST /bookings/:reference/abandon    « ← Retour » on the payment page: rooms given back
  *
  * 5 bookings per 10 minutes and per address at most: a booking waiting for its payment holds
  * rooms, robots must not empty the hotel (decision « 4 » of step R-3).
  */
 
 export const PUBLIC_BOOKING_LIMIT = { windowMs: 10 * 60_000, limit: 5 };
+/** Reading or abandoning a booking: enough for a visitor, too few to try identifiers. */
+export const PUBLIC_BOOKING_READ_LIMIT = { windowMs: 60_000, limit: 30 };
+
+const checkoutParams = z.strictObject({
+  sessionId: z.string().regex(/^cs_(test|live)_[A-Za-z0-9]{10,200}$/, {
+    error: 'Identifiant de paiement invalide.',
+  }),
+});
+const referenceParams = z.strictObject({
+  reference: z.string().regex(/^[A-HJ-NP-Z2-9]{8}$/, { error: 'Référence invalide.' }),
+});
 
 const isoDate = z.iso.date({ error: 'Date attendue au format AAAA-MM-JJ.' });
 
@@ -102,6 +115,24 @@ export function publicBookingRouter(service: OnlineBooking): Router {
         res.set('Idempotent-Replayed', 'true');
       }
       res.status(201).json(result.answer);
+    }),
+  );
+
+  router.get(
+    '/bookings/checkout/:sessionId',
+    rateLimiter(PUBLIC_BOOKING_READ_LIMIT),
+    validated({ params: checkoutParams }, async ({ params }, _req, res) => {
+      res.set('Cache-Control', 'no-store');
+      res.json(await service.summary(params.sessionId));
+    }),
+  );
+
+  router.post(
+    '/bookings/:reference/abandon',
+    rateLimiter(PUBLIC_BOOKING_READ_LIMIT),
+    validated({ params: referenceParams }, async ({ params }, req, res) => {
+      res.set('Cache-Control', 'no-store');
+      res.json(await service.abandon(params.reference, { ip: req.ip }));
     }),
   );
 

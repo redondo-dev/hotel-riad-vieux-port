@@ -153,6 +153,8 @@ répond `PAYMENT_NOT_CONFIGURED`. Les tests n'appellent jamais Stripe (faux serv
 | Conditions | Case obligatoire ; date d'acceptation notée au journal d'audit                                       |
 | Robots     | 5 réservations par 10 minutes et par adresse IP (429)                                                |
 | Cartes     | Jamais de donnée de carte : seuls des identifiants Stripe sont gardés                                |
+| Retour     | « ← Retour » sur Stripe : page fermée, chambres rendues aussitôt                                     |
+| Lecture    | Page de confirmation : référence, séjour, montants, état ; aucune donnée personnelle                 |
 
 ## Réservations (`/api/v1/admin/reservations`)
 

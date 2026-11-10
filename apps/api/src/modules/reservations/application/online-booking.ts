@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { Sequelize } from 'sequelize';
-import { AppError, ConflictError, ValidationError } from '../../../shared/domain/errors.ts';
+import {
+  AppError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from '../../../shared/domain/errors.ts';
 import { recordAudit } from '../../../shared/infrastructure/audit-log.ts';
 import { HotelNotConfiguredError } from '../../catalog/application/public-catalog.ts';
 import { minutesAfterMidnight } from '../../catalog/domain/hotel-info.ts';
@@ -10,12 +15,18 @@ import {
   dueNowCents,
   holdUntil,
   isSiteAddress,
+  type PublicBookingStatus,
+  publicStatusOf,
   stayDescription,
+  withBookingReference,
 } from '../domain/online-booking-rules.ts';
 import { hotelClock, onlineStayErrors } from '../domain/public-offer-rules.ts';
 import type { Occupancy } from '../domain/quote.ts';
 import type { RatePlan } from '../domain/reservation-rules.ts';
-import { ReservationRepository } from '../infrastructure/reservation-repository.ts';
+import {
+  type OnlineBookingRecord,
+  ReservationRepository,
+} from '../infrastructure/reservation-repository.ts';
 import type { CheckoutSession, PaymentGateway } from './payment-gateway.ts';
 import type { ActionOrigin, BookedReservation, ReservationService } from './reservation-service.ts';
 
@@ -47,6 +58,22 @@ export interface OnlineBookingAnswer {
   checkoutUrl: string;
   /** End of the hold of the rooms (ISO instant). */
   paymentExpiresAt: string;
+}
+
+/** A booking of the website as its confirmation page shows it: no personal data. */
+export interface OnlineBookingSummary {
+  reference: string;
+  status: PublicBookingStatus;
+  checkIn: string;
+  checkOut: string;
+  /** Code of the category, as in the addresses of the site. */
+  category: string | null;
+  roomCount: number;
+  ratePlan: RatePlan;
+  /** Paid online (non-refundable rate), tourist tax apart. */
+  paidOnlineCents: number;
+  /** To pay at the hotel: the stay at the flexible rate, and the tourist tax. */
+  dueAtHotelCents: number;
 }
 
 export interface OnlineBookingResult {
@@ -89,6 +116,22 @@ function postgresCode(error: unknown): string | undefined {
   }
   const parent = (error as { parent?: { code?: unknown } }).parent;
   return typeof parent?.code === 'string' ? parent.code : undefined;
+}
+
+function summaryOf(booking: OnlineBookingRecord): OnlineBookingSummary {
+  const stayCents = booking.totalCents - booking.touristTaxCents;
+  const paidOnline = booking.ratePlan === 'non_refundable' ? stayCents : 0;
+  return {
+    reference: booking.reference,
+    status: publicStatusOf(booking.status),
+    checkIn: booking.checkIn,
+    checkOut: booking.checkOut,
+    category: booking.categoryCode,
+    roomCount: booking.roomCount,
+    ratePlan: booking.ratePlan,
+    paidOnlineCents: paidOnline,
+    dueAtHotelCents: booking.totalCents - paidOnline,
+  };
 }
 
 function noLongerAvailable(): ConflictError {
@@ -189,7 +232,7 @@ export class OnlineBooking {
         locale: request.language,
         expiresAt: checkoutClosesAt(now),
         successUrl: request.successUrl,
-        cancelUrl: request.cancelUrl,
+        cancelUrl: withBookingReference(request.cancelUrl, booked.reference),
       });
     } catch (error) {
       this.#logError(error);
@@ -211,6 +254,67 @@ export class OnlineBooking {
       await this.#repository.storeIdempotentResponse(idempotencyKey, 201, answer, transaction);
     });
     return { replayed: false, answer };
+  }
+
+  /** For the confirmation page, from the identifier Stripe gives back to it. */
+  async summary(sessionId: string): Promise<OnlineBookingSummary> {
+    const booking = await this.#repository.onlineBooking({ sessionId });
+    if (booking === undefined) {
+      throw new NotFoundError('Cette réservation est introuvable.');
+    }
+    return summaryOf(booking);
+  }
+
+  /**
+   * « ← Retour » on the payment page (decision « 3a » of step R-4): the page is closed and the
+   * rooms are given back at once. Already paid meanwhile: nothing changes (the payment will
+   * confirm the booking). Already over: answered as it is.
+   */
+  async abandon(reference: string, origin: ActionOrigin): Promise<OnlineBookingSummary> {
+    const found = await this.#repository.onlineBooking({ reference });
+    if (found === undefined) {
+      throw new NotFoundError('Cette réservation est introuvable.');
+    }
+    if (found.status !== 'pending_payment') {
+      return summaryOf(found);
+    }
+    const payments = this.#payments;
+    if (payments === undefined) {
+      throw new PaymentNotConfiguredError();
+    }
+    if (found.sessionId !== null) {
+      let closed: 'expired' | 'already_complete';
+      try {
+        closed = await payments.expireCheckout(found.sessionId);
+      } catch (error) {
+        this.#logError(error);
+        throw new PaymentUnavailableError();
+      }
+      if (closed === 'already_complete') {
+        return summaryOf(found);
+      }
+    }
+    const after = await this.#sequelize.transaction(async (transaction) => {
+      const booking = await this.#repository.onlineBooking({ reference }, transaction);
+      if (booking === undefined || booking.status !== 'pending_payment') {
+        return booking;
+      }
+      await this.#repository.expireUnpaid(booking.id, transaction);
+      await recordAudit(
+        this.#sequelize,
+        {
+          actorType: 'customer',
+          action: 'reservation.payment_abandoned',
+          entityType: 'reservation',
+          entityId: booking.id,
+          changes: { status: { from: 'pending_payment', to: 'expired' } },
+          ipAddress: origin.ip,
+        },
+        transaction,
+      );
+      return { ...booking, status: 'expired' as const };
+    });
+    return summaryOf(after ?? found);
   }
 
   /** Online rules (RM-06) and addresses back to the site: before anything is written. */

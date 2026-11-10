@@ -4,7 +4,9 @@ import {
   dueNowCents,
   holdUntil,
   isSiteAddress,
+  publicStatusOf,
   stayDescription,
+  withBookingReference,
 } from './online-booking-rules.ts';
 
 describe('online booking rules', () => {
@@ -23,6 +25,19 @@ describe('online booking rules', () => {
     expect(stayDescription('Double standard', 3, 'fr')).toBe('Double standard · 3 nuits');
     expect(stayDescription('Suite', 1, 'fr')).toBe('Suite · 1 nuit');
     expect(stayDescription('Double room', 2, 'en')).toBe('Double room · 2 nights');
+  });
+
+  it('tells the visitor only whether the booking waits, is confirmed or is over', () => {
+    expect(publicStatusOf('pending_payment')).toBe('pending');
+    expect(publicStatusOf('confirmed')).toBe('confirmed');
+    expect(publicStatusOf('checked_out')).toBe('confirmed');
+    expect(publicStatusOf('expired')).toBe('cancelled');
+    expect(publicStatusOf('cancelled')).toBe('cancelled');
+  });
+
+  it('adds the reference to the page « ← Retour » leads to, keeping its search', () => {
+    const back = 'https://riad.example/fr/reserver/choix?guests=2';
+    expect(withBookingReference(back, 'K7M2QX9A')).toBe(`${back}&booking=K7M2QX9A`);
   });
 
   it('accepts only addresses of the public site', () => {

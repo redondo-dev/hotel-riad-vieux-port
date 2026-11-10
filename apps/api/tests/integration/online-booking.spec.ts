@@ -34,12 +34,25 @@ interface SavedSettings {
 interface Fake {
   gateway: PaymentGateway;
   calls: CheckoutRequest[];
+  /** Payment pages closed by « ← Retour ». */
+  expired: string[];
 }
 
-/** Opens a pretend page, or fails like Stripe out of order. */
-function fakePayments(options: { fail?: boolean } = {}): Fake {
+/**
+ * Opens a pretend page, or fails like Stripe out of order; `paid`: the pages are already paid
+ * when the visitor comes back.
+ */
+function fakePayments(options: { fail?: boolean; paid?: boolean } = {}): Fake {
   const calls: CheckoutRequest[] = [];
+  const expired: string[] = [];
   const gateway: PaymentGateway = {
+    expireCheckout: async (sessionId) => {
+      if (options.paid === true) {
+        return 'already_complete';
+      }
+      expired.push(sessionId);
+      return 'expired';
+    },
     createCheckout: async (checkout) => {
       calls.push(checkout);
       if (options.fail === true) {
@@ -52,7 +65,7 @@ function fakePayments(options: { fail?: boolean } = {}): Fake {
       };
     },
   };
-  return { gateway, calls };
+  return { gateway, calls, expired };
 }
 
 let keyCounter = 0;
@@ -302,6 +315,67 @@ describe.skipIf(!hasTestDatabase)('online booking', () => {
 
       const working = harness.app({ now: () => NOW, payments: fakePayments().gateway });
       expect((await post(working, bookingBody(stay), key)).status).toBe(201);
+    });
+  });
+
+  describe('back from the payment page', () => {
+    it('shows the booking to its confirmation page, without any personal data', async () => {
+      const app = harness.app({ now: () => NOW, payments: fakePayments().gateway });
+      const stay = { checkIn: '2037-01-22', checkOut: '2037-01-24' };
+      const booked = await post(app, bookingBody(stay));
+      const stored = await reservationOf(booked.body.reference);
+
+      const response = await request(app).get(
+        `${BOOKINGS}/checkout/${String(stored?.['sessionId'])}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        reference: booked.body.reference,
+        status: 'pending',
+        checkIn: '2037-01-22',
+        checkOut: '2037-01-24',
+        category: 'onl-double',
+        roomCount: 1,
+        ratePlan: 'non_refundable',
+        paidOnlineCents: 2 * 7200,
+        dueAtHotelCents: 2 * 2 * 250,
+      });
+      expect(JSON.stringify(response.body)).not.toMatch(/Enligne|@|\+33/);
+
+      const unknown = await request(app).get(`${BOOKINGS}/checkout/cs_test_${'x'.repeat(20)}`);
+      expect(unknown.status).toBe(404);
+    });
+
+    it('sends « ← Retour » back with the reference, then gives the rooms back at once', async () => {
+      const fake = fakePayments();
+      const app = harness.app({ now: () => NOW, payments: fake.gateway });
+      const stay = { category: 'onl-unique', checkIn: '2037-01-15', checkOut: '2037-01-16' };
+      const booked = await post(app, bookingBody(stay));
+      const reference = String(booked.body.reference);
+      expect(fake.calls[0]?.cancelUrl).toBe(
+        `${PUBLIC_SITE_URL}/reserver/choix?booking=${reference}`,
+      );
+
+      const abandoned = await request(app).post(`${BOOKINGS}/${reference}/abandon`);
+
+      expect(abandoned.status).toBe(200);
+      expect(abandoned.body.status).toBe('cancelled');
+      expect(fake.expired).toEqual([`cs_test_${String((await reservationOf(reference))?.['id'])}`]);
+      expect((await reservationOf(reference))?.['status']).toBe('expired');
+      // The only room of the category can be booked again.
+      expect((await post(app, bookingBody(stay))).status).toBe(201);
+    });
+
+    it('changes nothing when the page was paid meanwhile', async () => {
+      const app = harness.app({ now: () => NOW, payments: fakePayments({ paid: true }).gateway });
+      const stay = { checkIn: '2037-01-25', checkOut: '2037-01-26' };
+      const booked = await post(app, bookingBody(stay));
+
+      const abandoned = await request(app).post(`${BOOKINGS}/${booked.body.reference}/abandon`);
+
+      expect(abandoned.body.status).toBe('pending');
+      expect((await reservationOf(booked.body.reference))?.['status']).toBe('pending_payment');
     });
   });
 

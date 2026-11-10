@@ -40,6 +40,21 @@ export interface BookableService {
   vatRate: number;
 }
 
+/** A booking of the website, as the public site may see it (no personal data). */
+export interface OnlineBookingRecord {
+  id: string;
+  reference: string;
+  status: ReservationStatus;
+  checkIn: string;
+  checkOut: string;
+  ratePlan: RatePlan;
+  totalCents: number;
+  sessionId: string | null;
+  categoryCode: string | null;
+  roomCount: number;
+  touristTaxCents: number;
+}
+
 export interface CustomerFields {
   firstName: string;
   lastName: string;
@@ -421,6 +436,37 @@ export class ReservationRepository {
       [reservationId, checkout.sessionId, checkout.stripeCustomerId],
       transaction,
     );
+  }
+
+  /** A booking of the website, by its payment page or by its reference. */
+  async onlineBooking(
+    by: { sessionId: string } | { reference: string },
+    transaction?: Transaction,
+  ): Promise<OnlineBookingRecord | undefined> {
+    const [condition, value] =
+      'sessionId' in by
+        ? ['r.stripe_checkout_session_id = $1', by.sessionId]
+        : ['r.reference = $1', by.reference];
+    const rows = await this.#select<OnlineBookingRecord>(
+      `SELECT r.id, r.reference, r.status, r.check_in::text AS "checkIn",
+              r.check_out::text AS "checkOut", r.rate_plan AS "ratePlan",
+              r.total_amount_cents AS "totalCents",
+              r.stripe_checkout_session_id AS "sessionId",
+              (SELECT c.code
+                 FROM reservation_rooms rr JOIN room_categories c ON c.id = rr.category_id
+                WHERE rr.reservation_id = r.id
+                ORDER BY rr.id LIMIT 1) AS "categoryCode",
+              (SELECT count(*)::int FROM reservation_rooms rr
+                WHERE rr.reservation_id = r.id) AS "roomCount",
+              (SELECT coalesce(sum(ch.total_cents), 0)::int FROM reservation_charges ch
+                WHERE ch.reservation_id = r.id AND ch.kind = 'tourist_tax') AS "touristTaxCents"
+         FROM reservations r
+        WHERE r.source = 'website' AND ${condition}
+        ${transaction === undefined ? '' : 'FOR UPDATE OF r'}`,
+      [value],
+      transaction,
+    );
+    return rows[0];
   }
 
   /** Gives the rooms back at once: the payment page could not be opened. */
