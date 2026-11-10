@@ -3,7 +3,8 @@ import { checkoutReader } from '../../core/booking/checkout-reader';
 import { type BookingSummary, bookingSummaryOf } from '../../core/booking/online-booking';
 
 export type ConfirmationData =
-  | { kind: 'found'; summary: BookingSummary }
+  /** `sessionId`: to read the booking again while its payment is being checked (step R-5c). */
+  | { kind: 'found'; summary: BookingSummary; sessionId: string }
   /** No identifier in the address, or no booking for it. */
   | { kind: 'missing' }
   | { kind: 'unavailable' };
@@ -22,5 +23,5 @@ export const confirmationResolver: ResolveFn<ConfirmationData> = async (route) =
     return { kind: 'missing' };
   }
   const summary = answer.status === 200 ? bookingSummaryOf(answer.body) : null;
-  return summary === null ? { kind: 'unavailable' } : { kind: 'found', summary };
+  return summary === null ? { kind: 'unavailable' } : { kind: 'found', summary, sessionId };
 };
