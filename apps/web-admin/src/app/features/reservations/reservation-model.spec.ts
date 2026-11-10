@@ -7,6 +7,7 @@ import {
   freeCancellationText,
   guestsText,
   parseAges,
+  paymentBadgesOf,
   type ReservationDetail,
   roomText,
   stayText,
@@ -70,6 +71,18 @@ describe('texts', () => {
     const late = plain(freeCancellationText('flexible', until, after));
     expect(late).toMatch(/^Annulation gratuite dépassée/);
     expect(freeCancellationText('non_refundable', null, after)).toMatch(/non remboursable/);
+  });
+});
+
+describe('paymentBadgesOf', () => {
+  it('adds « Carte en garantie » to the payment state when a card is saved at Stripe', () => {
+    expect(paymentBadgesOf({ paymentStatus: 'unpaid', cardGuarantee: true })).toEqual([
+      { label: 'Non payé', className: 'badge-warning' },
+      { label: 'Carte en garantie', className: 'badge-info' },
+    ]);
+    expect(paymentBadgesOf({ paymentStatus: 'paid', cardGuarantee: false })).toEqual([
+      { label: 'Payé', className: 'badge-ok' },
+    ]);
   });
 });
 

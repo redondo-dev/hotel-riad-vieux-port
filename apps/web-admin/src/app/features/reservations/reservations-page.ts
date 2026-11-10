@@ -10,11 +10,11 @@ import {
 import { type Problem, toProblem } from '../../core/api/problem';
 import { ReservationApi, type ReservationFilter } from './reservation-api';
 import {
+  type Badge,
   customerName,
   formatDay,
   formatEuros,
-  PAYMENT_LABELS,
-  paymentBadge,
+  paymentBadgesOf,
   type ReservationPage,
   type ReservationStatus,
   type ReservationSummary,
@@ -221,7 +221,11 @@ const EMPTY_FILTER: ReservationFilter = { sort: 'checkIn', page: 1 };
                       <span [class]="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
                     </td>
                     <td class="px-4 py-3">
-                      <span [class]="paymentClass(item)">{{ paymentLabel(item) }}</span>
+                      <span class="flex flex-col items-start gap-1">
+                        @for (badge of paymentBadges(item); track badge.label) {
+                          <span [class]="badge.className">{{ badge.label }}</span>
+                        }
+                      </span>
                     </td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">
                       {{ euros(item.totalCents) }}
@@ -240,7 +244,9 @@ const EMPTY_FILTER: ReservationFilter = { sort: 'checkIn', page: 1 };
                   <span class="flex flex-wrap items-center gap-2 text-sm">
                     <span class="font-semibold">{{ item.reference }}</span>
                     <span [class]="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
-                    <span [class]="paymentClass(item)">{{ paymentLabel(item) }}</span>
+                    @for (badge of paymentBadges(item); track badge.label) {
+                      <span [class]="badge.className">{{ badge.label }}</span>
+                    }
                   </span>
                   <span class="font-semibold">{{ name(item) }}</span>
                   <span class="text-sm text-muted">{{ cardLine(item) }}</span>
@@ -405,12 +411,8 @@ export class ReservationsPage {
     return statusBadge(status);
   }
 
-  protected paymentLabel(item: ReservationSummary): string {
-    return PAYMENT_LABELS[item.paymentStatus];
-  }
-
-  protected paymentClass(item: ReservationSummary): string {
-    return paymentBadge(item.paymentStatus);
+  protected paymentBadges(item: ReservationSummary): Badge[] {
+    return paymentBadgesOf(item);
   }
 
   protected sourceLabel(source: Source): string {

@@ -30,6 +30,8 @@ export interface ReservationSummary {
   rooms: { categoryName: string; roomNumber: string | null }[];
   status: ReservationStatus;
   paymentStatus: PaymentStatus;
+  /** A card saved at Stripe as a guarantee (website, flexible rate). */
+  cardGuarantee: boolean;
   totalCents: number;
   source: Source;
   createdAt: string;
@@ -74,6 +76,8 @@ export interface ReservationDetail {
   reference: string;
   status: ReservationStatus;
   paymentStatus: PaymentStatus;
+  /** A card saved at Stripe as a guarantee (website, flexible rate). */
+  cardGuarantee: boolean;
   source: Source;
   ratePlan: RatePlan;
   checkIn: string;
@@ -169,6 +173,36 @@ export function statusBadge(status: ReservationStatus): string {
 
 export function paymentBadge(status: PaymentStatus): string {
   return status === 'paid' ? 'badge-ok' : status === 'unpaid' ? 'badge-warning' : 'badge-neutral';
+}
+
+export const GUARANTEE_LABEL = 'Carte en garantie';
+export const GUARANTEE_HELP =
+  'Carte enregistrée chez Stripe : elle pourra être débitée en cas d’annulation tardive ou de ' +
+  'non-présentation.';
+
+export interface Badge {
+  label: string;
+  className: string;
+}
+
+/**
+ * The state of the payment, then « Carte en garantie » when a card is saved at Stripe: a
+ * flexible booking of the website is « Non payé » (paid at the hotel) but guaranteed.
+ */
+export function paymentBadgesOf(reservation: {
+  paymentStatus: PaymentStatus;
+  cardGuarantee: boolean;
+}): Badge[] {
+  const badges: Badge[] = [
+    {
+      label: PAYMENT_LABELS[reservation.paymentStatus],
+      className: paymentBadge(reservation.paymentStatus),
+    },
+  ];
+  if (reservation.cardGuarantee) {
+    badges.push({ label: GUARANTEE_LABEL, className: 'badge-info' });
+  }
+  return badges;
 }
 
 // --- Rights ---
