@@ -38,6 +38,11 @@ interface Fake {
   expired: string[];
 }
 
+/** Shaped like an identifier of Stripe (letters and digits only), unique per reservation. */
+function sessionIdOf(reservationId: string): string {
+  return `cs_test_${reservationId.replaceAll('-', '')}`;
+}
+
 /**
  * Opens a pretend page, or fails like Stripe out of order; `paid`: the pages are already paid
  * when the visitor comes back.
@@ -59,7 +64,7 @@ function fakePayments(options: { fail?: boolean; paid?: boolean } = {}): Fake {
         throw new Error('Stripe ne répond pas');
       }
       return {
-        id: `cs_test_${checkout.reservationId}`,
+        id: sessionIdOf(checkout.reservationId),
         url: `https://checkout.stripe.test/${checkout.reference}`,
         customerId: checkout.mode === 'setup' ? `cus_test_${checkout.reference}` : null,
       };
@@ -229,7 +234,7 @@ describe.skipIf(!hasTestDatabase)('online booking', () => {
         status: 'pending_payment',
         source: 'website',
         createdBy: null,
-        sessionId: `cs_test_${String(stored?.['id'])}`,
+        sessionId: sessionIdOf(String(stored?.['id'])),
         stripeCustomerId: null,
         totalCents: 3 * 7200 + 1500,
         phone: '+33 6 12 34 56 78',
@@ -361,7 +366,7 @@ describe.skipIf(!hasTestDatabase)('online booking', () => {
 
       expect(abandoned.status).toBe(200);
       expect(abandoned.body.status).toBe('cancelled');
-      expect(fake.expired).toEqual([`cs_test_${String((await reservationOf(reference))?.['id'])}`]);
+      expect(fake.expired).toEqual([sessionIdOf(String((await reservationOf(reference))?.['id']))]);
       expect((await reservationOf(reference))?.['status']).toBe('expired');
       // The only room of the category can be booked again.
       expect((await post(app, bookingBody(stay))).status).toBe(201);
