@@ -131,6 +131,8 @@ export interface ReservationDetail {
   reference: string;
   status: ReservationStatus;
   paymentStatus: PaymentStatus;
+  /** A card saved at Stripe as a guarantee (website, flexible rate); never its references. */
+  cardGuarantee: boolean;
   source: string;
   ratePlan: RatePlan;
   checkIn: string;
@@ -163,6 +165,8 @@ export interface ReservationSummary {
   rooms: { categoryName: string; roomNumber: string | null }[];
   status: ReservationStatus;
   paymentStatus: PaymentStatus;
+  /** A card saved at Stripe as a guarantee (website, flexible rate); never its references. */
+  cardGuarantee: boolean;
   totalCents: number;
   source: string;
   createdAt: Date;
@@ -271,6 +275,8 @@ interface DetailRow {
   reference: string;
   status: ReservationStatus;
   paymentStatus: PaymentStatus;
+  /** A card saved at Stripe as a guarantee (website, flexible rate); never its references. */
+  cardGuarantee: boolean;
   source: string;
   ratePlan: RatePlan;
   checkIn: string;
@@ -984,6 +990,7 @@ export class ReservationRepository {
   async detail(id: string, transaction?: Transaction): Promise<ReservationDetail | undefined> {
     const rows = await this.#select<DetailRow>(
       `SELECT r.id, r.reference, r.status, r.payment_status AS "paymentStatus", r.source,
+              r.stripe_payment_method_id IS NOT NULL AS "cardGuarantee",
               r.rate_plan AS "ratePlan", r.check_in::text AS "checkIn",
               r.check_out::text AS "checkOut", (r.check_out - r.check_in) AS nights,
               r.total_amount_cents AS "totalCents",
@@ -1046,6 +1053,7 @@ export class ReservationRepository {
       reference: row.reference,
       status: row.status,
       paymentStatus: row.paymentStatus,
+      cardGuarantee: row.cardGuarantee,
       source: row.source,
       ratePlan: row.ratePlan,
       checkIn: row.checkIn,
@@ -1109,6 +1117,7 @@ export class ReservationRepository {
       `SELECT r.id, r.reference, r.check_in::text AS "checkIn", r.check_out::text AS "checkOut",
               (r.check_out - r.check_in) AS nights, r.status,
               r.payment_status AS "paymentStatus", r.total_amount_cents AS "totalCents",
+              r.stripe_payment_method_id IS NOT NULL AS "cardGuarantee",
               r.source, r.created_at AS "createdAt",
               c.id AS "customerId", c.first_name AS "firstName", c.last_name AS "lastName",
               c.email::text AS email,
@@ -1165,6 +1174,7 @@ export class ReservationRepository {
         rooms: row.rooms,
         status: row.status,
         paymentStatus: row.paymentStatus,
+        cardGuarantee: row.cardGuarantee,
         totalCents: row.totalCents,
         source: row.source,
         createdAt: row.createdAt,

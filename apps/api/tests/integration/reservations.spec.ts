@@ -319,6 +319,26 @@ describe.skipIf(!hasTestDatabase)('reservations taken by the staff', () => {
       expect(unknown.status).toBe(404);
     });
 
+    it('tells whether a card is saved as a guarantee, never its Stripe references', async () => {
+      const list = await reception.agent.get(`${RESERVATIONS}?q=martin`);
+      const first = (list.body.items as { id: string; cardGuarantee: boolean }[])[0];
+      expect(first?.cardGuarantee).toBe(false);
+
+      await harness.execute(
+        `UPDATE reservations
+            SET stripe_customer_id = 'cus_test_resa', stripe_payment_method_id = 'pm_test_resa'
+          WHERE id = $1`,
+        [first?.id],
+      );
+
+      const detail = await reception.agent.get(`${RESERVATIONS}/${first?.id}`);
+      expect(detail.body.cardGuarantee).toBe(true);
+      expect(JSON.stringify(detail.body)).not.toMatch(/pm_test|cus_test/);
+      const again = await reception.agent.get(`${RESERVATIONS}?q=martin`);
+      const items = again.body.items as { id: string; cardGuarantee: boolean }[];
+      expect(items.find((item) => item.id === first?.id)?.cardGuarantee).toBe(true);
+    });
+
     it('searches the customers by name or e-mail, from 2 characters', async () => {
       const response = await reception.agent.get(`${ADMIN}/customers?q=resa-mar`);
       expect(response.status).toBe(200);
