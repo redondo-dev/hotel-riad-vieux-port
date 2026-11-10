@@ -73,7 +73,7 @@ describe('BookingRelay', () => {
 describe('BookingRelay, bookings', () => {
   const KEY = 'cle-de-reservation-0001';
 
-  it('passes a booking on as JSON with its key and the visitor\'s address', async () => {
+  it("passes a booking on as JSON with its key and the visitor's address", async () => {
     const calls: { url: string; init: RequestInit | undefined }[] = [];
     const fakeFetch = (async (input: string | URL | Request, init?: RequestInit) => {
       calls.push({ url: String(input), init });
