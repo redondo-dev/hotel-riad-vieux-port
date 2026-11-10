@@ -3,14 +3,24 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   input,
   type OnInit,
   PLATFORM_ID,
+  signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { daysBetween } from '@riad/shared';
+import { checkoutReader } from '../../core/booking/checkout-reader';
+import {
+  isSlow,
+  REFRESH_EVERY_MS,
+  refreshedSummary,
+  shouldRefresh,
+} from '../../core/booking/confirmation-refresh';
 import { browserSessionStorage, clearGuestDraft } from '../../core/booking/guest-draft';
+import type { BookingSummary } from '../../core/booking/online-booking';
 import { CatalogService } from '../../core/data/catalog.service';
 import { nightsLabel } from '../../core/i18n/counts';
 import { formatDate, formatPrice } from '../../core/i18n/format';
@@ -22,7 +32,9 @@ import type { ConfirmationData } from './confirmation-route';
 /**
  * Back from the payment page of Stripe (step R-4): the reference of the booking, the stay and
  * the amounts, and its state. No personal data (decision « 4 »): the address of this page may
- * be shared. « En cours de vérification » until Stripe tells the hotel (step R-5).
+ * be shared. « En cours de vérification » until Stripe tells the hotel (step R-5): the page reads
+ * the booking again every 3 seconds, for 30 seconds at most, in the browser only (step R-5c).
+ * The box of the state is a live region: screen readers announce its changes.
  */
 @Component({
   selector: 'rvp-booking-confirmation-page',
@@ -43,6 +55,9 @@ import type { ConfirmationData } from './confirmation-route';
             <div class="mt-6">
               <rvp-notice [tone]="booking.status === 'cancelled' ? 'danger' : 'info'">
                 <p>{{ booking.statusText }}</p>
+                @if (slow()) {
+                  <p class="mt-2">{{ slowText }}</p>
+                }
               </rvp-notice>
             </div>
 
@@ -67,7 +82,13 @@ import type { ConfirmationData } from './confirmation-route';
               </div>
               @if (booking.paidOnline; as paid) {
                 <div>
-                  <dt class="text-sm text-muted" i18n="@@confirmation.paidOnline">Payé en ligne</dt>
+                  <dt class="text-sm text-muted">
+                    @if (booking.status === 'pending') {
+                      <ng-container i18n="@@confirmation.dueOnline">À payer en ligne</ng-container>
+                    } @else {
+                      <ng-container i18n="@@confirmation.paidOnline">Payé en ligne</ng-container>
+                    }
+                  </dt>
                   <dd class="mt-1 font-semibold tabular-nums">{{ paid }}</dd>
                 </div>
               }
@@ -135,25 +156,75 @@ export class BookingConfirmationPage implements OnInit {
   private readonly locale = injectLocale();
   protected readonly searchAnchor = SEARCH_ANCHOR;
   private readonly inBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly read = checkoutReader();
+  private readonly destroyRef = inject(DestroyRef);
+
+  /** The state read again while the payment is being checked; first, the one of the resolver. */
+  private readonly refreshed = signal<BookingSummary | null>(null);
+  /** Reads made since the page opened. */
+  private readonly refreshes = signal(0);
+  /** The page was left: no more reads. */
+  private left = false;
+  private timer: ReturnType<typeof setTimeout> | undefined;
 
   private readonly phone = this.catalog.hotel.phone.display;
   protected readonly missingText = $localize`:@@confirmation.missingText:Aucune réservation ne correspond à cette adresse. Si vous avez payé, appelez la réception au ${this.phone}:phone: avec votre e-mail.`;
+  protected readonly slowText = $localize`:@@confirmation.slow:La confirmation prend plus de temps que prévu. Actualisez la page dans quelques instants ; votre réservation reste enregistrée.`;
   protected readonly unavailableText = $localize`:@@confirmation.unavailableText:Votre réservation est enregistrée, mais son détail ne peut pas être affiché pour l'instant. Vous recevrez un e-mail de confirmation ; pour toute question, appelez la réception au ${this.phone}:phone:.`;
 
-  ngOnInit(): void {
-    const data = this.data();
-    // The booking is recorded: the details kept in the tab are no longer needed.
-    if (this.inBrowser && data.kind === 'found' && data.summary.status !== 'cancelled') {
-      clearGuestDraft(browserSessionStorage());
-    }
-  }
-
-  protected readonly view = computed(() => {
+  /** What is shown now: the last state read, or the one of the resolver. */
+  private readonly summary = computed(() => {
     const data = this.data();
     if (data.kind !== 'found') {
       return null;
     }
-    const booking = data.summary;
+    return this.refreshed() ?? data.summary;
+  });
+
+  protected readonly slow = computed(() => {
+    const summary = this.summary();
+    return summary !== null && isSlow(summary, this.refreshes());
+  });
+
+  ngOnInit(): void {
+    const data = this.data();
+    if (!this.inBrowser || data.kind !== 'found') {
+      return;
+    }
+    // The booking is recorded: the details kept in the tab are no longer needed.
+    if (data.summary.status !== 'cancelled') {
+      clearGuestDraft(browserSessionStorage());
+    }
+    this.destroyRef.onDestroy(() => {
+      this.left = true;
+      clearTimeout(this.timer);
+    });
+    this.refreshLater(data.sessionId);
+  }
+
+  /** Reads the booking again in 3 seconds while it is being checked. */
+  private refreshLater(sessionId: string): void {
+    const summary = this.summary();
+    if (this.left || summary === null || !shouldRefresh(summary, this.refreshes())) {
+      return;
+    }
+    this.timer = setTimeout(() => {
+      void this.read(sessionId).then((answer) => {
+        if (this.left) {
+          return;
+        }
+        this.refreshed.set(refreshedSummary(summary, answer));
+        this.refreshes.update((done) => done + 1);
+        this.refreshLater(sessionId);
+      });
+    }, REFRESH_EVERY_MS);
+  }
+
+  protected readonly view = computed(() => {
+    const booking = this.summary();
+    if (booking === null) {
+      return null;
+    }
     const category = this.catalog.categories.find((item) => item.code === booking.category);
     const name = category?.name ?? booking.category ?? '';
     const dateFormat: Intl.DateTimeFormatOptions = {
@@ -168,10 +239,11 @@ export class BookingConfirmationPage implements OnInit {
     return {
       reference: booking.reference,
       status: booking.status,
-      title:
-        booking.status === 'cancelled'
-          ? $localize`:@@confirmation.cancelledTitle:Cette réservation n'est plus active`
-          : $localize`:@@confirmation.title:Merci, votre réservation est enregistrée`,
+      title: {
+        pending: $localize`:@@confirmation.title:Merci, votre réservation est enregistrée`,
+        confirmed: $localize`:@@confirmation.confirmedTitle:Merci, votre réservation est confirmée`,
+        cancelled: $localize`:@@confirmation.cancelledTitle:Cette réservation n'est plus active`,
+      }[booking.status],
       statusText: {
         pending: $localize`:@@confirmation.pending:Paiement en cours de vérification : votre réservation sera confirmée dans quelques instants.`,
         confirmed: $localize`:@@confirmation.confirmed:Votre réservation est confirmée.`,
