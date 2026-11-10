@@ -27,6 +27,8 @@ import {
   type OnlineBookingRecord,
   ReservationRepository,
 } from '../infrastructure/reservation-repository.ts';
+import type { OnlinePayments } from './online-payments.ts';
+import type { CheckoutOutcome } from './payment-events.ts';
 import type { CheckoutSession, PaymentGateway } from './payment-gateway.ts';
 import type { ActionOrigin, BookedReservation, ReservationService } from './reservation-service.ts';
 
@@ -159,6 +161,7 @@ export class OnlineBooking {
   readonly #repository: ReservationRepository;
   readonly #catalog: CatalogRepository;
   readonly #payments: PaymentGateway | undefined;
+  readonly #settlement: OnlinePayments;
   readonly #siteUrl: string;
   readonly #now: () => Date;
   readonly #logError: (error: unknown) => void;
@@ -168,6 +171,8 @@ export class OnlineBooking {
     reservations: ReservationService;
     /** Without it (no Stripe key in development), bookings answer 503. */
     payments: PaymentGateway | undefined;
+    /** Confirms a booking whose page was completed meanwhile (step R-5), as a notification. */
+    settlement: OnlinePayments;
     /** Address of the public site: the pages back from the payment must be on it. */
     siteUrl: string;
     now: () => Date;
@@ -179,6 +184,7 @@ export class OnlineBooking {
     this.#repository = new ReservationRepository(options.sequelize);
     this.#catalog = new CatalogRepository(options.sequelize);
     this.#payments = options.payments;
+    this.#settlement = options.settlement;
     this.#siteUrl = options.siteUrl;
     this.#now = options.now;
     this.#logError = options.logError ?? (() => undefined);
@@ -267,8 +273,8 @@ export class OnlineBooking {
 
   /**
    * « ← Retour » on the payment page (decision « 3a » of step R-4): the page is closed and the
-   * rooms are given back at once. Already paid meanwhile: nothing changes (the payment will
-   * confirm the booking). Already over: answered as it is.
+   * rooms are given back at once. Paid or guaranteed meanwhile: the booking is confirmed at
+   * once (step R-5b). Already over: answered as it is.
    */
   async abandon(reference: string, origin: ActionOrigin): Promise<OnlineBookingSummary> {
     const found = await this.#repository.onlineBooking({ reference });
@@ -283,15 +289,18 @@ export class OnlineBooking {
       throw new PaymentNotConfiguredError();
     }
     if (found.sessionId !== null) {
-      let closed: 'expired' | 'already_complete';
+      let outcome: CheckoutOutcome;
       try {
-        closed = await payments.expireCheckout(found.sessionId);
+        outcome = await payments.closeCheckout(found.sessionId);
       } catch (error) {
         this.#logError(error);
         throw new PaymentUnavailableError();
       }
-      if (closed === 'already_complete') {
+      if (outcome.kind === 'processing') {
         return summaryOf(found);
+      }
+      if (outcome.kind === 'paid' || outcome.kind === 'card_saved') {
+        return this.#settled(reference, outcome);
       }
     }
     const after = await this.#sequelize.transaction(async (transaction) => {
@@ -316,6 +325,19 @@ export class OnlineBooking {
       return { ...booking, status: 'expired' as const };
     });
     return summaryOf(after ?? found);
+  }
+
+  /** The page was completed meanwhile: settled as its notification would, then answered. */
+  async #settled(reference: string, outcome: CheckoutOutcome): Promise<OnlineBookingSummary> {
+    return this.#sequelize.transaction(async (transaction) => {
+      const booking = await this.#repository.onlineBooking({ reference }, transaction);
+      if (booking === undefined) {
+        throw new NotFoundError('Cette réservation est introuvable.');
+      }
+      await this.#settlement.settle(booking, outcome, transaction);
+      const after = await this.#repository.onlineBooking({ reference }, transaction);
+      return summaryOf(after ?? booking);
+    });
   }
 
   /** Online rules (RM-06) and addresses back to the site: before anything is written. */

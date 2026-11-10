@@ -1,9 +1,11 @@
 import Stripe from 'stripe';
+import type { CheckoutOutcome } from '../application/payment-events.ts';
 import type {
   CheckoutRequest,
   CheckoutSession,
   PaymentGateway,
 } from '../application/payment-gateway.ts';
+import { outcomeOf, savedCardLookup } from './stripe-events.ts';
 
 /** One client of Stripe, shared by the payment pages and the notifications (step R-5). */
 export function stripeClient(secretKey: string): Stripe {
@@ -22,6 +24,7 @@ export function stripeClient(secretKey: string): Stripe {
  * second page nor creates a second customer.
  */
 export function stripeGateway(stripe: Stripe): PaymentGateway {
+  const paymentMethodOf = savedCardLookup(stripe);
   return {
     async createCheckout(request: CheckoutRequest): Promise<CheckoutSession> {
       const metadata = { reservationId: request.reservationId, reference: request.reference };
@@ -81,15 +84,17 @@ export function stripeGateway(stripe: Stripe): PaymentGateway {
       return { id: session.id, url: urlOf(session), customerId: customer.id };
     },
 
-    async expireCheckout(sessionId: string): Promise<'expired' | 'already_complete'> {
+    async closeCheckout(sessionId: string): Promise<CheckoutOutcome> {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       if (session.status === 'complete') {
-        return 'already_complete';
+        return outcomeOf(session, paymentMethodOf);
       }
       if (session.status === 'open') {
+        // Paid in the same instant: Stripe refuses to close it, the error is thrown and the
+        // next attempt finds the page completed.
         await stripe.checkout.sessions.expire(sessionId);
       }
-      return 'expired';
+      return { kind: 'expired' };
     },
   };
 }

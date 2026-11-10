@@ -1,3 +1,5 @@
+import type { CheckoutOutcome } from './payment-events.ts';
+
 /**
  * The payment service seen by the bookings (step R-3): Stripe in real life
  * (infrastructure/stripe-gateway.ts), a fake in the tests, which never call Stripe.
@@ -36,8 +38,9 @@ export interface CheckoutSession {
 export interface PaymentGateway {
   createCheckout(request: CheckoutRequest): Promise<CheckoutSession>;
   /**
-   * Closes a payment page the visitor left (« ← Retour »): « expired » when it can no longer
-   * be paid, « already_complete » when it was paid meanwhile (then nothing is closed).
+   * Closes a payment page that is still open (« ← Retour », or end of the hold of the rooms,
+   * step R-5b) and tells what it came to: « expired » when it can no longer be paid; paid or
+   * card saved when it was completed meanwhile (then nothing is closed).
    */
-  expireCheckout(sessionId: string): Promise<'expired' | 'already_complete'>;
+  closeCheckout(sessionId: string): Promise<CheckoutOutcome>;
 }
