@@ -181,6 +181,21 @@ un faux lecteur ; les vraies signatures sont vérifiées avec la bibliothèque S
    (jamais dans Git ni sur une capture), puis redémarrer l'API.
 4. Payer avec la carte de test `4242 4242 4242 4242` : `stripe listen` affiche `[200]`.
 
+## « Gérer ma réservation » (`POST /api/v1/public/bookings/manage`)
+
+Le client lit sa réservation du site avec le lien secret reçu par e-mail, et l'annule lui-même
+quand le tarif flexible le permet sans frais.
+
+| Sujet      | Règle                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------- |
+| Lien       | `…/reservation/gerer#RÉFÉRENCE.jeton` : le jeton (256 bits) reste après le `#`        |
+| Stockage   | Seule l'empreinte SHA-256 du jeton est en base ; un nouveau lien remplace l'ancien    |
+| Validité   | Jusqu'à la fin du jour du départ + `manage_link_days_after_checkout` (30 jours)       |
+| Lien faux  | Toujours la même réponse 404 `MANAGE_LINK_INVALID`, quelle que soit l'erreur          |
+| Annulation | Tarif flexible avant la date limite : sans frais, chambres rendues aussitôt           |
+| Sinon      | 409 `CANCELLATION_NOT_ONLINE` : la page invite à appeler la réception                 |
+| Limite     | 30 demandes par minute et par adresse IP ; jeton dans le corps, jamais dans l'adresse |
+
 ## E-mail de confirmation des réservations en ligne (Brevo)
 
 Tâche pg-boss lancée chaque minute : chaque réservation du site confirmée reçoit un e-mail, en

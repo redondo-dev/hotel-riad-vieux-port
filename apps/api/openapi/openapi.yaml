@@ -241,6 +241,54 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '429': { $ref: '#/components/responses/Problem' }
         '503': { $ref: '#/components/responses/Problem' }
+  /public/bookings/manage:
+    post:
+      operationId: viewManagedBooking
+      summary: « Gérer ma réservation » — lire la réservation
+      description: |
+        Avec le lien secret de l'e-mail (référence et jeton, jamais dans une adresse : le jeton
+        voyage dans le corps). Un jeton faux, une référence fausse, un lien expiré ou remplacé
+        reçoivent la même réponse 404 `MANAGE_LINK_INVALID`. Aucune donnée de carte.
+        30 demandes par minute et par adresse IP.
+      tags: [Réservation en ligne]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ManageAccess' }
+      responses:
+        '200':
+          description: La réservation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedBooking' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+  /public/bookings/manage/cancel:
+    post:
+      operationId: cancelManagedBooking
+      summary: « Gérer ma réservation » — annuler sans frais
+      description: |
+        Seulement au tarif flexible, avant la date limite d'annulation gratuite : chambres
+        rendues aussitôt, carte de garantie non débitée. Sinon 409 `CANCELLATION_NOT_ONLINE`
+        (la page invite à appeler la réception). Déjà annulée : renvoyée telle quelle.
+      tags: [Réservation en ligne]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ManageAccess' }
+      responses:
+        '200':
+          description: La réservation annulée.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedBooking' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
   /webhooks/stripe:
     post:
       operationId: receiveStripeNotification
@@ -2338,6 +2386,42 @@ components:
         differenceCents: { type: integer, description: Positive si le séjour coûte plus cher. }
         rooms: { type: array, items: { type: object } }
         charges: { type: array, items: { type: object } }
+    ManageAccess:
+      type: object
+      additionalProperties: false
+      required: [reference, token]
+      properties:
+        reference: { type: string, pattern: '^[A-HJ-NP-Z2-9]{8}$' }
+        token: { type: string, pattern: '^[A-Za-z0-9_-]{43}$', description: 256 bits aléatoires. }
+    ManagedBooking:
+      type: object
+      required:
+        - reference
+        - status
+        - checkIn
+        - checkOut
+        - ratePlan
+        - firstName
+        - freeCancellationUntil
+        - cancellation
+      properties:
+        reference: { type: string }
+        status: { type: string, enum: [pending, confirmed, cancelled] }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        category: { type: [string, 'null'] }
+        roomCount: { type: integer }
+        ratePlan: { type: string, enum: [flexible, non_refundable] }
+        paidOnlineCents: { type: integer }
+        dueAtHotelCents: { type: integer }
+        firstName: { type: string }
+        freeCancellationUntil: { type: [string, 'null'], format: date-time }
+        cancellation:
+          type: string
+          enum: [free, with_fee, not_refundable, closed]
+          description: |
+            free : annulable en ligne sans frais ; with_fee : après la date limite, appeler la
+            réception ; not_refundable : jamais en ligne ; closed : réservation plus active.
     ReservationSummary:
       type: object
       required:
