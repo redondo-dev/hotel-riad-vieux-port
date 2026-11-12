@@ -31,12 +31,12 @@ import {
   formatEuros,
   freeCancellationText,
   type FreeRoom,
+  GUARANTEE_HELP,
   guestsText,
   isManagement,
   type Night,
   parseAges,
-  PAYMENT_LABELS,
-  paymentBadge,
+  paymentBadgesOf,
   RATE_PLAN_LABELS,
   type ReservationDetail,
   type ReservationRoom,
@@ -114,12 +114,17 @@ const CLOSED_STATUSES = new Set(['cancelled', 'expired', 'no_show']);
           <p class="flex flex-wrap items-center gap-2 text-sm">
             <span class="font-semibold">{{ current.reference }}</span>
             <span [class]="statusClass()">{{ statusLabel() }}</span>
-            <span [class]="paymentClass()">{{ paymentLabel() }}</span>
+            @for (badge of paymentBadges(); track badge.label) {
+              <span [class]="badge.className">{{ badge.label }}</span>
+            }
             <span class="badge-neutral">{{ sourceLabel() }}</span>
             <span class="badge-neutral">{{ ratePlanLabel() }}</span>
           </p>
           <h2 id="titre-reservation" class="text-xl font-semibold">{{ name() }}</h2>
           <p>{{ stay() }}</p>
+          @if (current.cardGuarantee) {
+            <p class="text-sm text-muted">{{ guaranteeHelp }}</p>
+          }
           @if (deskActions().length > 0) {
             <div class="flex flex-wrap gap-2 pt-1">
               @for (action of deskActions(); track action) {
@@ -599,14 +604,11 @@ export class ReservationPage implements OnInit {
     const current = this.reservation();
     return current === null ? '' : statusBadge(current.status);
   });
-  protected readonly paymentLabel = computed(() => {
+  protected readonly paymentBadges = computed(() => {
     const current = this.reservation();
-    return current === null ? '' : PAYMENT_LABELS[current.paymentStatus];
+    return current === null ? [] : paymentBadgesOf(current);
   });
-  protected readonly paymentClass = computed(() => {
-    const current = this.reservation();
-    return current === null ? '' : paymentBadge(current.paymentStatus);
-  });
+  protected readonly guaranteeHelp = GUARANTEE_HELP;
   protected readonly sourceLabel = computed(() => {
     const current = this.reservation();
     return current === null ? '' : SOURCE_LABELS[current.source];

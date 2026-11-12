@@ -2350,6 +2350,7 @@ components:
         - rooms
         - status
         - paymentStatus
+        - cardGuarantee
         - totalCents
         - source
         - createdAt
@@ -2375,6 +2376,11 @@ components:
               roomNumber: { type: [string, 'null'], description: null tant que non attribuée. }
         status: { $ref: '#/components/schemas/ReservationStatus' }
         paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
+        cardGuarantee:
+          type: boolean
+          description: |
+            Carte enregistrée chez Stripe en garantie (site, tarif flexible). Seul ce booléen est
+            donné : jamais les identifiants Stripe.
         totalCents: { type: integer }
         source: { type: string, enum: [website, phone, desk] }
         createdAt: { type: string, format: date-time }
@@ -2385,6 +2391,7 @@ components:
         - reference
         - status
         - paymentStatus
+        - cardGuarantee
         - source
         - ratePlan
         - checkIn
@@ -2400,6 +2407,11 @@ components:
         reference: { type: string }
         status: { $ref: '#/components/schemas/ReservationStatus' }
         paymentStatus: { $ref: '#/components/schemas/PaymentStatus' }
+        cardGuarantee:
+          type: boolean
+          description: |
+            Carte enregistrée chez Stripe en garantie (site, tarif flexible). Seul ce booléen est
+            donné : jamais les identifiants Stripe.
         source: { type: string, enum: [website, phone, desk] }
         ratePlan: { type: string, enum: [flexible, non_refundable] }
         checkIn: { type: string, format: date }
