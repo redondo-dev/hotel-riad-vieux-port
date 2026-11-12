@@ -56,7 +56,10 @@ const logger = createLogger({ level: env.LOG_LEVEL, pretty: env.NODE_ENV === 'de
  */
 function createMailer(): Mailer {
   if (env.BREVO_API_KEY !== undefined && env.MAIL_FROM_ADDRESS !== undefined) {
-    logger.info({ redirectTo: env.MAIL_REDIRECT_TO ?? null }, 'e-mails envoyés par Brevo');
+    logger.info(
+      { from: env.MAIL_FROM_ADDRESS, redirectTo: env.MAIL_REDIRECT_TO ?? null },
+      'e-mails envoyés par Brevo',
+    );
     return brevoMailer({
       apiKey: env.BREVO_API_KEY,
       from: { email: env.MAIL_FROM_ADDRESS, name: env.MAIL_FROM_NAME },
