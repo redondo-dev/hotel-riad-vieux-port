@@ -73,7 +73,10 @@ describe('brevoMailer', () => {
       fetch: fetcher,
     });
 
-    const error = await mailer.send(message).then(() => null, (reason: unknown) => reason);
+    const error = await mailer.send(message).then(
+      () => null,
+      (reason: unknown) => reason,
+    );
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe('Brevo a refusé l’e-mail (HTTP 401, unauthorized)');
