@@ -1,5 +1,5 @@
 import type { Sequelize } from 'sequelize';
-import type { Mailer } from '../../../shared/infrastructure/mailer.ts';
+import { type Mailer, MailRejectedError } from '../../../shared/infrastructure/mailer.ts';
 import { confirmationEmail } from '../domain/confirmation-email.ts';
 import {
   ConfirmationEmailRepository,
@@ -21,8 +21,10 @@ export interface EmailReport {
  * task of main.ts: whatever confirmed the booking (notification of Stripe, task of the end of
  * the hold, « ← Retour »), it is sent once. Each booking is locked while its e-mail is sent and
  * marked sent in the same transaction: an e-mail refused by Brevo is tried again next time,
- * never marked sent, and given up after 10 failures (address refused…). A stop of the API
- * between the sending and the commit, very rare, could send it twice: never zero times.
+ * never marked sent, and given up after 10 refusals of the e-mail itself (address refused…);
+ * when the service itself fails (key refused, outage), the run stops without counting. A stop
+ * of the API between the sending and the commit, very rare, could send it twice: never zero
+ * times.
  */
 export class ConfirmationEmails {
   readonly #sequelize: Sequelize;
@@ -59,6 +61,16 @@ export class ConfirmationEmails {
         }
       } catch (error) {
         report.failed += 1;
+        if (!(error instanceof MailRejectedError)) {
+          // Key refused, server not allowed, service out of order: every e-mail would fail the
+          // same way. Nothing is counted against the customers, and the run stops here.
+          this.#log.error(
+            { err: error },
+            'service d’envoi des e-mails indisponible ou mal configuré : envois suspendus ' +
+              'jusqu’à la prochaine minute',
+          );
+          break;
+        }
         const attempts = await this.#repository.countFailure(id);
         // The reservation only: never the address nor the content of the e-mail.
         this.#log.error(

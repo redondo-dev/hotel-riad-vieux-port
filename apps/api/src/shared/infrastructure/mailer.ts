@@ -20,6 +20,18 @@ export interface Mailer {
 }
 
 /**
+ * This message itself is refused (address or content): sending it again will not help, its
+ * failures are counted. Any other error (key refused, address of the server not allowed,
+ * service out of order…) concerns every e-mail and is not counted against any of them.
+ */
+export class MailRejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MailRejectedError';
+  }
+}
+
+/**
  * DEVELOPMENT ONLY: writes each e-mail as a text file in `directory` (ignored by Git) instead of
  * sending it, and its HTML version next to it, to open in a browser. Refused in production by
  * main.ts: the messages contain secret links.
@@ -60,7 +72,8 @@ export interface BrevoOptions {
 /**
  * Sends through the API of Brevo. The key travels in the header « api-key » only, and is never
  * written to a log or an error message. Any answer other than 201 is an error: the caller tries
- * again later.
+ * again later. 400 is the refusal of this message (MailRejectedError); 401 and 403 mean the key
+ * or the address of the server is not allowed (Brevo → Sécurité → IP autorisées).
  */
 export function brevoMailer(options: BrevoOptions): Mailer {
   const send = options.fetch ?? fetch;
@@ -90,7 +103,8 @@ export function brevoMailer(options: BrevoOptions): Mailer {
       });
       if (response.status !== 201) {
         const code = await errorCodeOf(response);
-        throw new Error(`Brevo a refusé l’e-mail (HTTP ${response.status}${code})`);
+        const reason = `Brevo a refusé l’e-mail (HTTP ${response.status}${code})`;
+        throw response.status === 400 ? new MailRejectedError(reason) : new Error(reason);
       }
     },
   };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BREVO_SEND_URL, brevoMailer, escapeHtml } from './mailer.ts';
+import { BREVO_SEND_URL, brevoMailer, escapeHtml, MailRejectedError } from './mailer.ts';
 
 /** Sending through Brevo with a fake fetch: Brevo is never called by the tests. */
 
@@ -79,7 +79,19 @@ describe('brevoMailer', () => {
     );
 
     expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(MailRejectedError);
     expect((error as Error).message).toBe('Brevo a refusé l’e-mail (HTTP 401, unauthorized)');
+  });
+
+  it('tells apart the refusal of this e-mail itself (400)', async () => {
+    const { fetcher } = fakeFetch(400, { code: 'invalid_parameter' });
+    const mailer = brevoMailer({
+      apiKey: KEY,
+      from: { email: 'a@b.example', name: 'R' },
+      fetch: fetcher,
+    });
+
+    await expect(mailer.send(message)).rejects.toBeInstanceOf(MailRejectedError);
   });
 
   it('escapes the characters of HTML', () => {

@@ -6,7 +6,7 @@ import { OnlinePayments } from '../../src/modules/reservations/application/onlin
 import type { CheckoutOutcome } from '../../src/modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from '../../src/modules/reservations/application/payment-gateway.ts';
 import { ReservationRepository } from '../../src/modules/reservations/infrastructure/reservation-repository.ts';
-import type { MailMessage } from '../../src/shared/infrastructure/mailer.ts';
+import { type MailMessage, MailRejectedError } from '../../src/shared/infrastructure/mailer.ts';
 import { IdentityHarness, PUBLIC_SITE_URL } from '../support/identity-harness.ts';
 import { hasTestDatabase } from '../support/test-database.ts';
 
@@ -45,13 +45,19 @@ const gateway: PaymentGateway = {
   closeCheckout: async () => ({ kind: 'expired' }),
 };
 
-/** The e-mails « sent »; `down`: the sending service refuses everything. */
+/**
+ * The e-mails « sent ». `rejected`: every message refused for itself (address…); `down`: the
+ * sending service fails (key refused, outage).
+ */
 const sent: MailMessage[] = [];
-let down = false;
+let failure: 'none' | 'rejected' | 'down' = 'none';
 const mailer = {
   send: async (message: MailMessage) => {
-    if (down) {
-      throw new Error('Brevo ne répond pas');
+    if (failure === 'rejected') {
+      throw new MailRejectedError('Brevo a refusé l’e-mail (HTTP 400, invalid_parameter)');
+    }
+    if (failure === 'down') {
+      throw new Error('Brevo a refusé l’e-mail (HTTP 401, unauthorized)');
     }
     sent.push(message);
   },
@@ -94,7 +100,7 @@ describe.skipIf(!hasTestDatabase)('e-mails of confirmation of the online booking
       if (report.sent + report.failed === 0) {
         return;
       }
-      if (down) {
+      if (failure !== 'none') {
         return;
       }
     }
@@ -258,16 +264,16 @@ describe.skipIf(!hasTestDatabase)('e-mails of confirmation of the online booking
     expect(sentTo(email)).toEqual([]);
   });
 
-  it('tries again next time when the sending service refuses, counting failures', async () => {
+  it('tries again next time when the e-mail is refused, counting the refusals', async () => {
     const email = 'ines.courriel@test.example';
     const reference = await confirmedBooking(
       { checkIn: '2037-06-22', checkOut: '2037-06-23', customer: customer('Inès', email) },
       (ref) => ({ kind: 'paid', paymentIntentId: `pi_test_${ref}`, amountCents: 7200 }),
     );
 
-    down = true;
+    failure = 'rejected';
     await runEmails();
-    down = false;
+    failure = 'none';
 
     expect(sentTo(email)).toEqual([]);
     expect(errors.some((message) => message.includes('nouvel essai'))).toBe(true);
@@ -278,6 +284,28 @@ describe.skipIf(!hasTestDatabase)('e-mails of confirmation of the online booking
     );
     expect(failed[0]).toEqual({ attempts: 1, sentAt: null });
 
+    await runEmails();
+    expect(sentTo(email)).toHaveLength(1);
+  });
+
+  it('counts nothing against the customers when the service itself fails', async () => {
+    const email = 'zoe.courriel@test.example';
+    const reference = await confirmedBooking(
+      { checkIn: '2037-06-28', checkOut: '2037-06-29', customer: customer('Zoé', email) },
+      (ref) => ({ kind: 'paid', paymentIntentId: `pi_test_${ref}`, amountCents: 7200 }),
+    );
+
+    failure = 'down';
+    await runEmails();
+    await runEmails();
+    failure = 'none';
+
+    expect(errors.some((message) => message.includes('envois suspendus'))).toBe(true);
+    const rows = await harness.rows<{ attempts: number }>(
+      'SELECT confirmation_email_attempts AS attempts FROM reservations WHERE reference = $1',
+      [reference],
+    );
+    expect(rows[0]?.attempts).toBe(0);
     await runEmails();
     expect(sentTo(email)).toHaveLength(1);
   });
@@ -293,9 +321,9 @@ describe.skipIf(!hasTestDatabase)('e-mails of confirmation of the online booking
       [reference],
     );
 
-    down = true;
+    failure = 'rejected';
     await runEmails();
-    down = false;
+    failure = 'none';
     await runEmails();
 
     expect(sentTo(email)).toEqual([]);
