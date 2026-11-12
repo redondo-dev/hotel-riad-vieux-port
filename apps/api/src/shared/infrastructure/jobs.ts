@@ -15,6 +15,8 @@ const JOBS_SCHEMA = 'pgboss';
 
 /** Bookings of the website not paid at the end of the hold of their rooms: every minute. */
 export const UNPAID_EXPIRY_QUEUE = 'expire-unpaid-bookings';
+/** E-mails of confirmation of the bookings of the website (step R-6): every minute. */
+export const CONFIRMATION_EMAIL_QUEUE = 'send-confirmation-emails';
 const EVERY_MINUTE = '* * * * *';
 
 /** Time left to a run in progress when the API stops. */
@@ -24,11 +26,16 @@ export interface Jobs {
   stop(): Promise<void>;
 }
 
+/** A task run every minute; an error is written to the log, the next minute tries again. */
+export interface MinuteTask {
+  queue: string;
+  run: () => Promise<void>;
+}
+
 export async function startJobs(options: {
   connectionString: string;
   logger: Logger;
-  /** One run of the expiry; an error is written to the log, the next minute tries again. */
-  expireUnpaid: () => Promise<void>;
+  tasks: readonly MinuteTask[];
 }): Promise<Jobs> {
   const { logger } = options;
   const boss = new PgBoss({ connectionString: options.connectionString, schema: JOBS_SCHEMA });
@@ -37,15 +44,18 @@ export async function startJobs(options: {
   });
   await boss.start();
 
-  // Created at the first start only (null or undefined depending on the version of pg-boss).
-  if (!(await boss.getQueue(UNPAID_EXPIRY_QUEUE))) {
-    await boss.createQueue(UNPAID_EXPIRY_QUEUE);
+  for (const task of options.tasks) {
+    // Created at the first start only (null or undefined depending on the version of pg-boss).
+    if (!(await boss.getQueue(task.queue))) {
+      await boss.createQueue(task.queue);
+    }
+    await boss.schedule(task.queue, EVERY_MINUTE, {}, { tz: 'Europe/Paris' });
+    await boss.work(task.queue, async () => {
+      await task.run();
+    });
   }
-  await boss.schedule(UNPAID_EXPIRY_QUEUE, EVERY_MINUTE, {}, { tz: 'Europe/Paris' });
-  await boss.work(UNPAID_EXPIRY_QUEUE, async () => {
-    await options.expireUnpaid();
-  });
-  logger.info({ queue: UNPAID_EXPIRY_QUEUE }, 'tâches de fond démarrées (pg-boss)');
+  const queues = options.tasks.map((task) => task.queue);
+  logger.info({ queues }, 'tâches de fond démarrées (pg-boss)');
 
   return {
     async stop() {

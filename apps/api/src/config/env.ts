@@ -64,6 +64,8 @@ const REQUIRED_IN_PRODUCTION = [
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
   'PUBLIC_SITE_URL',
+  'BREVO_API_KEY',
+  'MAIL_FROM_ADDRESS',
 ] as const;
 
 const EnvSchema = z
@@ -151,6 +153,32 @@ const EnvSchema = z
     PUBLIC_SITE_URL: emptyAsMissing(
       z.url({ protocol: /^https?$/, error: 'doit être une adresse http(s) valide' }).optional(),
     ),
+    /**
+     * Key of the API of Brevo (« xkeysib-… », step R-6): the e-mails are sent by Brevo. Without
+     * it in development, they are written to the folder « outbox ». Never in Git.
+     */
+    BREVO_API_KEY: emptyAsMissing(
+      z
+        .string()
+        .regex(/^xkeysib-[A-Za-z0-9-]{20,}$/, 'doit être une clé d’API Brevo (xkeysib-…)')
+        .optional(),
+    ),
+    /** Sender of the e-mails, checked in the account of Brevo (domain or single address). */
+    MAIL_FROM_ADDRESS: emptyAsMissing(
+      z.email({ error: 'doit être une adresse e-mail valide' }).optional(),
+    ),
+    /** Name shown with the sender. */
+    MAIL_FROM_NAME: emptyAsMissing(
+      z.string().trim().min(1).max(80).default('Hôtel Riad Vieux-Port'),
+    ),
+    /**
+     * DEVELOPMENT ONLY: every e-mail sent by Brevo goes to this address instead of the real
+     * one (the customers of the tests by hand are made up, or real people). Required with
+     * BREVO_API_KEY in development, refused in production.
+     */
+    MAIL_REDIRECT_TO: emptyAsMissing(
+      z.email({ error: 'doit être une adresse e-mail valide' }).optional(),
+    ),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') {
@@ -162,7 +190,26 @@ const EnvSchema = z
           message: 'ne doit pas être une clé de production (sk_live_) hors production',
         });
       }
+      // Real e-mails from a development machine: never to the addresses typed in the tests.
+      if (env.BREVO_API_KEY !== undefined) {
+        for (const name of ['MAIL_FROM_ADDRESS', 'MAIL_REDIRECT_TO'] as const) {
+          if (env[name] === undefined) {
+            ctx.addIssue({
+              code: 'custom',
+              path: [name],
+              message: 'est obligatoire avec BREVO_API_KEY en développement',
+            });
+          }
+        }
+      }
       return;
+    }
+    if (env.MAIL_REDIRECT_TO !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MAIL_REDIRECT_TO'],
+        message: 'est interdite en production : les e-mails doivent partir aux clients',
+      });
     }
     for (const name of REQUIRED_IN_PRODUCTION) {
       const value = env[name];

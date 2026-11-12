@@ -181,6 +181,21 @@ un faux lecteur ; les vraies signatures sont vérifiées avec la bibliothèque S
    (jamais dans Git ni sur une capture), puis redémarrer l'API.
 4. Payer avec la carte de test `4242 4242 4242 4242` : `stripe listen` affiche `[200]`.
 
+## E-mail de confirmation des réservations en ligne (Brevo)
+
+Tâche pg-boss lancée chaque minute : chaque réservation du site confirmée reçoit un e-mail, en
+français ou en anglais selon la langue choisie sur le site, en texte et en HTML. Les textes sont
+dans `src/modules/reservations/domain/confirmation-email.ts`.
+
+| Sujet         | Règle                                                                                    |
+| ------------- | ---------------------------------------------------------------------------------------- |
+| Envoi         | Brevo si `BREVO_API_KEY` est renseignée, sinon le dossier `outbox` (développement seul)  |
+| Développement | Avec Brevo, `MAIL_REDIRECT_TO` obligatoire : tous les e-mails partent à cette adresse    |
+| Une fois      | Réservation verrouillée pendant l'envoi, puis `confirmation_email_sent_at` noté          |
+| Échec         | Brevo refuse ou ne répond pas : nouvel essai la minute suivante, abandon après 10 essais |
+| Contenu       | Référence, séjour, chambres, tarif, montants, annulation ; aucune donnée de carte        |
+| Sécurité      | La clé ne voyage que dans l'en-tête `api-key` ; jamais écrite au journal                 |
+
 ## Réservations non payées à temps (tâche de fond)
 
 Tâche pg-boss lancée chaque minute dans le processus de l'API (`src/shared/infrastructure/jobs.ts`).

@@ -107,6 +107,36 @@ describe('loadEnv', () => {
     expect(loadEnv({ ...base, STRIPE_WEBHOOK_SECRET: '' }).STRIPE_WEBHOOK_SECRET).toBe(undefined);
   });
 
+  it('sends real e-mails in development only to the address of the developer', () => {
+    const key = 'xkeysib-a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1-Zz9';
+    const alone = errorOf({ ...base, BREVO_API_KEY: key });
+    expect(alone.includes('MAIL_REDIRECT_TO est obligatoire avec BREVO_API_KEY')).toBe(true);
+    expect(alone.includes('MAIL_FROM_ADDRESS est obligatoire avec BREVO_API_KEY')).toBe(true);
+    expect(alone.includes(key)).toBe(false);
+
+    const env = loadEnv({
+      ...base,
+      BREVO_API_KEY: key,
+      MAIL_FROM_ADDRESS: 'reservations@riad.example',
+      MAIL_REDIRECT_TO: 'dev@riad.example',
+    });
+    expect(env.MAIL_REDIRECT_TO).toBe('dev@riad.example');
+    expect(env.MAIL_FROM_NAME).toBe('Hôtel Riad Vieux-Port');
+    expect(loadEnv({ ...base, MAIL_FROM_NAME: '' }).MAIL_FROM_NAME).toBe('Hôtel Riad Vieux-Port');
+    expect(errorOf({ ...base, BREVO_API_KEY: 'sk_test_abc' })).toContain('clé d’API Brevo');
+  });
+
+  it('requires Brevo in production, and refuses the redirection of the e-mails there', () => {
+    const production = errorOf({
+      NODE_ENV: 'production',
+      ...base,
+      MAIL_REDIRECT_TO: 'dev@riad.example',
+    });
+    expect(production.includes('BREVO_API_KEY est obligatoire en production')).toBe(true);
+    expect(production.includes('MAIL_FROM_ADDRESS est obligatoire en production')).toBe(true);
+    expect(production.includes('MAIL_REDIRECT_TO est interdite en production')).toBe(true);
+  });
+
   it('never repeats a secret value in its error message', () => {
     const message = errorOf({ DATABASE_URL: 'mysql://user:s3cret@host/db' });
     expect(message.includes('DATABASE_URL')).toBe(true);
