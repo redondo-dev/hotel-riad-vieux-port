@@ -13,6 +13,7 @@ import { DEFAULT_ADMIN_APP_URL, DEFAULT_PUBLIC_SITE_URL, loadEnv } from './confi
 import { OnlinePayments } from './modules/reservations/application/online-payments.ts';
 import type { PaymentEventReader } from './modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
+import { ConfirmationEmails } from './modules/reservations/application/confirmation-emails.ts';
 import { UnpaidExpiry } from './modules/reservations/application/unpaid-expiry.ts';
 import { stripeEvents } from './modules/reservations/infrastructure/stripe-events.ts';
 import {
@@ -23,8 +24,13 @@ import { createSessionStore } from './shared/http/session.ts';
 import { createSequelize } from './shared/infrastructure/database.ts';
 import { createLogger } from './shared/infrastructure/logger.ts';
 import { localFileStorage } from './shared/infrastructure/file-storage.ts';
-import { type Jobs, startJobs } from './shared/infrastructure/jobs.ts';
-import { type Mailer, outboxMailer } from './shared/infrastructure/mailer.ts';
+import {
+  CONFIRMATION_EMAIL_QUEUE,
+  type Jobs,
+  startJobs,
+  UNPAID_EXPIRY_QUEUE,
+} from './shared/infrastructure/jobs.ts';
+import { brevoMailer, type Mailer, outboxMailer } from './shared/infrastructure/mailer.ts';
 
 /** Time left to the requests in progress when the hosting asks the API to stop. */
 const SHUTDOWN_GRACE_MS = 10_000;
@@ -43,9 +49,21 @@ if (env.SESSION_SECRET === undefined) {
 }
 const logger = createLogger({ level: env.LOG_LEVEL, pretty: env.NODE_ENV === 'development' });
 
+/**
+ * Brevo when its key is set (required in production by the configuration check; in
+ * development, every e-mail then goes to MAIL_REDIRECT_TO). Otherwise, in development only, the
+ * local outbox: it writes secret links to disk.
+ */
 function createMailer(): Mailer {
+  if (env.BREVO_API_KEY !== undefined && env.MAIL_FROM_ADDRESS !== undefined) {
+    logger.info({ redirectTo: env.MAIL_REDIRECT_TO ?? null }, 'e-mails envoyés par Brevo');
+    return brevoMailer({
+      apiKey: env.BREVO_API_KEY,
+      from: { email: env.MAIL_FROM_ADDRESS, name: env.MAIL_FROM_NAME },
+      ...(env.MAIL_REDIRECT_TO === undefined ? {} : { redirectTo: env.MAIL_REDIRECT_TO }),
+    });
+  }
   if (env.NODE_ENV === 'production') {
-    // The outbox writes secret links to disk: never in production. Brevo arrives in phase 6.
     throw new Error('Aucun service d’envoi d’e-mails n’est configuré pour la production.');
   }
   logger.info({ outbox: OUTBOX_DIR }, 'e-mails écrits dans le dossier outbox (développement)');
@@ -73,6 +91,7 @@ const sequelize = createSequelize(env.DATABASE_URL);
 // Required in production by the configuration check (loadEnv).
 const storage = localFileStorage(env.STORAGE_DIR ?? DEFAULT_STORAGE_DIR);
 const sessionPool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 5 });
+const mailer = createMailer();
 const paymentServices = createPayments();
 
 const app = createApp({
@@ -87,7 +106,7 @@ const app = createApp({
     sessionStore: createSessionStore(sessionPool, logger),
     sessionSecret: env.SESSION_SECRET,
     secureCookies: env.NODE_ENV === 'production',
-    mailer: createMailer(),
+    mailer,
     storage,
     adminAppUrl: env.ADMIN_APP_URL ?? DEFAULT_ADMIN_APP_URL,
   },
@@ -124,21 +143,47 @@ const expiry = new UnpaidExpiry({
   now: () => new Date(),
   log: paymentLogOf(logger),
 });
+// Their e-mail of confirmation, once confirmed (step R-6).
+const confirmationEmails = new ConfirmationEmails({
+  sequelize,
+  mailer,
+  now: () => new Date(),
+  log: paymentLogOf(logger),
+});
 let jobs: Jobs | undefined;
 startJobs({
   connectionString: env.DATABASE_URL,
   logger,
-  expireUnpaid: async () => {
-    try {
-      const report = await expiry.run();
-      if (report.confirmed + report.expired + report.kept > 0) {
-        logger.info(report, 'réservations en ligne non payées à temps revues');
-      }
-    } catch (error) {
-      logger.error({ err: error }, 'expiration des réservations non payées en erreur');
-      throw error;
-    }
-  },
+  tasks: [
+    {
+      queue: UNPAID_EXPIRY_QUEUE,
+      run: async () => {
+        try {
+          const report = await expiry.run();
+          if (report.confirmed + report.expired + report.kept > 0) {
+            logger.info(report, 'réservations en ligne non payées à temps revues');
+          }
+        } catch (error) {
+          logger.error({ err: error }, 'expiration des réservations non payées en erreur');
+          throw error;
+        }
+      },
+    },
+    {
+      queue: CONFIRMATION_EMAIL_QUEUE,
+      run: async () => {
+        try {
+          const report = await confirmationEmails.run();
+          if (report.sent + report.failed > 0) {
+            logger.info(report, 'e-mails de confirmation des réservations en ligne');
+          }
+        } catch (error) {
+          logger.error({ err: error }, 'envoi des e-mails de confirmation en erreur');
+          throw error;
+        }
+      },
+    },
+  ],
 })
   .then((started) => {
     jobs = started;
