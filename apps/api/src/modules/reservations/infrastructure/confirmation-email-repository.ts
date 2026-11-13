@@ -1,4 +1,5 @@
 import { QueryTypes, type Sequelize, type Transaction } from 'sequelize';
+import type { CancellationEmailData } from '../domain/cancellation-email.ts';
 import type { ConfirmationEmailData } from '../domain/confirmation-email.ts';
 import type { RatePlan } from '../domain/reservation-rules.ts';
 
@@ -148,5 +149,96 @@ export class ConfirmationEmailRepository {
         WHERE id = $1 AND confirmation_email_sent_at IS NULL`,
       { bind: [id, at], transaction },
     );
+  }
+
+  // --- E-mail of cancellation (step M) ---
+
+  /**
+   * Bookings of the website cancelled after their confirmation was e-mailed (the ones that
+   * expired unpaid were never confirmed: nothing to tell), whose e-mail of cancellation is not
+   * sent yet, the stay not over; the oldest first.
+   */
+  async unsentCancellations(now: Date, limit: number): Promise<string[]> {
+    const rows = await this.#sequelize.query<{ id: string }>(
+      `SELECT id
+         FROM reservations
+        WHERE source = 'website' AND status = 'cancelled'
+          AND confirmation_email_sent_at IS NOT NULL AND cancellation_email_sent_at IS NULL
+          AND cancellation_email_attempts < $3
+          AND check_out > ($1::timestamptz AT TIME ZONE 'Europe/Paris')::date
+        ORDER BY cancelled_at
+        LIMIT $2`,
+      { bind: [now, limit, MAX_EMAIL_ATTEMPTS], type: QueryTypes.SELECT },
+    );
+    return rows.map((row) => row.id);
+  }
+
+  /** Locks one cancellation still to be told and reads its e-mail (SKIP LOCKED). */
+  async lockUnsentCancellation(
+    id: string,
+    transaction: Transaction,
+  ): Promise<{ id: string; to: string; data: CancellationEmailData } | undefined> {
+    const bookings = await this.#sequelize.query<{
+      email: string;
+      firstName: string;
+      language: 'fr' | 'en';
+      reference: string;
+      checkIn: string;
+      checkOut: string;
+      ratePlan: RatePlan;
+      feeCents: number;
+    }>(
+      `SELECT c.email::text AS email, c.first_name AS "firstName",
+              c.preferred_language AS language, r.reference, r.check_in::text AS "checkIn",
+              r.check_out::text AS "checkOut", r.rate_plan AS "ratePlan",
+              r.cancellation_fee_cents AS "feeCents"
+         FROM reservations r
+         JOIN customers c ON c.id = r.customer_id
+        WHERE r.id = $1 AND r.status = 'cancelled' AND r.cancellation_email_sent_at IS NULL
+          FOR UPDATE OF r SKIP LOCKED`,
+      { bind: [id], type: QueryTypes.SELECT, transaction },
+    );
+    const booking = bookings[0];
+    if (booking === undefined) {
+      return undefined;
+    }
+    const rooms = await this.#sequelize.query<{ nameFr: string; nameEn: string; count: number }>(
+      `SELECT c.name_fr AS "nameFr", c.name_en AS "nameEn", count(*)::int AS count
+         FROM reservation_rooms l
+         JOIN room_categories c ON c.id = l.category_id
+        WHERE l.reservation_id = $1
+        GROUP BY c.id, c.name_fr, c.name_en, c.sort_order
+        ORDER BY c.sort_order`,
+      { bind: [id], type: QueryTypes.SELECT, transaction },
+    );
+    const hotels = await this.#sequelize.query<CancellationEmailData['hotel']>(
+      `SELECT name, address, phone, email::text AS email FROM hotel_settings WHERE id = 1`,
+      { type: QueryTypes.SELECT, transaction },
+    );
+    const hotel = hotels[0];
+    if (hotel === undefined) {
+      throw new Error('Réglages de l’hôtel absents : e-mail d’annulation impossible');
+    }
+    const { email, ...fields } = booking;
+    return { id, to: email, data: { ...fields, rooms, hotel } };
+  }
+
+  async markCancellationSent(id: string, at: Date, transaction: Transaction): Promise<void> {
+    await this.#sequelize.query(
+      `UPDATE reservations SET cancellation_email_sent_at = $2
+        WHERE id = $1 AND cancellation_email_sent_at IS NULL`,
+      { bind: [id, at], transaction },
+    );
+  }
+
+  /** One more refusal of the e-mail of cancellation itself; returns how many there are now. */
+  async countCancellationFailure(id: string): Promise<number> {
+    const rows = await this.#sequelize.query<{ attempts: number }>(
+      `UPDATE reservations SET cancellation_email_attempts = cancellation_email_attempts + 1
+        WHERE id = $1
+        RETURNING cancellation_email_attempts AS attempts`,
+      { bind: [id], type: QueryTypes.SELECT },
+    );
+    return rows[0]?.attempts ?? 0;
   }
 }

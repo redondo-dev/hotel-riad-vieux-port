@@ -156,6 +156,16 @@ function euros(cents: number, words: Words): string {
   return formatter.format(cents / 100);
 }
 
+/** « Mardi 17 novembre 2026 », « Tuesday, 17 November 2026 »: for the other e-mails. */
+export function dayIn(date: string, language: 'fr' | 'en'): string {
+  return dayOf(date, WORDS[language]);
+}
+
+/** « 645,00 € », « €645.00 »: for the other e-mails. */
+export function eurosIn(cents: number, language: 'fr' | 'en'): string {
+  return euros(cents, WORDS[language]);
+}
+
 /** « 04 65 71 00 00 » in French, « +33 4 65 71 00 00 » in English. */
 export function phoneOf(international: string, language: 'fr' | 'en'): string {
   const national = displayPhone(international);
