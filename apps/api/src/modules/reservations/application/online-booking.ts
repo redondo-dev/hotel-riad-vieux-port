@@ -120,7 +120,8 @@ function postgresCode(error: unknown): string | undefined {
   return typeof parent?.code === 'string' ? parent.code : undefined;
 }
 
-function summaryOf(booking: OnlineBookingRecord): OnlineBookingSummary {
+/** What the public site may show of a booking (no personal data). */
+export function summaryOf(booking: OnlineBookingRecord): OnlineBookingSummary {
   const stayCents = booking.totalCents - booking.touristTaxCents;
   const paidOnline = booking.ratePlan === 'non_refundable' ? stayCents : 0;
   return {

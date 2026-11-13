@@ -23,6 +23,7 @@ import { UserRepository } from './modules/identity/infrastructure/user-repositor
 import { AvailabilityService } from './modules/reservations/application/availability-service.ts';
 import { FrontDesk } from './modules/reservations/application/front-desk.ts';
 import { PlanningService } from './modules/reservations/application/planning-service.ts';
+import { ManageBooking } from './modules/reservations/application/manage-booking.ts';
 import { OnlineBooking } from './modules/reservations/application/online-booking.ts';
 import {
   OnlinePayments,
@@ -35,6 +36,7 @@ import { ReservationChanges } from './modules/reservations/application/reservati
 import { ReservationService } from './modules/reservations/application/reservation-service.ts';
 import { availabilityRouter } from './modules/reservations/http/availability-routes.ts';
 import { frontDeskRouter } from './modules/reservations/http/front-desk-routes.ts';
+import { manageBookingRouter } from './modules/reservations/http/manage-booking-routes.ts';
 import { paymentWebhookRouter } from './modules/reservations/http/payment-webhook-routes.ts';
 import { planningRouter } from './modules/reservations/http/planning-routes.ts';
 import { publicSearchRouter } from './modules/reservations/http/public-availability-routes.ts';
@@ -190,6 +192,7 @@ function publicRouter(
       logger.error({ err: error }, 'Stripe : ouverture de la page de paiement impossible');
     },
   });
+  router.use(manageBookingRouter(new ManageBooking({ sequelize: deps.sequelize, now })));
   router.use(publicBookingRouter(booking));
   if (deps.storage !== undefined) {
     router.use(mediaRouter(deps.storage));
