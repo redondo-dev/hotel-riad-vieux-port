@@ -28,6 +28,7 @@ const FLEXIBLE: ConfirmationEmailData = {
   touristTaxCents: 1500,
   freeCancellationUntil: new Date('2026-11-15T14:00:00Z'),
   cardGuarantee: true,
+  manageUrl: 'https://riad.example/fr/gerer-ma-reservation#K7M2QX9A.jeton&secret',
   hotel: HOTEL,
 };
 
@@ -42,6 +43,7 @@ const NON_REFUNDABLE: ConfirmationEmailData = {
   touristTaxCents: 1500,
   freeCancellationUntil: null,
   cardGuarantee: false,
+  manageUrl: null,
 };
 
 describe('confirmation e-mail', () => {
@@ -61,6 +63,13 @@ describe('confirmation e-mail', () => {
     expect(text).toContain('rien n’a été débité');
     expect(text).toContain('Annulation gratuite jusqu’au dimanche 15 novembre 2026 à 15:00');
     expect(text).toContain('au 04 65 71 00 00 ou écrivez à contact@riad.example');
+    expect(text).toContain(
+      'utilisez ce lien personnel :\nhttps://riad.example/fr/gerer-ma-reservation#K7M2QX9A.jeton&secret',
+    );
+    expect(email.html).toContain(
+      'href="https://riad.example/fr/gerer-ma-reservation#K7M2QX9A.jeton&amp;secret"',
+    );
+    expect(email.html).toContain('>Gérer ma réservation</a>');
   });
 
   it('sums up a non-refundable stay in English: paid online, the tax left for the hotel', () => {
@@ -76,6 +85,7 @@ describe('confirmation e-mail', () => {
     expect(text).toContain('can be neither cancelled nor refunded');
     expect(text).toContain('on +33 4 65 71 00 00');
     expect(text).not.toContain('guarantee');
+    expect(text).not.toContain('personal link');
   });
 
   it('escapes in the HTML what the customer typed', () => {

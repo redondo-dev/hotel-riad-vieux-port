@@ -1,14 +1,23 @@
 import type { Sequelize } from 'sequelize';
 import { type Mailer, MailRejectedError } from '../../../shared/infrastructure/mailer.ts';
 import { confirmationEmail } from '../domain/confirmation-email.ts';
+import { manageBookingUrl, newManageToken } from '../domain/manage-booking-rules.ts';
 import {
   ConfirmationEmailRepository,
   MAX_EMAIL_ATTEMPTS,
 } from '../infrastructure/confirmation-email-repository.ts';
+import { ManageBookingRepository } from '../infrastructure/manage-booking-repository.ts';
 import type { PaymentLog } from './online-payments.ts';
 
 /** E-mails sent in one run: the next run, a minute later, takes the following ones. */
 export const EMAIL_BATCH_SIZE = 50;
+
+/** The public site, for the link « Gérer ma réservation » (step M). */
+export interface SiteAddress {
+  url: string;
+  /** The built site serves /fr/… and /en/…; the development server only French at the root. */
+  localePrefix: boolean;
+}
 
 export interface EmailReport {
   sent: number;
@@ -29,14 +38,24 @@ export interface EmailReport {
 export class ConfirmationEmails {
   readonly #sequelize: Sequelize;
   readonly #repository: ConfirmationEmailRepository;
+  readonly #links: ManageBookingRepository;
   readonly #mailer: Mailer;
+  readonly #site: SiteAddress;
   readonly #now: () => Date;
   readonly #log: PaymentLog;
 
-  constructor(options: { sequelize: Sequelize; mailer: Mailer; now: () => Date; log: PaymentLog }) {
+  constructor(options: {
+    sequelize: Sequelize;
+    mailer: Mailer;
+    site: SiteAddress;
+    now: () => Date;
+    log: PaymentLog;
+  }) {
     this.#sequelize = options.sequelize;
     this.#repository = new ConfirmationEmailRepository(options.sequelize);
+    this.#links = new ManageBookingRepository(options.sequelize);
     this.#mailer = options.mailer;
+    this.#site = options.site;
     this.#now = options.now;
     this.#log = options.log;
   }
@@ -51,7 +70,17 @@ export class ConfirmationEmails {
           if (booking === undefined) {
             return false;
           }
-          const email = confirmationEmail(booking.data);
+          // A new secret link, stored as its hash only; refused by Brevo, nothing is kept.
+          const { token, hash } = newManageToken();
+          await this.#links.issueToken(id, hash, transaction);
+          const manageUrl = manageBookingUrl({
+            siteUrl: this.#site.url,
+            language: booking.data.language,
+            localePrefix: this.#site.localePrefix,
+            reference: booking.data.reference,
+            token,
+          });
+          const email = confirmationEmail({ ...booking.data, manageUrl });
           await this.#mailer.send({ to: booking.to, ...email });
           await this.#repository.markSent(id, this.#now(), transaction);
           return true;
