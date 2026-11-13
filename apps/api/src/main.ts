@@ -14,6 +14,7 @@ import { OnlinePayments } from './modules/reservations/application/online-paymen
 import type { PaymentEventReader } from './modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
 import { ConfirmationEmails } from './modules/reservations/application/confirmation-emails.ts';
+import { ManageLinkRequests } from './modules/reservations/application/manage-link-requests.ts';
 import { UnpaidExpiry } from './modules/reservations/application/unpaid-expiry.ts';
 import { stripeEvents } from './modules/reservations/infrastructure/stripe-events.ts';
 import {
@@ -96,6 +97,11 @@ const storage = localFileStorage(env.STORAGE_DIR ?? DEFAULT_STORAGE_DIR);
 const sessionPool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 5 });
 const mailer = createMailer();
 const paymentServices = createPayments();
+/** The public site, for the links « Gérer ma réservation » written in the e-mails (step M). */
+const site = {
+  url: env.PUBLIC_SITE_URL ?? DEFAULT_PUBLIC_SITE_URL,
+  localePrefix: env.NODE_ENV === 'production',
+};
 
 const app = createApp({
   logger,
@@ -117,6 +123,13 @@ const app = createApp({
     sequelize,
     storage,
     ...paymentServices,
+    manageLinks: new ManageLinkRequests({
+      sequelize,
+      mailer,
+      site,
+      now: () => new Date(),
+      log: paymentLogOf(logger),
+    }),
     publicSiteUrl: env.PUBLIC_SITE_URL ?? DEFAULT_PUBLIC_SITE_URL,
   },
 });
@@ -150,6 +163,7 @@ const expiry = new UnpaidExpiry({
 const confirmationEmails = new ConfirmationEmails({
   sequelize,
   mailer,
+  site,
   now: () => new Date(),
   log: paymentLogOf(logger),
 });

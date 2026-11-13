@@ -9,6 +9,18 @@ export interface ManagedRecord {
   freeCancellationUntil: Date | null;
 }
 
+/** A booking whose customer asked for a new link, with what its e-mail needs. */
+export interface LinkRequestRecord {
+  id: string;
+  reference: string;
+  email: string;
+  firstName: string;
+  language: 'fr' | 'en';
+  hotelName: string;
+  hotelAddress: string;
+  hotelPhone: string;
+}
+
 /**
  * The secret links of « Gérer ma réservation » (step M), in plain SQL with bound parameters.
  * Only the SHA-256 fingerprint of a token is stored, with the end of its validity: 30 days
@@ -64,5 +76,39 @@ export class ManageBookingRepository {
       },
     );
     return rows[0];
+  }
+
+  /**
+   * The booking of the website with this reference whose customer has this e-mail (whatever
+   * its case), when no link was sent on request since `sentBefore`; locked, or undefined. The
+   * bookings never confirmed (waiting for their payment, expired) have nothing to manage.
+   */
+  async forLinkRequest(
+    reference: string,
+    email: string,
+    sentBefore: Date,
+    transaction: Transaction,
+  ): Promise<LinkRequestRecord | undefined> {
+    const rows = await this.#sequelize.query<LinkRequestRecord>(
+      `SELECT r.id, r.reference, c.email::text AS email, c.first_name AS "firstName",
+              c.preferred_language AS language, h.name AS "hotelName",
+              h.address AS "hotelAddress", h.phone AS "hotelPhone"
+         FROM reservations r
+         JOIN customers c ON c.id = r.customer_id
+         JOIN hotel_settings h ON h.id = 1
+        WHERE r.source = 'website' AND r.reference = $1 AND c.email = $2::citext
+          AND r.status IN ('confirmed', 'checked_in', 'checked_out', 'cancelled')
+          AND (r.manage_link_sent_at IS NULL OR r.manage_link_sent_at < $3)
+          FOR UPDATE OF r SKIP LOCKED`,
+      { bind: [reference, email, sentBefore], type: QueryTypes.SELECT, transaction },
+    );
+    return rows[0];
+  }
+
+  async markLinkSent(reservationId: string, at: Date, transaction: Transaction): Promise<void> {
+    await this.#sequelize.query('UPDATE reservations SET manage_link_sent_at = $2 WHERE id = $1', {
+      bind: [reservationId, at],
+      transaction,
+    });
   }
 }

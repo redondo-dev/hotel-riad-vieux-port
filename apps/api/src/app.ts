@@ -24,6 +24,7 @@ import { AvailabilityService } from './modules/reservations/application/availabi
 import { FrontDesk } from './modules/reservations/application/front-desk.ts';
 import { PlanningService } from './modules/reservations/application/planning-service.ts';
 import { ManageBooking } from './modules/reservations/application/manage-booking.ts';
+import type { ManageLinkRequests } from './modules/reservations/application/manage-link-requests.ts';
 import { OnlineBooking } from './modules/reservations/application/online-booking.ts';
 import {
   OnlinePayments,
@@ -90,6 +91,8 @@ export interface PublicDependencies {
    * in development), POST /webhooks/stripe does not exist and bookings stay « en attente ».
    */
   paymentEvents?: PaymentEventReader;
+  /** « Lien perdu » of « Gérer ma réservation » (step M); without it, the route does not exist. */
+  manageLinks?: ManageLinkRequests;
 }
 
 export interface AdminDependencies {
@@ -192,7 +195,9 @@ function publicRouter(
       logger.error({ err: error }, 'Stripe : ouverture de la page de paiement impossible');
     },
   });
-  router.use(manageBookingRouter(new ManageBooking({ sequelize: deps.sequelize, now })));
+  router.use(
+    manageBookingRouter(new ManageBooking({ sequelize: deps.sequelize, now }), deps.manageLinks),
+  );
   router.use(publicBookingRouter(booking));
   if (deps.storage !== undefined) {
     router.use(mediaRouter(deps.storage));

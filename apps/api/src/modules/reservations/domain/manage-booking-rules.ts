@@ -48,5 +48,32 @@ export function onlineCancellation(booking: {
   return deadline !== null && booking.now <= deadline ? 'free' : 'with_fee';
 }
 
+/**
+ * Page « Gérer ma réservation » of the public site, per language: the same as
+ * packages/shared/src/manage-booking.ts (which the API cannot import); both tests check them.
+ */
+export const MANAGE_BOOKING_PATHS = {
+  fr: 'gerer-ma-reservation',
+  en: 'manage-my-booking',
+} as const;
+
+/**
+ * « …/fr/gerer-ma-reservation#REFERENCE.token »: the part after # is never sent to any server
+ * (decision « 1a »). `localePrefix`: the built site serves /fr/… and /en/…; the development
+ * server serves only French, at the root.
+ */
+export function manageBookingUrl(options: {
+  siteUrl: string;
+  language: 'fr' | 'en';
+  localePrefix: boolean;
+  reference: string;
+  token: string;
+}): string {
+  const base = options.siteUrl.replace(/\/+$/, '');
+  const language = options.localePrefix ? options.language : 'fr';
+  const prefix = options.localePrefix ? `/${language}` : '';
+  return `${base}${prefix}/${MANAGE_BOOKING_PATHS[language]}#${options.reference}.${options.token}`;
+}
+
 /** Reason written on the booking and shown to the staff. */
 export const CUSTOMER_CANCELLATION_REASON = 'Annulée par le client depuis le site';

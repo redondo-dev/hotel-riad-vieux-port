@@ -124,6 +124,8 @@ export class ConfirmationEmailRepository {
         touristTaxCents: fields.touristTaxCents,
         freeCancellationUntil: fields.freeCancellationUntil,
         cardGuarantee: fields.cardGuarantee,
+        // Made when the e-mail is sent (ConfirmationEmails): never stored but as its hash.
+        manageUrl: null,
         hotel,
       },
     };

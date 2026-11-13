@@ -7,6 +7,7 @@ import { QueryTypes, type Sequelize } from 'sequelize';
 import request from 'supertest';
 import { API_PREFIX, createApp } from '../../src/app.ts';
 import type { Role } from '../../src/modules/identity/domain/identity-rules.ts';
+import type { ManageLinkRequests } from '../../src/modules/reservations/application/manage-link-requests.ts';
 import type { PaymentEventReader } from '../../src/modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from '../../src/modules/reservations/application/payment-gateway.ts';
 import { hashPassword } from '../../src/modules/identity/infrastructure/password-hasher.ts';
@@ -35,6 +36,8 @@ export interface AppOptions {
   payments?: PaymentGateway;
   /** A fake reader of the notifications of Stripe, with a signature of its own. */
   paymentEvents?: PaymentEventReader;
+  /** « Lien perdu » of « Gérer ma réservation », with a fake sending service. */
+  manageLinks?: ManageLinkRequests;
 }
 
 export interface TestStaff {
@@ -91,6 +94,7 @@ export class IdentityHarness {
         ...(options.now === undefined ? {} : { now: options.now }),
         ...(options.payments === undefined ? {} : { payments: options.payments }),
         ...(options.paymentEvents === undefined ? {} : { paymentEvents: options.paymentEvents }),
+        ...(options.manageLinks === undefined ? {} : { manageLinks: options.manageLinks }),
         publicSiteUrl: PUBLIC_SITE_URL,
       },
     });

@@ -23,6 +23,8 @@ export interface ConfirmationEmailData {
   /** Flexible rate only. */
   freeCancellationUntil: Date | null;
   cardGuarantee: boolean;
+  /** « Gérer ma réservation » (step M): its secret link, or null. */
+  manageUrl: string | null;
   hotel: {
     name: string;
     address: string;
@@ -74,6 +76,9 @@ const WORDS = {
       'indiquant votre référence.',
     bye: 'À bientôt,',
     at: 'à',
+    manage: 'Pour consulter ou annuler votre réservation, utilisez ce lien personnel :',
+    manageButton: 'Gérer ma réservation',
+    keepLink: 'Ne le transférez pas : il donne accès à votre réservation.',
   },
   en: {
     locale: 'en-GB',
@@ -107,6 +112,9 @@ const WORDS = {
       'reference.',
     bye: 'See you soon,',
     at: 'at',
+    manage: 'To view or cancel your booking, use this personal link:',
+    manageButton: 'Manage my booking',
+    keepLink: 'Do not forward it: it gives access to your booking.',
   },
 } as const;
 
@@ -149,7 +157,7 @@ function euros(cents: number, words: Words): string {
 }
 
 /** « 04 65 71 00 00 » in French, « +33 4 65 71 00 00 » in English. */
-function phoneOf(international: string, language: 'fr' | 'en'): string {
+export function phoneOf(international: string, language: 'fr' | 'en'): string {
   const national = displayPhone(international);
   if (language === 'fr' || !international.startsWith('+33') || !national.startsWith('0')) {
     return national;
@@ -233,6 +241,7 @@ export function confirmationEmail(data: ConfirmationEmailData): ConfirmationEmai
     ...summary.map(([label, value]) => `${label}${words.colon}${value}`),
     '',
     ...conditions.flatMap((sentence) => [sentence, '']),
+    ...(data.manageUrl === null ? [] : [words.manage, data.manageUrl, words.keepLink, '']),
     questions,
     '',
     words.bye,
@@ -240,10 +249,31 @@ export function confirmationEmail(data: ConfirmationEmailData): ConfirmationEmai
     data.hotel.address,
   ].join('\n');
 
-  return { subject, text, html: htmlOf({ hello, summary, conditions, questions, words, data }) };
+  const blocks = [
+    paragraphHtml(hello),
+    paragraphHtml(words.intro),
+    tableHtml(summary),
+    ...conditions.map(paragraphHtml),
+    ...(data.manageUrl === null
+      ? []
+      : [
+          paragraphHtml(words.manage),
+          buttonHtml(words.manageButton, data.manageUrl),
+          smallHtml(words.keepLink),
+        ]),
+    paragraphHtml(questions),
+  ];
+  const html = layoutHtml({
+    language: data.language,
+    title: data.reference,
+    hotel: data.hotel,
+    blocks,
+    bye: words.bye,
+  });
+  return { subject, text, html };
 }
 
-function escape(text: string): string {
+export function escapeHtml(text: string): string {
   return text
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -252,45 +282,64 @@ function escape(text: string): string {
     .replaceAll("'", '&#39;');
 }
 
-function rowOf([label, value]: [string, string]): string {
+export function paragraphHtml(sentence: string): string {
+  return `<p style="margin:0 0 16px">${escapeHtml(sentence)}</p>`;
+}
+
+export function smallHtml(sentence: string): string {
+  return `<p style="margin:0 0 16px;font-size:13px;color:#6b6259">${escapeHtml(sentence)}</p>`;
+}
+
+function rowHtml([label, value]: [string, string]): string {
   return (
     '<tr><td style="padding:6px 16px 6px 0;color:#6b6259;vertical-align:top">' +
-    `${escape(label)}</td><td style="padding:6px 0;font-weight:600">${escape(value)}</td></tr>`
+    `${escapeHtml(label)}</td><td style="padding:6px 0;font-weight:600">` +
+    `${escapeHtml(value)}</td></tr>`
   );
 }
 
-function paragraphOf(sentence: string): string {
-  return `<p style="margin:0 0 12px">${escape(sentence)}</p>`;
+export function tableHtml(rows: [string, string][]): string {
+  return (
+    '<table role="presentation" style="border-collapse:collapse;margin:0 0 20px">' +
+    `${rows.map(rowHtml).join('')}</table>`
+  );
 }
 
-/** Colours of the site: sand background, ink text, terracotta accent. Inline: mail programs. */
-function htmlOf(parts: {
-  hello: string;
-  summary: [string, string][];
-  conditions: string[];
-  questions: string;
-  words: Words;
-  data: ConfirmationEmailData;
-}): string {
-  const { data } = parts;
-  const rows = parts.summary.map(rowOf).join('');
-  const conditions = parts.conditions.map(paragraphOf).join('');
+/** A link shaped like a button (terracotta), the only one of the e-mail. */
+export function buttonHtml(label: string, url: string): string {
   return (
-    `<!doctype html><html lang="${data.language}"><head><meta charset="utf-8">` +
-    `<title>${escape(data.reference)}</title></head>` +
+    '<p style="margin:0 0 12px"><a href="' +
+    escapeHtml(url) +
+    '" style="display:inline-block;padding:12px 20px;background:#a0522d;color:#ffffff;' +
+    'border-radius:8px;text-decoration:none;font-weight:700">' +
+    `${escapeHtml(label)}</a></p>`
+  );
+}
+
+/**
+ * The frame of every e-mail to the customers: colours of the site (sand background, ink text,
+ * terracotta accent), inline styles for the mail programs. `blocks` are already escaped.
+ */
+export function layoutHtml(layout: {
+  language: 'fr' | 'en';
+  title: string;
+  hotel: { name: string; address: string };
+  blocks: string[];
+  bye: string;
+}): string {
+  const { hotel } = layout;
+  return (
+    `<!doctype html><html lang="${layout.language}"><head><meta charset="utf-8">` +
+    `<title>${escapeHtml(layout.title)}</title></head>` +
     '<body style="margin:0;padding:24px;background:#faf6f0;color:#1f1a17;' +
     'font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5">' +
     '<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;' +
     'padding:28px">' +
-    `<p style="margin:0 0 20px;color:#a0522d;font-weight:700;letter-spacing:1px">` +
-    `${escape(data.hotel.name.toUpperCase())}</p>` +
-    `<p style="margin:0 0 12px">${escape(parts.hello)}</p>` +
-    `<p style="margin:0 0 20px">${escape(parts.words.intro)}</p>` +
-    `<table role="presentation" style="border-collapse:collapse;margin:0 0 20px">${rows}</table>` +
-    conditions +
-    `<p style="margin:0 0 20px">${escape(parts.questions)}</p>` +
-    `<p style="margin:0">${escape(parts.words.bye)}<br>${escape(data.hotel.name)}<br>` +
-    `<span style="color:#6b6259">${escape(data.hotel.address)}</span></p>` +
+    '<p style="margin:0 0 20px;color:#a0522d;font-weight:700;letter-spacing:1px">' +
+    `${escapeHtml(hotel.name.toUpperCase())}</p>` +
+    layout.blocks.join('') +
+    `<p style="margin:0">${escapeHtml(layout.bye)}<br>${escapeHtml(hotel.name)}<br>` +
+    `<span style="color:#6b6259">${escapeHtml(hotel.address)}</span></p>` +
     '</div></body></html>'
   );
 }

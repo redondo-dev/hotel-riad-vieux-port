@@ -1,12 +1,14 @@
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { API_PREFIX } from '../../src/app.ts';
 import { OnlinePayments } from '../../src/modules/reservations/application/online-payments.ts';
 import type { CheckoutOutcome } from '../../src/modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from '../../src/modules/reservations/application/payment-gateway.ts';
 import { newManageToken } from '../../src/modules/reservations/domain/manage-booking-rules.ts';
+import { ManageLinkRequests } from '../../src/modules/reservations/application/manage-link-requests.ts';
 import { ManageBookingRepository } from '../../src/modules/reservations/infrastructure/manage-booking-repository.ts';
 import { ReservationRepository } from '../../src/modules/reservations/infrastructure/reservation-repository.ts';
+import type { MailMessage } from '../../src/shared/infrastructure/mailer.ts';
 import { IdentityHarness, PUBLIC_SITE_URL } from '../support/identity-harness.ts';
 import { hasTestDatabase } from '../support/test-database.ts';
 
@@ -64,10 +66,12 @@ describe.skipIf(!hasTestDatabase)('manage my booking', () => {
   /** A confirmed booking of the website and its secret link. */
   async function booking(
     stay: Record<string, unknown>,
-  ): Promise<{ reference: string; token: string; id: string }> {
+  ): Promise<{ reference: string; token: string; id: string; email: string }> {
+    const key = newKey();
+    const email = `lea.gestion.${keyCounter}@test.example`;
     const response = await request(app())
       .post(BOOKINGS)
-      .set('Idempotency-Key', newKey())
+      .set('Idempotency-Key', key)
       .send({
         checkIn: '2037-07-10',
         checkOut: '2037-07-12',
@@ -77,7 +81,7 @@ describe.skipIf(!hasTestDatabase)('manage my booking', () => {
         customer: {
           firstName: 'Léa',
           lastName: 'Gestion',
-          email: `lea.gestion.${keyCounter}@test.example`,
+          email,
           phone: '+33 6 12 12 12 12',
           countryCode: 'FR',
         },
@@ -111,7 +115,7 @@ describe.skipIf(!hasTestDatabase)('manage my booking', () => {
       await links.issueToken(record.id, hash, transaction);
       return record.id;
     });
-    return { reference, token, id };
+    return { reference, token, id, email };
   }
 
   async function statusOf(id: string): Promise<string | undefined> {
@@ -315,6 +319,110 @@ describe.skipIf(!hasTestDatabase)('manage my booking', () => {
       expect(nonRefundable.status).toBe(409);
       expect(await statusOf(paid.id)).toBe('confirmed');
       expect(await statusOf(flexible.id)).toBe('confirmed');
+    });
+  });
+
+  describe('a new link on request (« lien perdu »)', () => {
+    const sent: MailMessage[] = [];
+    let refused = false;
+    const mailer = {
+      send: async (message: MailMessage) => {
+        if (refused) {
+          throw new Error('Brevo a refusé l’e-mail (HTTP 401, unauthorized)');
+        }
+        sent.push(message);
+      },
+    };
+
+    function requests(now = NOW): ManageLinkRequests {
+      return new ManageLinkRequests({
+        sequelize: harness.sequelize,
+        mailer,
+        site: { url: PUBLIC_SITE_URL, localePrefix: true },
+        now: () => now,
+        log: { warn: () => undefined, error: () => undefined },
+      });
+    }
+
+    function tokenIn(message: MailMessage | undefined): string | undefined {
+      return /\/fr\/gerer-ma-reservation#[A-Z0-9]{8}\.([\w-]{43})/.exec(message?.text ?? '')?.[1];
+    }
+
+    it('e-mails a new link to the address of the booking, the previous one stops', async () => {
+      const { reference, token, email } = await booking({
+        checkIn: '2037-07-27',
+        checkOut: '2037-07-28',
+      });
+
+      const answer = await requests().request({ reference, email: email.toUpperCase() });
+
+      expect(answer).toBe('sent');
+      const message = sent.at(-1);
+      expect(message?.to).toBe(email);
+      expect(message?.subject).toContain(`Votre lien pour gérer la réservation ${reference}`);
+      const fresh = tokenIn(message);
+      expect(fresh).toBeDefined();
+      const withNew = await request(app()).post(MANAGE).send({ reference, token: fresh });
+      expect(withNew.status).toBe(200);
+      const withOld = await request(app()).post(MANAGE).send({ reference, token });
+      expect(withOld.status).toBe(404);
+    });
+
+    it('sends nothing for a wrong e-mail, an unknown booking, twice in 10 minutes', async () => {
+      const { reference, email } = await booking({
+        checkIn: '2037-07-29',
+        checkOut: '2037-07-30',
+      });
+      const before = sent.length;
+
+      expect(await requests().request({ reference, email: 'autre@test.example' })).toBe('ignored');
+      expect(await requests().request({ reference: 'ZZZZ2222', email })).toBe('ignored');
+      expect(await requests().request({ reference, email })).toBe('sent');
+      expect(await requests().request({ reference, email })).toBe('ignored');
+      expect(sent.length).toBe(before + 1);
+
+      const later = new Date(NOW.getTime() + 11 * 60_000);
+      expect(await requests(later).request({ reference, email })).toBe('sent');
+    });
+
+    it('keeps the previous link when the e-mail cannot be sent', async () => {
+      const { reference, token, email } = await booking({
+        checkIn: '2037-07-31',
+        checkOut: '2037-08-01',
+      });
+
+      refused = true;
+      const answer = await requests().request({ reference, email });
+      refused = false;
+
+      expect(answer).toBe('ignored');
+      expect((await request(app()).post(MANAGE).send({ reference, token })).status).toBe(200);
+    });
+
+    it('answers the visitor the same, whether the booking exists or not', async () => {
+      const { reference, email } = await booking({
+        checkIn: '2037-08-02',
+        checkOut: '2037-08-03',
+      });
+      const target = harness.app({ now: () => NOW, manageLinks: requests() });
+
+      const unknown = await request(target)
+        .post(`${MANAGE}/link`)
+        .send({ reference: 'ZZZZ2222', email: 'personne@test.example' });
+      const known = await request(target).post(`${MANAGE}/link`).send({ reference, email });
+
+      expect(unknown.status).toBe(202);
+      expect(known.status).toBe(202);
+      expect(known.body).toEqual(unknown.body);
+      expect(unknown.headers['cache-control']).toBe('no-store');
+      const malformed = await request(target)
+        .post(`${MANAGE}/link`)
+        .send({ reference, email: 'pas-une-adresse' });
+      expect(malformed.status).toBe(400);
+      // The e-mail of the known booking leaves after the answer.
+      await vi.waitFor(() => {
+        expect(sent.some((message) => message.to === email)).toBe(true);
+      });
     });
   });
 });

@@ -83,6 +83,7 @@ describe.skipIf(!hasTestDatabase)('e-mails of confirmation of the online booking
     return new ConfirmationEmails({
       sequelize: harness.sequelize,
       mailer,
+      site: { url: PUBLIC_SITE_URL, localePrefix: true },
       now: () => NOW,
       log: {
         warn: () => undefined,
@@ -224,6 +225,15 @@ describe.skipIf(!hasTestDatabase)('e-mails of confirmation of the online booking
     expect(messages[0]?.text).toContain('Hello James,');
     expect(messages[0]?.text).toContain('Paid online');
     expect(messages[0]?.html).toContain('<html lang="en">');
+
+    // Its link « Gérer ma réservation » opens the booking (English page of the built site).
+    const link = /\/en\/manage-my-booking#([A-Z0-9]{8})\.([\w-]{43})/.exec(messages[0]?.text ?? '');
+    expect(link?.[1]).toBe(reference);
+    const managed = await request(harness.app({ now: () => NOW }))
+      .post(`${BOOKINGS}/manage`)
+      .send({ reference, token: link?.[2] });
+    expect(managed.status).toBe(200);
+    expect(managed.body.firstName).toBe('James');
     const rows = await harness.rows<{ sentAt: Date | null }>(
       'SELECT confirmation_email_sent_at AS "sentAt" FROM reservations WHERE reference = $1',
       [reference],
