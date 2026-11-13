@@ -250,10 +250,6 @@ describe.skipIf(!hasTestDatabase)('manage my booking', () => {
 
       const malformed = await request(app()).post(MANAGE).send({ reference, token: 'court' });
       expect(malformed.status).toBe(400);
-      // The e-mail of the known booking leaves after the answer.
-      await vi.waitFor(() => {
-        expect(sent.some((message) => message.to === email)).toBe(true);
-      });
     });
 
     it('stops the previous link when a new one is given', async () => {
@@ -423,6 +419,10 @@ describe.skipIf(!hasTestDatabase)('manage my booking', () => {
         .post(`${MANAGE}/link`)
         .send({ reference, email: 'pas-une-adresse' });
       expect(malformed.status).toBe(400);
+      // The e-mail of the known booking leaves after the answer.
+      await vi.waitFor(() => {
+        expect(sent.some((message) => message.to === email)).toBe(true);
+      });
     });
   });
 });
