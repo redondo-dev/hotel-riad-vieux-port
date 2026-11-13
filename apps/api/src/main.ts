@@ -13,6 +13,7 @@ import { DEFAULT_ADMIN_APP_URL, DEFAULT_PUBLIC_SITE_URL, loadEnv } from './confi
 import { OnlinePayments } from './modules/reservations/application/online-payments.ts';
 import type { PaymentEventReader } from './modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
+import { CancellationEmails } from './modules/reservations/application/cancellation-emails.ts';
 import { ConfirmationEmails } from './modules/reservations/application/confirmation-emails.ts';
 import { ManageLinkRequests } from './modules/reservations/application/manage-link-requests.ts';
 import { UnpaidExpiry } from './modules/reservations/application/unpaid-expiry.ts';
@@ -26,6 +27,7 @@ import { createSequelize } from './shared/infrastructure/database.ts';
 import { createLogger } from './shared/infrastructure/logger.ts';
 import { localFileStorage } from './shared/infrastructure/file-storage.ts';
 import {
+  CANCELLATION_EMAIL_QUEUE,
   CONFIRMATION_EMAIL_QUEUE,
   type Jobs,
   startJobs,
@@ -167,6 +169,13 @@ const confirmationEmails = new ConfirmationEmails({
   now: () => new Date(),
   log: paymentLogOf(logger),
 });
+// And the one of cancellation (step M).
+const cancellationEmails = new CancellationEmails({
+  sequelize,
+  mailer,
+  now: () => new Date(),
+  log: paymentLogOf(logger),
+});
 let jobs: Jobs | undefined;
 startJobs({
   connectionString: env.DATABASE_URL,
@@ -196,6 +205,20 @@ startJobs({
           }
         } catch (error) {
           logger.error({ err: error }, 'envoi des e-mails de confirmation en erreur');
+          throw error;
+        }
+      },
+    },
+    {
+      queue: CANCELLATION_EMAIL_QUEUE,
+      run: async () => {
+        try {
+          const report = await cancellationEmails.run();
+          if (report.sent + report.failed > 0) {
+            logger.info(report, 'e-mails d’annulation des réservations en ligne');
+          }
+        } catch (error) {
+          logger.error({ err: error }, 'envoi des e-mails d’annulation en erreur');
           throw error;
         }
       },

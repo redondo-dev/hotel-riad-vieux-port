@@ -17,6 +17,8 @@ const JOBS_SCHEMA = 'pgboss';
 export const UNPAID_EXPIRY_QUEUE = 'expire-unpaid-bookings';
 /** E-mails of confirmation of the bookings of the website (step R-6): every minute. */
 export const CONFIRMATION_EMAIL_QUEUE = 'send-confirmation-emails';
+/** E-mails of cancellation of the bookings of the website (step M): every minute. */
+export const CANCELLATION_EMAIL_QUEUE = 'send-cancellation-emails';
 const EVERY_MINUTE = '* * * * *';
 
 /** Time left to a run in progress when the API stops. */

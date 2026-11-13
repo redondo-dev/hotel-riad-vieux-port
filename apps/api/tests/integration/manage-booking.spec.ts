@@ -5,6 +5,7 @@ import { OnlinePayments } from '../../src/modules/reservations/application/onlin
 import type { CheckoutOutcome } from '../../src/modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from '../../src/modules/reservations/application/payment-gateway.ts';
 import { newManageToken } from '../../src/modules/reservations/domain/manage-booking-rules.ts';
+import { CancellationEmails } from '../../src/modules/reservations/application/cancellation-emails.ts';
 import { ManageLinkRequests } from '../../src/modules/reservations/application/manage-link-requests.ts';
 import { ManageBookingRepository } from '../../src/modules/reservations/infrastructure/manage-booking-repository.ts';
 import { ReservationRepository } from '../../src/modules/reservations/infrastructure/reservation-repository.ts';
@@ -423,6 +424,63 @@ describe.skipIf(!hasTestDatabase)('manage my booking', () => {
       await vi.waitFor(() => {
         expect(sent.some((message) => message.to === email)).toBe(true);
       });
+    });
+  });
+
+  describe('the e-mail of cancellation', () => {
+    const sent: MailMessage[] = [];
+    const mailer = {
+      send: async (message: MailMessage) => {
+        sent.push(message);
+      },
+    };
+
+    /** Runs the task until it has nothing more to send. */
+    async function runCancellationEmails(): Promise<void> {
+      const task = new CancellationEmails({
+        sequelize: harness.sequelize,
+        mailer,
+        now: () => NOW,
+        log: { warn: () => undefined, error: () => undefined },
+      });
+      for (let run = 0; run < 10; run += 1) {
+        const report = await task.run();
+        if (report.sent + report.failed === 0) {
+          return;
+        }
+      }
+    }
+
+    it('tells once the customer whose booking is cancelled that nothing was charged', async () => {
+      const { reference, token, id, email } = await booking({
+        checkIn: '2037-08-05',
+        checkOut: '2037-08-06',
+      });
+      await harness.execute(
+        'UPDATE reservations SET confirmation_email_sent_at = $2 WHERE id = $1',
+        [id, NOW],
+      );
+      await request(app()).post(`${MANAGE}/cancel`).send({ reference, token });
+
+      await runCancellationEmails();
+      await runCancellationEmails();
+
+      const messages = sent.filter((message) => message.to === email);
+      expect(messages).toHaveLength(1);
+      expect(messages[0]?.subject).toContain(`Votre réservation ${reference} est annulée`);
+      expect(messages[0]?.text).toContain('rien n’a été débité');
+    });
+
+    it('tells nothing about a booking whose confirmation was never e-mailed', async () => {
+      const { reference, token, email } = await booking({
+        checkIn: '2037-08-07',
+        checkOut: '2037-08-08',
+      });
+      await request(app()).post(`${MANAGE}/cancel`).send({ reference, token });
+
+      await runCancellationEmails();
+
+      expect(sent.filter((message) => message.to === email)).toEqual([]);
     });
   });
 });

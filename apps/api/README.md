@@ -186,17 +186,18 @@ un faux lecteur ; les vraies signatures sont vérifiées avec la bibliothèque S
 Le client lit sa réservation du site avec le lien secret reçu par e-mail, et l'annule lui-même
 quand le tarif flexible le permet sans frais.
 
-| Sujet      | Règle                                                                                 |
-| ---------- | ------------------------------------------------------------------------------------- |
-| Lien       | `…/fr/gerer-ma-reservation#RÉFÉRENCE.jeton` : le jeton (256 bits) après le `#`        |
-| Stockage   | Seule l'empreinte SHA-256 du jeton est en base ; un nouveau lien remplace l'ancien    |
-| Validité   | Jusqu'à la fin du jour du départ + `manage_link_days_after_checkout` (30 jours)       |
-| Lien faux  | Toujours la même réponse 404 `MANAGE_LINK_INVALID`, quelle que soit l'erreur          |
-| Annulation | Tarif flexible avant la date limite : sans frais, chambres rendues aussitôt           |
-| Sinon      | 409 `CANCELLATION_NOT_ONLINE` : la page invite à appeler la réception                 |
-| Limite     | 30 demandes par minute et par adresse IP ; jeton dans le corps, jamais dans l'adresse |
-| E-mail     | Le lien part avec l'e-mail de confirmation ; jamais stocké en clair                   |
-| Lien perdu | `POST …/manage/link` : toujours 202, au plus un envoi par 10 min, 5 demandes/h par IP |
+| Sujet      | Règle                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------- |
+| Lien       | `…/fr/gerer-ma-reservation#RÉFÉRENCE.jeton` : le jeton (256 bits) après le `#`          |
+| Stockage   | Seule l'empreinte SHA-256 du jeton est en base ; un nouveau lien remplace l'ancien      |
+| Validité   | Jusqu'à la fin du jour du départ + `manage_link_days_after_checkout` (30 jours)         |
+| Lien faux  | Toujours la même réponse 404 `MANAGE_LINK_INVALID`, quelle que soit l'erreur            |
+| Annulation | Tarif flexible avant la date limite : sans frais, chambres rendues aussitôt             |
+| Sinon      | 409 `CANCELLATION_NOT_ONLINE` : la page invite à appeler la réception                   |
+| Limite     | 30 demandes par minute et par adresse IP ; jeton dans le corps, jamais dans l'adresse   |
+| E-mail     | Le lien part avec l'e-mail de confirmation ; jamais stocké en clair                     |
+| Lien perdu | `POST …/manage/link` : toujours 202, au plus un envoi par 10 min, 5 demandes/h par IP   |
+| Annulée    | E-mail d'annulation par la tâche de la minute, une fois (si la confirmation est partie) |
 
 ## E-mail de confirmation des réservations en ligne (Brevo)
 
