@@ -5,6 +5,7 @@ import {
   BOOKING_PATH,
   CHOICE_PATH,
   CONFIRMATION_PATH,
+  MANAGE_PATH,
   ROOMS_PATH,
   TERMS_PATH,
 } from './core/navigation';
@@ -63,6 +64,14 @@ export const routes: Routes = [
         $localize`:@@terms.metaDescription:Tarifs, annulation, non-présentation, paiement et taxe de séjour de l'Hôtel Riad Vieux-Port, à Marseille.`,
     },
     loadComponent: () => import('./features/legal/terms-page').then((m) => m.TermsPage),
+  },
+  {
+    // Private page (secret link after the #, read in the browser only): no description, never
+    // indexed (robots « noindex » set by the page).
+    path: MANAGE_PATH,
+    title: $localize`:@@title.manageBooking:Gérer ma réservation · Hôtel Riad Vieux-Port`,
+    loadComponent: () =>
+      import('./features/manage/manage-booking-page').then((m) => m.ManageBookingPage),
   },
   {
     path: `${ROOMS_PATH}/:code`,

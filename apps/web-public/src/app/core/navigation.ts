@@ -17,6 +17,12 @@ export const CONFIRMATION_PATH = $localize`:@@route.bookingConfirmation:confirma
 /** `/fr/conditions-de-vente`: conditions of sale and cancellation. */
 export const TERMS_PATH = $localize`:@@route.terms:conditions-de-vente`;
 
+/**
+ * `/fr/gerer-ma-reservation`, `/en/manage-my-booking`: « Gérer ma réservation » (step M). The
+ * same as MANAGE_BOOKING_PATHS of packages/shared, written by the API in the e-mails.
+ */
+export const MANAGE_PATH = $localize`:@@route.manageBooking:gerer-ma-reservation`;
+
 /** `/fr/chambres/<code>`, `/en/rooms/<code>`: the page of a room category. */
 export const ROOMS_PATH = $localize`:@@route.rooms:chambres`;
 

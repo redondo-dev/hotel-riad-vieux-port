@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { availabilityQueryOf, BookingRelay } from './booking-relay';
+import {
+  availabilityQueryOf,
+  BookingRelay,
+  linkRequestFrom,
+  manageAccessFrom,
+} from './booking-relay';
 
 const QUERY = { checkIn: '2027-05-12', checkOut: '2027-05-15', guests: '2-6_2' };
 
@@ -114,5 +119,47 @@ describe('BookingRelay, bookings', () => {
       'http://api.test/api/v1/public/bookings/checkout/cs_test_a1b2c3d4e5f6g7h8',
       'http://api.test/api/v1/public/bookings/K7M2QX9A/abandon',
     ]);
+  });
+});
+
+describe('« Gérer ma réservation »', () => {
+  const TOKEN = 'A'.repeat(21) + '-_' + 'z9'.repeat(10);
+
+  it('keeps only a reference and a token of the expected shape', () => {
+    expect(manageAccessFrom({ reference: 'K7M2QX9A', token: TOKEN, admin: true })).toEqual({
+      reference: 'K7M2QX9A',
+      token: TOKEN,
+    });
+    expect(manageAccessFrom({ reference: 'K7M2QX9A', token: 'court' })).toBeNull();
+    expect(manageAccessFrom({ reference: 'k7m2qx9a', token: TOKEN })).toBeNull();
+    expect(manageAccessFrom(null)).toBeNull();
+    expect(linkRequestFrom({ reference: 'K7M2QX9A', email: 'a@b.example', x: 1 })).toEqual({
+      reference: 'K7M2QX9A',
+      email: 'a@b.example',
+    });
+    expect(linkRequestFrom({ reference: 'K7M2QX9A' })).toBeNull();
+  });
+
+  it('passes the token in the body of a POST, never in the address', async () => {
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
+    const fakeFetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(input), init });
+      return new Response('{}', { status: 202 });
+    }) as typeof fetch;
+    const relay = new BookingRelay({ apiUrl: 'http://api.test/api/v1', fetch: fakeFetch });
+
+    const answer = await relay.manage({ reference: 'K7M2QX9A', token: TOKEN }, '203.0.113.9');
+    await relay.requestLink({ reference: 'K7M2QX9A', email: 'a@b.example' }, undefined);
+
+    expect(answer.status).toBe(202);
+    expect(calls[0]?.url).toBe('http://api.test/api/v1/public/bookings/manage');
+    expect(calls[0]?.url).not.toContain(TOKEN);
+    expect(calls[0]?.init?.method).toBe('POST');
+    expect(String(calls[0]?.init?.body)).toContain(TOKEN);
+    expect(calls[1]?.url).toBe('http://api.test/api/v1/public/bookings/manage/link');
+    expect(await relay.cancel(null, undefined)).toEqual({
+      status: 400,
+      body: { code: 'VALIDATION_FAILED' },
+    });
   });
 });
