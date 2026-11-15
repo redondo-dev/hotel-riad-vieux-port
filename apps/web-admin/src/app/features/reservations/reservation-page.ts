@@ -32,6 +32,8 @@ import {
   freeCancellationText,
   type FreeRoom,
   GUARANTEE_HELP,
+  GUARANTEE_LIFTED_HELP,
+  guaranteeStateOf,
   guestsText,
   isManagement,
   type Night,
@@ -122,8 +124,13 @@ const CLOSED_STATUSES = new Set(['cancelled', 'expired', 'no_show']);
           </p>
           <h2 id="titre-reservation" class="text-xl font-semibold">{{ name() }}</h2>
           <p>{{ stay() }}</p>
-          @if (current.cardGuarantee) {
-            <p class="text-sm text-muted">{{ guaranteeHelp }}</p>
+          @switch (guaranteeState()) {
+            @case ('active') {
+              <p class="text-sm text-muted">{{ guaranteeHelp }}</p>
+            }
+            @case ('lifted') {
+              <p class="text-sm text-muted">{{ guaranteeLiftedHelp }}</p>
+            }
           }
           @if (deskActions().length > 0) {
             <div class="flex flex-wrap gap-2 pt-1">
@@ -609,6 +616,11 @@ export class ReservationPage implements OnInit {
     return current === null ? [] : paymentBadgesOf(current);
   });
   protected readonly guaranteeHelp = GUARANTEE_HELP;
+  protected readonly guaranteeLiftedHelp = GUARANTEE_LIFTED_HELP;
+  protected readonly guaranteeState = computed(() => {
+    const current = this.reservation();
+    return current === null ? 'none' : guaranteeStateOf(current);
+  });
   protected readonly sourceLabel = computed(() => {
     const current = this.reservation();
     return current === null ? '' : SOURCE_LABELS[current.source];

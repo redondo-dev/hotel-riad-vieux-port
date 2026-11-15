@@ -179,6 +179,33 @@ export const GUARANTEE_LABEL = 'Carte en garantie';
 export const GUARANTEE_HELP =
   'Carte enregistrée chez Stripe : elle pourra être débitée en cas d’annulation tardive ou de ' +
   'non-présentation.';
+export const GUARANTEE_LIFTED_HELP = 'Carte enregistrée, garantie levée.';
+
+/**
+ * What the card saved at Stripe still guarantees (step G-2): « active » while the booking may
+ * still be cancelled late or not shown up for (the no-show is the very case of a debit);
+ * « lifted » once it is cancelled, expired or the stay is over, the card being kept at Stripe;
+ * « none » without a card. A late cancellation with fees lifts it too for now: the debit of the
+ * card is a later step.
+ */
+export type GuaranteeState = 'active' | 'lifted' | 'none';
+
+export function guaranteeStateOf(reservation: {
+  status: ReservationStatus;
+  cardGuarantee: boolean;
+}): GuaranteeState {
+  if (!reservation.cardGuarantee) {
+    return 'none';
+  }
+  switch (reservation.status) {
+    case 'cancelled':
+    case 'expired':
+    case 'checked_out':
+      return 'lifted';
+    default:
+      return 'active';
+  }
+}
 
 export interface Badge {
   label: string;
@@ -186,10 +213,12 @@ export interface Badge {
 }
 
 /**
- * The state of the payment, then « Carte en garantie » when a card is saved at Stripe: a
- * flexible booking of the website is « Non payé » (paid at the hotel) but guaranteed.
+ * The state of the payment, then « Carte en garantie » while a card saved at Stripe still
+ * guarantees the booking: a flexible booking of the website is « Non payé » (paid at the hotel)
+ * but guaranteed.
  */
 export function paymentBadgesOf(reservation: {
+  status: ReservationStatus;
   paymentStatus: PaymentStatus;
   cardGuarantee: boolean;
 }): Badge[] {
@@ -199,7 +228,7 @@ export function paymentBadgesOf(reservation: {
       className: paymentBadge(reservation.paymentStatus),
     },
   ];
-  if (reservation.cardGuarantee) {
+  if (guaranteeStateOf(reservation) === 'active') {
     badges.push({ label: GUARANTEE_LABEL, className: 'badge-info' });
   }
   return badges;
