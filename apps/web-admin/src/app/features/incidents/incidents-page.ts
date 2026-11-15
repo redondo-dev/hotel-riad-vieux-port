@@ -426,9 +426,7 @@ export class IncidentsPage {
   /** The filters of the tile are the ones applied, and « only mine » is off. */
   protected isApplied(tile: Tile): boolean {
     return (
-      !this.mine() &&
-      this.statusFilter() === tile.status &&
-      this.priorityFilter() === tile.priority
+      !this.mine() && this.statusFilter() === tile.status && this.priorityFilter() === tile.priority
     );
   }
 
