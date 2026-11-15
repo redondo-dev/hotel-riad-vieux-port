@@ -64,7 +64,8 @@ interface Tile {
 
 /**
  * The guests in the hotel arrived before today: their filter asks the arrivals up to today
- * (without it, the list looks at the arrivals from today only).
+ * (without it, the list looks at the arrivals from today only). The rooms to give are those of
+ * the confirmed bookings: a booking cancelled or expired has no room to give.
  */
 function tilesOf(today: string): Tile[] {
   return [
@@ -93,8 +94,8 @@ function tilesOf(today: string): Tile[] {
       key: 'unassigned',
       tone: 'orange',
       label: 'Sans chambre attribuée',
-      note: 'arrivées à venir',
-      filter: { unassigned: true },
+      note: 'confirmées à venir',
+      filter: { status: 'confirmed', unassigned: true },
     },
   ];
 }
