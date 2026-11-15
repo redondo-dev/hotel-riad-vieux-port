@@ -315,7 +315,12 @@ const CHART_HEIGHT = 140;
                 </div>
               }
             </div>
-            <svg viewBox="0 0 400 190" class="w-full" role="img" [attr.aria-label]="chartLabel()">
+            <svg
+              viewBox="0 0 400 190"
+              class="h-56 w-full"
+              role="img"
+              [attr.aria-label]="chartLabel()"
+            >
               @for (line of gridLines; track line) {
                 <line
                   x1="0"
