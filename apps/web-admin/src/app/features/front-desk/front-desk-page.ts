@@ -107,7 +107,7 @@ interface Opened {
             tone="green"
             label="Arrivées"
             [value]="count(current.arrivals.total)"
-            [note]="doneOf(current.arrivals.done, true)"
+            [note]="doneOf(current.arrivals.done, true, figures().lateArrivals)"
             [pressed]="tab() === 'arrivals'"
             (selected)="tab.set('arrivals')"
           >
@@ -117,7 +117,7 @@ interface Opened {
             tone="yellow"
             label="Départs"
             [value]="count(current.departures.total)"
-            [note]="doneOf(current.departures.done, false)"
+            [note]="doneOf(current.departures.done, false, figures().lateDepartures)"
             [pressed]="tab() === 'departures'"
             (selected)="tab.set('departures')"
           >
@@ -457,8 +457,8 @@ export class FrontDeskPage {
     return String(value);
   }
 
-  protected doneOf(done: number, feminine: boolean): string {
-    return doneNote(done, feminine);
+  protected doneOf(done: number, feminine: boolean, late: number): string {
+    return doneNote(done, feminine, late);
   }
 
   /** The tab of the late stays: the arrivals first. */

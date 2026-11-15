@@ -19,6 +19,7 @@ import {
   floorLabel,
   floorsOf,
   type HousekeepingRoom,
+  type HousekeepingStatus,
   nextStatus,
   remainingText,
   STATUS_LABELS,
@@ -258,11 +259,39 @@ export class HousekeepingPage {
     }
     this.busy.set(true);
     try {
-      this.replace([await this.api.setStatus(room.id, next)]);
+      const changed = await this.api.setStatus(room.id, next);
+      this.replace([changed]);
+      this.notifyChange(changed, room.status);
     } catch (error) {
       this.notifier.error(toProblem(error).detail);
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /**
+   * « Chambre 104 : propre », with « Annuler » when this role may set the state before back (step
+   * U-1): a tap by mistake on a phone is undone at once, a tile hidden by « À faire » too.
+   */
+  private notifyChange(room: HousekeepingRoom, before: HousekeepingStatus): void {
+    const text = `Chambre ${room.number} : ${STATUS_LABELS[room.status].toLowerCase()}`;
+    if (!canSetStatus(this.role(), before)) {
+      this.notifier.success(text);
+      return;
+    }
+    this.notifier.success(text, {
+      label: 'Annuler',
+      run: () => {
+        void this.undo(room, before);
+      },
+    });
+  }
+
+  private async undo(room: HousekeepingRoom, before: HousekeepingStatus): Promise<void> {
+    try {
+      this.replace([await this.api.setStatus(room.id, before)]);
+    } catch (error) {
+      this.notifier.error(toProblem(error).detail);
     }
   }
 

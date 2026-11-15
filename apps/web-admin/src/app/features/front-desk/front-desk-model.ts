@@ -139,11 +139,13 @@ export function dayFiguresOf(day: Pick<FrontDeskDay, 'arrivals' | 'departures'>)
   };
 }
 
-/** « 3 faites », « aucune faite ». */
-export function doneNote(done: number, feminine: boolean): string {
+/**
+ * « 3 faites », « aucune faite »; then « · 11 en retard » when stays expected before are still
+ * waiting (step U-1): they are in the list, not in the count of the day.
+ */
+export function doneNote(done: number, feminine: boolean, late = 0): string {
   const word = feminine ? 'faite' : 'fait';
-  if (done === 0) {
-    return feminine ? 'aucune faite' : 'aucun fait';
-  }
-  return `${done} ${word}${done > 1 ? 's' : ''}`;
+  const doneText =
+    done === 0 ? `aucun${feminine ? 'e' : ''} ${word}` : `${done} ${word}${done > 1 ? 's' : ''}`;
+  return late > 0 ? `${doneText} · ${late} en retard` : doneText;
 }
