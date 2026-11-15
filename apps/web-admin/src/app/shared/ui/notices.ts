@@ -14,6 +14,15 @@ import { NotifierService } from '../../core/notifier.service';
         <div class="alert-success shadow-pop">
           <svg lucideCircleCheck class="mt-0.5 shrink-0 text-success"></svg>
           <p class="flex-1">{{ notice.text }}</p>
+          @if (notice.action; as action) {
+            <button
+              type="button"
+              class="-my-2 btn-quiet font-semibold"
+              (click)="notifier.act(notice)"
+            >
+              {{ action.label }}
+            </button>
+          }
           <button type="button" class="-m-2 btn-icon size-9" (click)="notifier.dismiss(notice.id)">
             <svg lucideX></svg>
             <span class="sr-only">Fermer la notification</span>

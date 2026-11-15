@@ -103,4 +103,10 @@ describe('tiles of the day', () => {
     expect(doneNote(3, true)).toBe('3 faites');
     expect(doneNote(1, false)).toBe('1 fait');
   });
+
+  it('adds the stays late, kept apart from the count of the day', () => {
+    expect(doneNote(0, true, 11)).toBe('aucune faite · 11 en retard');
+    expect(doneNote(2, false, 1)).toBe('2 faits · 1 en retard');
+    expect(doneNote(2, false, 0)).toBe('2 faits');
+  });
 });
