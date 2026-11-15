@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   changeText,
+  comparisonBarsOf,
+  type DashboardMonth,
+  donutOf,
   doneText,
   monthText,
   percentText,
   pointsText,
+  progressOf,
   trendOf,
 } from './dashboard-model';
 
@@ -40,5 +44,35 @@ describe('texts', () => {
     expect(monthText('2026-11')).toBe('novembre 2026');
     expect(doneText({ total: 4, done: 3 }, true)).toBe('4, dont 3 faites');
     expect(doneText({ total: 1, done: 1 }, false)).toBe('1, dont 1 fait');
+  });
+});
+
+describe('charts', () => {
+  it('fills the ring with the rooms sold tonight', () => {
+    expect(donutOf(2, 85)).toEqual({ fraction: 2 / 85, free: 83 });
+    expect(donutOf(90, 85)).toEqual({ fraction: 1, free: 0 });
+    expect(donutOf(0, 0)).toEqual({ fraction: 0, free: 0 });
+  });
+
+  it('gives the width of a progress bar, 0 when there is nothing', () => {
+    expect(progressOf({ total: 4, done: 3 })).toBe(75);
+    expect(progressOf({ total: 0, done: 0 })).toBe(0);
+  });
+
+  it('scales each pair of bars on the higher of the two months', () => {
+    const month = (occupancyPct: number, revenueCents: number): DashboardMonth => ({
+      month: '2026-11',
+      roomNightsAvailable: 2550,
+      roomNightsSold: 0,
+      nightsRevenueCents: revenueCents,
+      feesCents: 0,
+      occupancyPct,
+      revenueCents,
+      averageRateCents: 0,
+    });
+    const bars = comparisonBarsOf(month(4.2, 1_406_260), month(0.3, 109_200));
+    expect(bars[0]).toEqual({ label: 'Occupation', now: 100, before: 7 });
+    expect(bars[1]).toEqual({ label: 'Chiffre d’affaires', now: 100, before: 8 });
+    expect(bars[3]).toEqual({ label: 'Nuits vendues', now: 0, before: 0 });
   });
 });
