@@ -78,7 +78,7 @@ const NO_TEXT: LocalizedText = { fr: '', en: '' };
               <li class="flex flex-col gap-2 rounded-lg border border-black/10 p-2">
                 <div class="relative">
                   <img
-                    class="aspect-[4/3] w-full rounded-md bg-black/5 object-cover"
+                    class="aspect-[4/3] w-full rounded-md bg-ink/5 object-cover"
                     loading="lazy"
                     sizes="(min-width: 1024px) 280px, (min-width: 640px) 45vw, 90vw"
                     [src]="smallest(photo)"

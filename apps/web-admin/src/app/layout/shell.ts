@@ -18,9 +18,11 @@ import {
   LucideLayoutDashboard,
   LucideLogOut,
   LucideMenu,
+  LucideMoon,
   LucidePanelLeftClose,
   LucidePanelLeftOpen,
   LucideSparkles,
+  LucideSun,
   LucideUsers,
   LucideWrench,
   LucideX,
@@ -28,6 +30,7 @@ import {
 import { filter, map } from 'rxjs';
 import { ROLE_LABELS } from '../core/auth/roles';
 import { SessionService } from '../core/auth/session.service';
+import { ThemeService } from '../core/theme/theme.service';
 import { NotifierService } from '../core/notifier.service';
 import { ZelligeStar } from '../shared/ui/zellige-star';
 
@@ -80,6 +83,8 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
     LucideX,
     LucidePanelLeftClose,
     LucidePanelLeftOpen,
+    LucideMoon,
+    LucideSun,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:keydown.escape)': 'closeDrawer()' },
@@ -167,6 +172,20 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
               <span class="block font-semibold">{{ user.firstName }} {{ user.lastName }}</span>
               <span class="block text-white/75">{{ roleLabel() }}</span>
             </p>
+            <button
+              type="button"
+              class="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-white/90 hover:bg-slate-nav-hover hover:text-white"
+              [attr.aria-pressed]="theme.theme() === 'dark'"
+              [attr.title]="collapsed() ? 'Mode sombre' : null"
+              (click)="theme.toggle()"
+            >
+              @if (theme.theme() === 'dark') {
+                <svg lucideMoon class="shrink-0"></svg>
+              } @else {
+                <svg lucideSun class="shrink-0"></svg>
+              }
+              <span [class]="{ 'lg:sr-only': collapsed() }">Mode sombre</span>
+            </button>
             <a
               routerLink="/mon-compte"
               routerLinkActive="bg-slate-nav-hover font-semibold"
@@ -209,7 +228,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
       </aside>
 
       <div class="flex min-w-0 flex-1 flex-col">
-        <header class="flex h-16 items-center gap-3 border-b border-line bg-white px-4 sm:px-6">
+        <header class="flex h-16 items-center gap-3 border-b border-line bg-surface px-4 sm:px-6">
           <button
             type="button"
             class="btn-icon lg:hidden"
@@ -233,6 +252,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
 })
 export class Shell {
   protected readonly session = inject(SessionService);
+  protected readonly theme = inject(ThemeService);
   private readonly notifier = inject(NotifierService);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);

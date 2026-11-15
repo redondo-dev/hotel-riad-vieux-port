@@ -294,8 +294,8 @@ export class FrontDeskPage {
   /** From the address: `?ouvrir=<reservation id>` opens its panel once the day is loaded. */
   readonly ouvrir = input<string | undefined>(undefined);
 
-  protected readonly activeTab = 'border-port bg-port text-white';
-  protected readonly idleTab = 'border-line bg-white text-ink';
+  protected readonly activeTab = 'border-port bg-port text-on-port';
+  protected readonly idleTab = 'border-line bg-surface text-ink';
 
   protected readonly today = signal(hotelToday(new Date()));
   protected readonly date = signal(this.today());
