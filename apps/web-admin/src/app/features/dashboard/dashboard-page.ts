@@ -297,8 +297,8 @@ const CHART_HEIGHT = 140;
                 {{ nowName() }} vs {{ previousName() }}
               </h2>
               <p class="dash-muted text-sm">
-                Toutes les nuits de {{ month(current.month.month) }}, passées et à venir,
-                comparées à {{ month(current.previousMonth.month) }} entier.
+                Toutes les nuits de {{ month(current.month.month) }}, passées et à venir, comparées
+                à {{ month(current.previousMonth.month) }} entier.
               </p>
             </div>
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -306,7 +306,9 @@ const CHART_HEIGHT = 140;
                 <div class="flex flex-col gap-1">
                   <p class="dash-muted text-sm">{{ tile.label }}</p>
                   <p class="text-xl font-bold">{{ tile.value }}</p>
-                  <p class="text-sm"><span [class]="badge(tile.trend)">{{ tile.change }}</span></p>
+                  <p class="text-sm">
+                    <span [class]="badge(tile.trend)">{{ tile.change }}</span>
+                  </p>
                   @if (tile.note; as note) {
                     <p class="dash-muted text-xs">{{ note }}</p>
                   }
