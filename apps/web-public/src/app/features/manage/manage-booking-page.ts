@@ -206,8 +206,8 @@ type PageState = ManageState | { kind: 'loading' } | { kind: 'none' };
               Vous avez perdu le lien ?
             </h2>
             <p class="mt-1 text-muted" i18n="@@manage.lostIntro">
-              Indiquez votre référence et l'e-mail de la réservation : nous vous envoyons un
-              nouveau lien, qui remplace les précédents.
+              Indiquez votre référence et l'e-mail de la réservation : nous vous envoyons un nouveau
+              lien, qui remplace les précédents.
             </p>
           </div>
           <div class="grid gap-5 sm:grid-cols-2">
