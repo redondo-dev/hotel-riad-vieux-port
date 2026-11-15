@@ -119,3 +119,31 @@ export function noShowFeeText(ratePlan: RatePlan): string {
     ? 'Tarif non remboursable : toutes les nuits restent dues.'
     : 'Tarif flexible : la première nuit de chaque chambre est due.';
 }
+
+/** The tiles of the day (step T-3): rooms still to give to the arrivals, and stays late. */
+export interface DayFigures {
+  unassigned: number;
+  lateArrivals: number;
+  lateDepartures: number;
+}
+
+export function dayFiguresOf(day: Pick<FrontDeskDay, 'arrivals' | 'departures'>): DayFigures {
+  const waiting = day.arrivals.items.filter((item) => item.status === 'confirmed');
+  return {
+    unassigned: waiting.reduce(
+      (count, item) => count + item.rooms.filter((line) => line.room === null).length,
+      0,
+    ),
+    lateArrivals: day.arrivals.items.filter((item) => item.late).length,
+    lateDepartures: day.departures.items.filter((item) => item.late).length,
+  };
+}
+
+/** « 3 faites », « aucune faite ». */
+export function doneNote(done: number, feminine: boolean): string {
+  const word = feminine ? 'faite' : 'fait';
+  if (done === 0) {
+    return feminine ? 'aucune faite' : 'aucun fait';
+  }
+  return `${done} ${word}${done > 1 ? 's' : ''}`;
+}

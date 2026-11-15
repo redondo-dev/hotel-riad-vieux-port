@@ -6,6 +6,7 @@ import {
   eventText,
   formatDateTime,
   type IncidentEvent,
+  incidentFiguresOf,
   placeOf,
   statusActions,
 } from './incident-model';
@@ -90,5 +91,18 @@ describe('texts', () => {
     );
     expect(eventText(event({ type: 'comment', comment: 'Joint changé.' }))).toBe('Commentaire');
     expect(eventText(event({ type: 'assignment' }))).toBe('Assignation modifiée');
+  });
+});
+
+describe('incidentFiguresOf', () => {
+  it('counts the incidents not closed by state, and the urgent ones', () => {
+    const figures = incidentFiguresOf([
+      { status: 'reported', priority: 'urgent' },
+      { status: 'reported', priority: 'normal' },
+      { status: 'in_progress', priority: 'urgent' },
+      { status: 'resolved', priority: 'low' },
+      { status: 'closed', priority: 'urgent' },
+    ]);
+    expect(figures).toEqual({ reported: 2, inProgress: 1, resolved: 1, urgent: 2 });
   });
 });

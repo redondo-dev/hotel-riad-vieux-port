@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import {
   LucideBed,
   LucideCircleAlert,
@@ -8,6 +7,7 @@ import {
   LucideWrench,
 } from '@lucide/angular';
 import { type Problem, toProblem } from '../../core/api/problem';
+import { StatTile } from '../../shared/ui/stat-tile';
 import { formatEuros } from '../reservations/reservation-model';
 import { DashboardApi } from './dashboard-api';
 import {
@@ -65,7 +65,7 @@ const CHART_HEIGHT = 140;
  */
 @Component({
   selector: 'adm-dashboard-page',
-  imports: [RouterLink, LucideBed, LucideCircleAlert, LucideLogIn, LucideLogOut, LucideWrench],
+  imports: [StatTile, LucideBed, LucideCircleAlert, LucideLogIn, LucideLogOut, LucideWrench],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     /* The colours of the theme (step T-2): dark or light; the tiles keep theirs. */
@@ -87,42 +87,6 @@ const CHART_HEIGHT = 140;
     }
     .dash-muted {
       color: var(--dash-muted);
-    }
-    .tile {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      border-radius: 0.875rem;
-      padding: 1.25rem;
-      color: #fff;
-      transition:
-        transform 0.15s ease,
-        box-shadow 0.15s ease;
-    }
-    a.tile:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 24px rgb(0 0 0 / 0.35);
-    }
-    .tile-icon {
-      width: 2.75rem;
-      height: 2.75rem;
-      flex-shrink: 0;
-      opacity: 0.9;
-    }
-    /* Shades darkened from the model, so that the text stays readable (WCAG AA). */
-    .tile-blue {
-      background: linear-gradient(135deg, #1f78c1, #1a5fae);
-    }
-    .tile-green {
-      background: linear-gradient(135deg, #16824a, #0f6b3c);
-    }
-    .tile-yellow {
-      background: linear-gradient(135deg, #ffcd3c, #f7b733);
-      color: #1c1a14;
-    }
-    .tile-orange {
-      background: linear-gradient(135deg, #c94a1a, #b3301f);
     }
     .bar-track {
       height: 0.625rem;
@@ -157,40 +121,41 @@ const CHART_HEIGHT = 140;
         <section class="flex flex-col gap-3" aria-labelledby="titre-soir">
           <h2 id="titre-soir" class="text-lg font-semibold">Ce soir</h2>
           <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div class="tile tile-blue">
-              <div>
-                <p class="text-3xl font-bold">{{ percent(current.today.occupancyPct) }}</p>
-                <p class="font-medium">Occupation</p>
-                <p class="text-sm opacity-90">{{ roomsText() }}</p>
-              </div>
-              <svg lucideBed class="tile-icon" aria-hidden="true"></svg>
-            </div>
-            <a routerLink="/aujourdhui" class="tile tile-green">
-              <div>
-                <p class="text-3xl font-bold">{{ current.today.arrivals.total }}</p>
-                <p class="font-medium">Arrivées du jour</p>
-                <p class="text-sm opacity-90">{{ arrivalsText() }}</p>
-              </div>
-              <svg lucideLogIn class="tile-icon" aria-hidden="true"></svg>
-            </a>
-            <a routerLink="/aujourdhui" class="tile tile-yellow">
-              <div>
-                <p class="text-3xl font-bold">{{ current.today.departures.total }}</p>
-                <p class="font-medium">Départs du jour</p>
-                <p class="text-sm">{{ departuresText() }}</p>
-              </div>
-              <svg lucideLogOut class="tile-icon" aria-hidden="true"></svg>
-            </a>
-            <a routerLink="/pannes" class="tile tile-orange">
-              <div>
-                <p class="text-3xl font-bold">{{ current.incidents.open }}</p>
-                <p class="font-medium">Pannes ouvertes</p>
-                <p class="text-sm opacity-90">
-                  {{ current.incidents.urgent > 0 ? urgentText() : 'Aucune urgente' }}
-                </p>
-              </div>
-              <svg lucideWrench class="tile-icon" aria-hidden="true"></svg>
-            </a>
+            <adm-stat-tile
+              tone="blue"
+              label="Occupation"
+              [value]="percent(current.today.occupancyPct)"
+              [note]="roomsText()"
+            >
+              <svg lucideBed></svg>
+            </adm-stat-tile>
+            <adm-stat-tile
+              tone="green"
+              label="Arrivées du jour"
+              link="/aujourdhui"
+              [value]="count(current.today.arrivals.total)"
+              [note]="arrivalsText()"
+            >
+              <svg lucideLogIn></svg>
+            </adm-stat-tile>
+            <adm-stat-tile
+              tone="yellow"
+              label="Départs du jour"
+              link="/aujourdhui"
+              [value]="count(current.today.departures.total)"
+              [note]="departuresText()"
+            >
+              <svg lucideLogOut></svg>
+            </adm-stat-tile>
+            <adm-stat-tile
+              tone="orange"
+              label="Pannes ouvertes"
+              link="/pannes"
+              [value]="count(current.incidents.open)"
+              [note]="current.incidents.urgent > 0 ? urgentText() : 'Aucune urgente'"
+            >
+              <svg lucideWrench></svg>
+            </adm-stat-tile>
           </div>
         </section>
 
@@ -534,6 +499,10 @@ export class DashboardPage {
 
   protected percent(value: number): string {
     return percentText(value);
+  }
+
+  protected count(value: number): string {
+    return String(value);
   }
 
   protected month(month: string): string {

@@ -200,6 +200,79 @@
     @apply flex items-start gap-3 rounded-lg border border-port/20 bg-info-pale p-4 text-sm text-ink;
   }
 
+  /* Coloured tiles at the top of the pages (step T-3): a figure, its label, an icon in a ring.
+     Shades darkened from the model so that the text stays readable (WCAG AA). */
+  .stat-tile {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-radius: 0.875rem;
+    padding: 1.25rem;
+    text-align: left;
+    color: #fff;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  a.stat-tile:hover,
+  button.stat-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgb(0 0 0 / 0.3);
+  }
+
+  /* The tile whose filter is applied */
+  button.stat-tile[aria-pressed='true'] {
+    box-shadow:
+      0 0 0 3px var(--color-mist),
+      0 0 0 5px var(--color-ink);
+  }
+
+  .stat-tile-icon {
+    display: flex;
+    width: 3rem;
+    height: 3rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.2);
+  }
+
+  .stat-tile-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .stat-tile-blue {
+    background: linear-gradient(135deg, #1f78c1, #1a5fae);
+  }
+
+  .stat-tile-green {
+    background: linear-gradient(135deg, #16824a, #0f6b3c);
+  }
+
+  .stat-tile-yellow {
+    background: linear-gradient(135deg, #ffcd3c, #f7b733);
+    color: #1c1a14;
+  }
+
+  .stat-tile-yellow .stat-tile-icon {
+    background: rgb(0 0 0 / 0.1);
+  }
+
+  .stat-tile-orange {
+    background: linear-gradient(135deg, #c94a1a, #b3301f);
+  }
+
+  /* The page open in the menu: a blue pill, as on the tiles */
+  .nav-active {
+    background-image: linear-gradient(135deg, #2f7fd6, #1a5fae);
+    color: #fff;
+  }
+
   /* Dialogs: centred card */
   .dialog-panel {
     @apply m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-surface p-0 text-ink shadow-dialog;

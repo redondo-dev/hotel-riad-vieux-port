@@ -9,9 +9,17 @@ import {
   viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { LucideCircleAlert, LucideX } from '@lucide/angular';
+import {
+  LucideBedDouble,
+  LucideCircleAlert,
+  LucideClock,
+  LucideLogIn,
+  LucideLogOut,
+  LucideX,
+} from '@lucide/angular';
 import { type Problem, toProblem } from '../../core/api/problem';
 import { NotifierService } from '../../core/notifier.service';
+import { StatTile } from '../../shared/ui/stat-tile';
 import { headcountText, hotelToday } from '../planning/planning-model';
 import {
   formatDay,
@@ -24,7 +32,9 @@ import {
   ACTION_LABELS,
   actionsFor,
   countText,
+  dayFiguresOf,
   dirtyText,
+  doneNote,
   type FrontDeskAction,
   type FrontDeskDay,
   type FrontDeskItem,
@@ -49,7 +59,16 @@ interface Opened {
  */
 @Component({
   selector: 'adm-front-desk-page',
-  imports: [RouterLink, LucideCircleAlert, LucideX],
+  imports: [
+    RouterLink,
+    StatTile,
+    LucideBedDouble,
+    LucideCircleAlert,
+    LucideClock,
+    LucideLogIn,
+    LucideLogOut,
+    LucideX,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
@@ -71,6 +90,51 @@ interface Opened {
         }
         <p class="ml-auto self-center text-sm text-muted first-letter:uppercase">{{ dayText() }}</p>
       </div>
+
+      @if (day(); as current) {
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <adm-stat-tile
+            tone="blue"
+            label="Chambres à attribuer"
+            [value]="count(figures().unassigned)"
+            note="aux arrivées attendues"
+            [clickable]="true"
+            (selected)="tab.set('arrivals')"
+          >
+            <svg lucideBedDouble></svg>
+          </adm-stat-tile>
+          <adm-stat-tile
+            tone="green"
+            label="Arrivées"
+            [value]="count(current.arrivals.total)"
+            [note]="doneOf(current.arrivals.done, true)"
+            [pressed]="tab() === 'arrivals'"
+            (selected)="tab.set('arrivals')"
+          >
+            <svg lucideLogIn></svg>
+          </adm-stat-tile>
+          <adm-stat-tile
+            tone="yellow"
+            label="Départs"
+            [value]="count(current.departures.total)"
+            [note]="doneOf(current.departures.done, false)"
+            [pressed]="tab() === 'departures'"
+            (selected)="tab.set('departures')"
+          >
+            <svg lucideLogOut></svg>
+          </adm-stat-tile>
+          <adm-stat-tile
+            tone="orange"
+            label="En retard"
+            [value]="count(figures().lateArrivals + figures().lateDepartures)"
+            [note]="lateNote()"
+            [clickable]="true"
+            (selected)="showLate()"
+          >
+            <svg lucideClock></svg>
+          </adm-stat-tile>
+        </div>
+      }
 
       <div class="flex gap-2" role="tablist" aria-label="Arrivées et départs">
         <button
@@ -324,6 +388,18 @@ export class FrontDeskPage {
       timeZone: 'UTC',
     });
   });
+  protected readonly figures = computed(() => {
+    const current = this.day();
+    return current === null
+      ? { unassigned: 0, lateArrivals: 0, lateDepartures: 0 }
+      : dayFiguresOf(current);
+  });
+  /** « 1 arrivée, 2 départs ». */
+  protected readonly lateNote = computed(() => {
+    const { lateArrivals, lateDepartures } = this.figures();
+    const arrivals = `${lateArrivals} arrivée${lateArrivals > 1 ? 's' : ''}`;
+    return `${arrivals}, ${lateDepartures} départ${lateDepartures > 1 ? 's' : ''}`;
+  });
   protected readonly arrivalsCount = computed(() => {
     const current = this.day();
     return current === null ? '…' : countText(current.arrivals);
@@ -375,6 +451,20 @@ export class FrontDeskPage {
 
   constructor() {
     void this.load();
+  }
+
+  protected count(value: number): string {
+    return String(value);
+  }
+
+  protected doneOf(done: number, feminine: boolean): string {
+    return doneNote(done, feminine);
+  }
+
+  /** The tab of the late stays: the arrivals first. */
+  protected showLate(): void {
+    const { lateArrivals, lateDepartures } = this.figures();
+    this.tab.set(lateArrivals === 0 && lateDepartures > 0 ? 'departures' : 'arrivals');
   }
 
   protected valueOf(event: Event): string {
