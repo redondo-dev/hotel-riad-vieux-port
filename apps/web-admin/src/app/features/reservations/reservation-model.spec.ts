@@ -5,6 +5,7 @@ import {
   canChangeStay,
   formatDifference,
   freeCancellationText,
+  guaranteeStateOf,
   guestsText,
   parseAges,
   paymentBadgesOf,
@@ -76,13 +77,45 @@ describe('texts', () => {
 
 describe('paymentBadgesOf', () => {
   it('adds « Carte en garantie » to the payment state when a card is saved at Stripe', () => {
-    expect(paymentBadgesOf({ paymentStatus: 'unpaid', cardGuarantee: true })).toEqual([
+    const guaranteed = {
+      status: 'confirmed',
+      paymentStatus: 'unpaid',
+      cardGuarantee: true,
+    } as const;
+    expect(paymentBadgesOf(guaranteed)).toEqual([
       { label: 'Non payé', className: 'badge-warning' },
       { label: 'Carte en garantie', className: 'badge-info' },
     ]);
-    expect(paymentBadgesOf({ paymentStatus: 'paid', cardGuarantee: false })).toEqual([
-      { label: 'Payé', className: 'badge-ok' },
-    ]);
+    const paid = { status: 'confirmed', paymentStatus: 'paid', cardGuarantee: false } as const;
+    expect(paymentBadgesOf(paid)).toEqual([{ label: 'Payé', className: 'badge-ok' }]);
+  });
+
+  it('drops « Carte en garantie » once the guarantee is lifted', () => {
+    const cancelled = {
+      status: 'cancelled',
+      paymentStatus: 'unpaid',
+      cardGuarantee: true,
+    } as const;
+    expect(paymentBadgesOf(cancelled)).toEqual([{ label: 'Non payé', className: 'badge-warning' }]);
+  });
+});
+
+describe('guaranteeStateOf', () => {
+  it('keeps the guarantee active until the stay, and for a no-show', () => {
+    for (const status of ['pending_payment', 'confirmed', 'checked_in', 'no_show'] as const) {
+      expect(guaranteeStateOf({ status, cardGuarantee: true })).toBe('active');
+    }
+  });
+
+  it('lifts it once cancelled, expired or the stay is over', () => {
+    for (const status of ['cancelled', 'expired', 'checked_out'] as const) {
+      expect(guaranteeStateOf({ status, cardGuarantee: true })).toBe('lifted');
+    }
+  });
+
+  it('has no guarantee without a card', () => {
+    expect(guaranteeStateOf({ status: 'confirmed', cardGuarantee: false })).toBe('none');
+    expect(guaranteeStateOf({ status: 'cancelled', cardGuarantee: false })).toBe('none');
   });
 });
 
