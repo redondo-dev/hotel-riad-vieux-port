@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   actionsFor,
   countText,
+  dayFiguresOf,
   dirtyText,
+  doneNote,
+  type FrontDeskItem,
   type FrontDeskRoom,
   type FrontDeskRoomState,
   roomCheck,
@@ -56,5 +59,48 @@ describe('texts', () => {
     expect(roomLineText(line(null))).toBe('Double standard · à attribuer');
     expect(dirtyText(['112'])).toBe('La chambre 112 est à nettoyer');
     expect(dirtyText(['112', '204'])).toBe('Les chambres 112, 204 sont à nettoyer');
+  });
+});
+
+describe('tiles of the day', () => {
+  function stay(changes: Partial<FrontDeskItem>): FrontDeskItem {
+    return {
+      id: 'r',
+      reference: 'ABCD2345',
+      status: 'confirmed',
+      version: 1,
+      ratePlan: 'flexible',
+      checkIn: '2034-05-10',
+      checkOut: '2034-05-12',
+      nights: 2,
+      totalCents: 21_000,
+      customerName: 'Martin Camille',
+      adults: 2,
+      children: 0,
+      customerMessage: null,
+      rooms: [line('112')],
+      late: false,
+      ...changes,
+    };
+  }
+
+  it('counts the rooms still to give and the stays late', () => {
+    const arrivals = [
+      stay({ rooms: [line(null), line(null)] }),
+      stay({ status: 'checked_in', rooms: [line(null)] }),
+      stay({ late: true }),
+    ];
+    const departures = [stay({ status: 'checked_in', late: true }), stay({ late: false })];
+    const day = {
+      arrivals: { total: 3, done: 1, items: arrivals },
+      departures: { total: 2, done: 0, items: departures },
+    };
+    expect(dayFiguresOf(day)).toEqual({ unassigned: 2, lateArrivals: 1, lateDepartures: 1 });
+  });
+
+  it('says how many are done', () => {
+    expect(doneNote(0, true)).toBe('aucune faite');
+    expect(doneNote(3, true)).toBe('3 faites');
+    expect(doneNote(1, false)).toBe('1 fait');
   });
 });

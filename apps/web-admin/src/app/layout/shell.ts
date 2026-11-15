@@ -10,18 +10,18 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import {
-  LucideBed,
-  LucideCalendarCheck,
-  LucideCalendarDays,
+  LucideBedDouble,
+  LucideBookOpenCheck,
   LucideCalendarRange,
   LucideCircleUserRound,
+  LucideConciergeBell,
   LucideLayoutDashboard,
   LucideLogOut,
   LucideMenu,
   LucideMoon,
   LucidePanelLeftClose,
   LucidePanelLeftOpen,
-  LucideSparkles,
+  LucideSprayCan,
   LucideSun,
   LucideUsers,
   LucideWrench,
@@ -70,11 +70,11 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
     RouterLinkActive,
     ZelligeStar,
     LucideLayoutDashboard,
-    LucideCalendarCheck,
-    LucideCalendarDays,
+    LucideConciergeBell,
+    LucideBookOpenCheck,
     LucideCalendarRange,
-    LucideBed,
-    LucideSparkles,
+    LucideBedDouble,
+    LucideSprayCan,
     LucideWrench,
     LucideUsers,
     LucideCircleUserRound,
@@ -127,7 +127,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
               <li>
                 <a
                   [routerLink]="item.path"
-                  routerLinkActive="bg-slate-nav-hover font-semibold"
+                  routerLinkActive="nav-active font-semibold"
                   ariaCurrentWhenActive="page"
                   class="flex h-11 items-center gap-3 rounded-lg px-3 text-white/90 hover:bg-slate-nav-hover hover:text-white"
                   [attr.title]="collapsed() ? item.label : null"
@@ -138,22 +138,22 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
                       <svg lucideLayoutDashboard class="shrink-0"></svg>
                     }
                     @case ('today') {
-                      <svg lucideCalendarCheck class="shrink-0"></svg>
+                      <svg lucideConciergeBell class="shrink-0"></svg>
                     }
                     @case ('reservations') {
-                      <svg lucideCalendarDays class="shrink-0"></svg>
+                      <svg lucideBookOpenCheck class="shrink-0"></svg>
                     }
                     @case ('planning') {
                       <svg lucideCalendarRange class="shrink-0"></svg>
                     }
                     @case ('housekeeping') {
-                      <svg lucideSparkles class="shrink-0"></svg>
+                      <svg lucideSprayCan class="shrink-0"></svg>
                     }
                     @case ('incidents') {
                       <svg lucideWrench class="shrink-0"></svg>
                     }
                     @case ('catalog') {
-                      <svg lucideBed class="shrink-0"></svg>
+                      <svg lucideBedDouble class="shrink-0"></svg>
                     }
                     @case ('users') {
                       <svg lucideUsers class="shrink-0"></svg>
@@ -188,7 +188,7 @@ function deepestHeading(route: ActivatedRouteSnapshot): string {
             </button>
             <a
               routerLink="/mon-compte"
-              routerLinkActive="bg-slate-nav-hover font-semibold"
+              routerLinkActive="nav-active font-semibold"
               ariaCurrentWhenActive="page"
               class="flex h-11 items-center gap-3 rounded-lg px-3 text-white/90 hover:bg-slate-nav-hover hover:text-white"
               [attr.title]="collapsed() ? 'Mon compte' : null"

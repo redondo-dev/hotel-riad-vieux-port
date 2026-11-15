@@ -10,14 +10,25 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { LucideCircleAlert, LucidePlus, LucideRefreshCw } from '@lucide/angular';
+import {
+  LucideCircleAlert,
+  LucideCircleCheck,
+  LucideMegaphone,
+  LucidePlus,
+  LucideRefreshCw,
+  LucideTriangleAlert,
+  LucideWrench,
+} from '@lucide/angular';
 import { fieldMessage, type Problem, toProblem } from '../../core/api/problem';
 import { NotifierService } from '../../core/notifier.service';
+import { StatTile, type TileTone } from '../../shared/ui/stat-tile';
 import { IncidentApi, type IncidentFilter } from './incident-api';
 import {
   assigneeText,
   formatDateTime,
   type Incident,
+  type IncidentFigures,
+  incidentFiguresOf,
   type IncidentPriority,
   type IncidentStatus,
   placeOf,
@@ -58,6 +69,28 @@ const STATUS_FILTERS: readonly { value: StatusFilter; label: string }[] = [
 
 const PRIORITIES: readonly IncidentPriority[] = ['urgent', 'normal', 'low'];
 
+/** A tile at the top of the page (step T-3) and the filters it applies. */
+interface Tile {
+  key: keyof IncidentFigures;
+  tone: TileTone;
+  label: string;
+  status: StatusFilter;
+  priority: IncidentPriority | null;
+}
+
+const TILES: readonly Tile[] = [
+  { key: 'reported', tone: 'blue', label: 'Signalées', status: 'reported', priority: null },
+  { key: 'inProgress', tone: 'green', label: 'En cours', status: 'in_progress', priority: null },
+  {
+    key: 'resolved',
+    tone: 'yellow',
+    label: 'Résolues à clôturer',
+    status: 'resolved',
+    priority: null,
+  },
+  { key: 'urgent', tone: 'orange', label: 'Urgentes', status: '', priority: 'urgent' },
+];
+
 /**
  * Incidents (UI/UX specification, section 5.H): the list, urgent ones first and marked in red,
  * with filters, and « Signaler une panne » for every staff member. A tap on an incident opens
@@ -66,7 +99,17 @@ const PRIORITIES: readonly IncidentPriority[] = ['urgent', 'normal', 'low'];
  */
 @Component({
   selector: 'adm-incidents-page',
-  imports: [RouterLink, LucidePlus, LucideRefreshCw, LucideCircleAlert],
+  imports: [
+    RouterLink,
+    StatTile,
+    LucidePlus,
+    LucideRefreshCw,
+    LucideCircleAlert,
+    LucideCircleCheck,
+    LucideMegaphone,
+    LucideTriangleAlert,
+    LucideWrench,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
@@ -81,6 +124,35 @@ const PRIORITIES: readonly IncidentPriority[] = ['urgent', 'normal', 'low'];
           Signaler une panne
         </button>
       </div>
+
+      @if (figures(); as totals) {
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          @for (tile of tiles; track tile.key) {
+            <adm-stat-tile
+              [tone]="tile.tone"
+              [label]="tile.label"
+              [value]="count(totals[tile.key])"
+              [pressed]="isApplied(tile)"
+              (selected)="applyTile(tile)"
+            >
+              @switch (tile.key) {
+                @case ('reported') {
+                  <svg lucideMegaphone></svg>
+                }
+                @case ('inProgress') {
+                  <svg lucideWrench></svg>
+                }
+                @case ('resolved') {
+                  <svg lucideCircleCheck></svg>
+                }
+                @case ('urgent') {
+                  <svg lucideTriangleAlert></svg>
+                }
+              }
+            </adm-stat-tile>
+          }
+        </div>
+      }
 
       <div class="flex flex-wrap items-end gap-3">
         <div class="flex flex-col gap-1.5">
@@ -284,6 +356,9 @@ export class IncidentsPage {
   private readonly reportDialog = viewChild.required<ElementRef<HTMLDialogElement>>('reportDialog');
 
   protected readonly statusFilters = STATUS_FILTERS;
+  protected readonly tiles = TILES;
+  /** The incidents not closed, whatever the filters; null when they could not be counted. */
+  protected readonly figures = signal<IncidentFigures | null>(null);
   protected readonly priorities = PRIORITIES;
 
   protected readonly incidents = signal<Incident[]>([]);
@@ -317,6 +392,7 @@ export class IncidentsPage {
   }
 
   protected async load(): Promise<void> {
+    void this.loadFigures();
     this.loading.set(true);
     this.problem.set(null);
     const status = this.statusFilter();
@@ -335,6 +411,38 @@ export class IncidentsPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** One call for every incident not closed, whatever the filters chosen. */
+  private async loadFigures(): Promise<void> {
+    try {
+      this.figures.set(incidentFiguresOf(await this.api.list({})));
+    } catch {
+      // The tiles are a help only: without them, the list stays usable.
+      this.figures.set(null);
+    }
+  }
+
+  /** The filters of the tile are the ones applied, and « only mine » is off. */
+  protected isApplied(tile: Tile): boolean {
+    return (
+      !this.mine() &&
+      this.statusFilter() === tile.status &&
+      this.priorityFilter() === tile.priority
+    );
+  }
+
+  /** A tap applies its filters; a second tap goes back to every incident not closed. */
+  protected applyTile(tile: Tile): void {
+    const applied = this.isApplied(tile);
+    this.mine.set(false);
+    this.statusFilter.set(applied ? '' : tile.status);
+    this.priorityFilter.set(applied ? null : tile.priority);
+    void this.load();
+  }
+
+  protected count(value: number): string {
+    return String(value);
   }
 
   protected statusLabel(status: IncidentStatus): string {

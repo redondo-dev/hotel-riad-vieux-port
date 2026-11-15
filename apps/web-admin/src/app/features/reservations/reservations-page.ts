@@ -1,13 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  LucideBedDouble,
+  LucideCalendarCheck,
   LucideChevronLeft,
   LucideChevronRight,
   LucideCircleAlert,
+  LucideHotel,
+  LucideHourglass,
   LucidePlus,
   LucideSearch,
 } from '@lucide/angular';
 import { type Problem, toProblem } from '../../core/api/problem';
+import { StatTile, type TileTone } from '../../shared/ui/stat-tile';
+import { hotelToday } from '../planning/planning-model';
 import { ReservationApi, type ReservationFilter } from './reservation-api';
 import {
   type Badge,
@@ -45,6 +51,54 @@ const SORTS: readonly { value: SortOrder; label: string }[] = [
 
 const EMPTY_FILTER: ReservationFilter = { sort: 'checkIn', page: 1 };
 
+type TileKey = 'confirmed' | 'inStay' | 'pending' | 'unassigned';
+
+/** A tile at the top of the page (step T-3): the filter it applies, its total counted. */
+interface Tile {
+  key: TileKey;
+  tone: TileTone;
+  label: string;
+  note: string;
+  filter: Partial<ReservationFilter>;
+}
+
+/**
+ * The guests in the hotel arrived before today: their filter asks the arrivals up to today
+ * (without it, the list looks at the arrivals from today only).
+ */
+function tilesOf(today: string): Tile[] {
+  return [
+    {
+      key: 'confirmed',
+      tone: 'blue',
+      label: 'Confirmées',
+      note: 'arrivées à venir',
+      filter: { status: 'confirmed' },
+    },
+    {
+      key: 'inStay',
+      tone: 'green',
+      label: 'En séjour',
+      note: 'clients à l’hôtel',
+      filter: { status: 'checked_in', arrivalTo: today },
+    },
+    {
+      key: 'pending',
+      tone: 'yellow',
+      label: 'En attente de paiement',
+      note: 'paiement en ligne en cours',
+      filter: { status: 'pending_payment' },
+    },
+    {
+      key: 'unassigned',
+      tone: 'orange',
+      label: 'Sans chambre attribuée',
+      note: 'arrivées à venir',
+      filter: { unassigned: true },
+    },
+  ];
+}
+
 /**
  * Reservations (UI/UX specification, section 5.D): search by reference, name or e-mail, filters
  * and sort, 25 per page; by default the arrivals from today. A table on a computer, cards on a
@@ -54,6 +108,11 @@ const EMPTY_FILTER: ReservationFilter = { sort: 'checkIn', page: 1 };
   selector: 'adm-reservations-page',
   imports: [
     RouterLink,
+    StatTile,
+    LucideBedDouble,
+    LucideCalendarCheck,
+    LucideHotel,
+    LucideHourglass,
     LucidePlus,
     LucideSearch,
     LucideCircleAlert,
@@ -67,6 +126,35 @@ const EMPTY_FILTER: ReservationFilter = { sort: 'checkIn', page: 1 };
         <svg lucidePlus></svg>
         Nouvelle réservation
       </a>
+      @if (counts(); as totals) {
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          @for (tile of tiles; track tile.key) {
+            <adm-stat-tile
+              [tone]="tile.tone"
+              [label]="tile.label"
+              [note]="tile.note"
+              [value]="count(totals[tile.key])"
+              [pressed]="isApplied(tile)"
+              (selected)="applyTile(tile)"
+            >
+              @switch (tile.key) {
+                @case ('confirmed') {
+                  <svg lucideCalendarCheck></svg>
+                }
+                @case ('inStay') {
+                  <svg lucideHotel></svg>
+                }
+                @case ('pending') {
+                  <svg lucideHourglass></svg>
+                }
+                @case ('unassigned') {
+                  <svg lucideBedDouble></svg>
+                }
+              }
+            </adm-stat-tile>
+          }
+        </div>
+      }
       <form
         class="card flex flex-col gap-3 p-4"
         role="search"
@@ -301,6 +389,10 @@ export class ReservationsPage {
   protected readonly loading = signal(true);
   protected readonly problem = signal<Problem | null>(null);
 
+  protected readonly tiles = tilesOf(hotelToday(new Date()));
+  /** The totals of the tiles; null while loading, or when they could not be counted. */
+  protected readonly counts = signal<Record<TileKey, number> | null>(null);
+
   protected readonly pageCount = computed(() => {
     const current = this.page();
     return current === null ? 0 : Math.ceil(current.total / current.pageSize);
@@ -326,6 +418,51 @@ export class ReservationsPage {
 
   constructor() {
     void this.load();
+    void this.loadCounts();
+  }
+
+  /** One call per tile, only its total read (25 lines at most each). */
+  protected async loadCounts(): Promise<void> {
+    try {
+      const totals = await Promise.all(
+        this.tiles.map(async (tile) => {
+          const page = await this.api.list({ ...EMPTY_FILTER, ...tile.filter });
+          return [tile.key, page.total] as const;
+        }),
+      );
+      this.counts.set(Object.fromEntries(totals) as Record<TileKey, number>);
+    } catch {
+      // The tiles are a help only: without them, the list stays usable.
+      this.counts.set(null);
+    }
+  }
+
+  /** The filter of the tile is the one applied, and nothing else. */
+  protected isApplied(tile: Tile): boolean {
+    const filter = this.filter();
+    return (
+      filter.q === undefined &&
+      filter.source === undefined &&
+      filter.arrivalFrom === undefined &&
+      filter.status === tile.filter.status &&
+      filter.arrivalTo === tile.filter.arrivalTo &&
+      (filter.unassigned === true) === (tile.filter.unassigned === true)
+    );
+  }
+
+  /** A tap applies its filter; a second tap goes back to the list by default. */
+  protected applyTile(tile: Tile): void {
+    if (this.isApplied(tile)) {
+      this.clear();
+      return;
+    }
+    this.query.set('');
+    this.filter.set({ ...EMPTY_FILTER, sort: this.filter().sort, ...tile.filter });
+    void this.load();
+  }
+
+  protected count(value: number): string {
+    return String(value);
   }
 
   protected async load(): Promise<void> {

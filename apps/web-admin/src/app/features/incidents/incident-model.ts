@@ -174,3 +174,25 @@ export function eventText(event: IncidentEvent): string {
   const to = event.toStatus === null ? '' : STATUS_LABELS[event.toStatus].toLowerCase();
   return `Passée « ${to} »`;
 }
+
+/** The tiles of the incidents (step T-3): those not closed, by state, and the urgent ones. */
+export interface IncidentFigures {
+  reported: number;
+  inProgress: number;
+  resolved: number;
+  urgent: number;
+}
+
+export function incidentFiguresOf(
+  incidents: readonly Pick<Incident, 'status' | 'priority'>[],
+): IncidentFigures {
+  const open = incidents.filter((incident) => incident.status !== 'closed');
+  const count = (status: IncidentStatus): number =>
+    open.filter((incident) => incident.status === status).length;
+  return {
+    reported: count('reported'),
+    inProgress: count('in_progress'),
+    resolved: count('resolved'),
+    urgent: open.filter((incident) => incident.priority === 'urgent').length,
+  };
+}
