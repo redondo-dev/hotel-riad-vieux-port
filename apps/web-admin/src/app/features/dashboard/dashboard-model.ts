@@ -97,3 +97,53 @@ export function doneText(count: DoneCount, feminine: boolean): string {
   const done = feminine ? 'faite' : 'fait';
   return `${count.total}, dont ${count.done} ${done}${count.done > 1 ? 's' : ''}`;
 }
+
+// --- Charts (step T-1): pure numbers, drawn in SVG by the page ---
+
+/** The ring of tonight: the part of the rooms sold (0 to 1) and the rooms still free. */
+export function donutOf(sold: number, inService: number): { fraction: number; free: number } {
+  if (inService <= 0) {
+    return { fraction: 0, free: 0 };
+  }
+  const fraction = Math.min(Math.max(sold / inService, 0), 1);
+  return { fraction, free: Math.max(inService - sold, 0) };
+}
+
+/** Width of a progress bar, in %: what is done out of the total; 0 when there is nothing. */
+export function progressOf(count: DoneCount): number {
+  if (count.total <= 0) {
+    return 0;
+  }
+  return Math.round((Math.min(count.done, count.total) / count.total) * 100);
+}
+
+/** One figure of the month and the month before, as heights in % of the higher of the two. */
+export interface ComparisonBar {
+  label: string;
+  now: number;
+  before: number;
+}
+
+function heightsOf(now: number, before: number): { now: number; before: number } {
+  const highest = Math.max(now, before);
+  if (highest <= 0) {
+    return { now: 0, before: 0 };
+  }
+  return {
+    now: Math.round((Math.max(now, 0) / highest) * 100),
+    before: Math.round((Math.max(before, 0) / highest) * 100),
+  };
+}
+
+/**
+ * The bars « month before / month »: each pair is scaled on its own, euros and percents being
+ * never compared on one axis.
+ */
+export function comparisonBarsOf(now: DashboardMonth, before: DashboardMonth): ComparisonBar[] {
+  return [
+    { label: 'Occupation', ...heightsOf(now.occupancyPct, before.occupancyPct) },
+    { label: 'Chiffre d’affaires', ...heightsOf(now.revenueCents, before.revenueCents) },
+    { label: 'Prix moyen', ...heightsOf(now.averageRateCents, before.averageRateCents) },
+    { label: 'Nuits vendues', ...heightsOf(now.roomNightsSold, before.roomNightsSold) },
+  ];
+}
