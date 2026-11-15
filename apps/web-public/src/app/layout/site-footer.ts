@@ -4,7 +4,7 @@ import { LucideAngularModule, Mail, MapPin, Phone } from 'lucide-angular';
 import { CatalogService } from '../core/data/catalog.service';
 import { formatTime } from '../core/i18n/format';
 import { injectLocale, OTHER_LANGUAGE } from '../core/i18n/locale';
-import { TERMS_PATH } from '../core/navigation';
+import { MANAGE_PATH, TERMS_PATH } from '../core/navigation';
 import { Logo } from '../shared/ui/logo';
 import { ZelligeStar } from '../shared/ui/zellige-star';
 
@@ -86,6 +86,14 @@ import { ZelligeStar } from '../shared/ui/zellige-star';
                 >Conditions de vente et d'annulation</a
               >
             </p>
+            <p>
+              <a
+                class="font-medium text-white hover:underline"
+                [routerLink]="manageLink"
+                i18n="@@footer.manageBooking"
+                >Gérer ma réservation</a
+              >
+            </p>
           </div>
           <a
             class="inline-flex min-h-11 items-center font-medium text-white hover:underline"
@@ -108,6 +116,7 @@ export class SiteFooter {
   protected readonly otherLanguage = OTHER_LANGUAGE[this.locale];
   protected readonly icons = { phone: Phone, mail: Mail, mapPin: MapPin };
   protected readonly termsLink = ['/', TERMS_PATH];
+  protected readonly manageLink = ['/', MANAGE_PATH];
 
   protected readonly checkInText = $localize`:@@footer.checkIn:Arrivée à partir de ${formatTime(this.hotel.checkInFrom, this.locale)}:time:`;
   protected readonly checkOutText = $localize`:@@footer.checkOut:Départ avant ${formatTime(this.hotel.checkOutBefore, this.locale)}:time:`;

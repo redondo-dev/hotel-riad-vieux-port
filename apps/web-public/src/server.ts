@@ -14,6 +14,8 @@ import {
   availabilityQueryOf,
   BOOKING_RELAY_PATH,
   BookingRelay,
+  linkRequestFrom,
+  manageAccessFrom,
   type RelayAnswer,
 } from './booking-relay';
 import { CatalogSource } from './catalog-source';
@@ -159,6 +161,21 @@ app.get(`${BOOKING_RELAY_PATH}/checkout/:sessionId`, (req, res, next) => {
 
 app.post(`${BOOKING_RELAY_PATH}/:reference/abandon`, (req, res, next) => {
   relayed(booking.abandon(req.params['reference'] ?? '', req.ip), res, next);
+});
+
+// « Gérer ma réservation » (step M): the token in the body, never in an address.
+const manageBody = express.json({ limit: '2kb' });
+
+app.post(`${BOOKING_RELAY_PATH}/manage`, manageBody, (req, res, next) => {
+  relayed(booking.manage(manageAccessFrom(req.body), req.ip), res, next);
+});
+
+app.post(`${BOOKING_RELAY_PATH}/manage/cancel`, manageBody, (req, res, next) => {
+  relayed(booking.cancel(manageAccessFrom(req.body), req.ip), res, next);
+});
+
+app.post(`${BOOKING_RELAY_PATH}/manage/link`, manageBody, (req, res, next) => {
+  relayed(booking.requestLink(linkRequestFrom(req.body), req.ip), res, next);
 });
 
 app.use(

@@ -11,7 +11,8 @@
 export const AVAILABILITY_RELAY_PATH = '/reservation-api/availability';
 /**
  * POST …: a booking (JSON, header Idempotency-Key); GET …/checkout/<id>: for the confirmation
- * page; POST …/<reference>/abandon: « ← Retour » on the payment page.
+ * page; POST …/<reference>/abandon: « ← Retour » on the payment page; POST …/manage,
+ * …/manage/cancel and …/manage/link: « Gérer ma réservation » (step M).
  */
 export const BOOKING_RELAY_PATH = '/reservation-api/bookings';
 
@@ -43,12 +44,53 @@ const GUESTS = /^[0-9_-]{1,60}$/;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9_-]{16,128}$/;
 const CHECKOUT_SESSION = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
 const REFERENCE = /^[A-HJ-NP-Z2-9]{8}$/;
+const MANAGE_TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
 /** Answers of the API passed on as they are; anything else becomes 502. */
-const PASSED_STATUSES = new Set([200, 201, 400, 404, 409, 429, 503]);
+const PASSED_STATUSES = new Set([200, 201, 202, 400, 404, 409, 429, 503]);
 
 const INVALID: RelayAnswer = { status: 400, body: { code: 'VALIDATION_FAILED' } };
 const UNREACHABLE: RelayAnswer = { status: 502, body: { code: 'API_UNREACHABLE' } };
+
+/** The secret link of « Gérer ma réservation », read by the page after the #. */
+export interface ManageAccess {
+  reference: string;
+  token: string;
+}
+
+/** Only the reference and the token, of the expected shape; null otherwise. */
+export function manageAccessFrom(body: unknown): ManageAccess | null {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+  const { reference, token } = body as Record<string, unknown>;
+  if (
+    typeof reference !== 'string' ||
+    typeof token !== 'string' ||
+    !REFERENCE.test(reference) ||
+    !MANAGE_TOKEN.test(token)
+  ) {
+    return null;
+  }
+  return { reference, token };
+}
+
+/** « Lien perdu »: a reference and an e-mail, nothing else (the API checks them again). */
+export function linkRequestFrom(body: unknown): { reference: string; email: string } | null {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+  const { reference, email } = body as Record<string, unknown>;
+  if (
+    typeof reference !== 'string' ||
+    typeof email !== 'string' ||
+    reference.length > 20 ||
+    email.length > 254
+  ) {
+    return null;
+  }
+  return { reference, email };
+}
 
 /** The query of the site, or null when a parameter is missing or of an unexpected shape. */
 export function availabilityQueryOf(read: (name: string) => unknown): AvailabilityQuery | null {
@@ -152,5 +194,45 @@ export class BookingRelay {
       return Promise.resolve(INVALID);
     }
     return this.#call(`/bookings/${reference}/abandon`, visitorIp, { method: 'POST' });
+  }
+
+  /** « Gérer ma réservation »: the booking of a secret link; the token travels in the body. */
+  manage(access: ManageAccess | null, visitorIp: string | undefined): Promise<RelayAnswer> {
+    return this.#manage('/bookings/manage', access, visitorIp);
+  }
+
+  /** Cancelled at no cost, when the rate allows it (the API decides). */
+  cancel(access: ManageAccess | null, visitorIp: string | undefined): Promise<RelayAnswer> {
+    return this.#manage('/bookings/manage/cancel', access, visitorIp);
+  }
+
+  /** « Lien perdu »: always the same answer of the API (202). */
+  requestLink(
+    request: { reference: string; email: string } | null,
+    visitorIp: string | undefined,
+  ): Promise<RelayAnswer> {
+    if (request === null) {
+      return Promise.resolve(INVALID);
+    }
+    return this.#call('/bookings/manage/link', visitorIp, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+  }
+
+  #manage(
+    path: string,
+    access: ManageAccess | null,
+    visitorIp: string | undefined,
+  ): Promise<RelayAnswer> {
+    if (access === null) {
+      return Promise.resolve(INVALID);
+    }
+    return this.#call(path, visitorIp, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(access),
+    });
   }
 }
