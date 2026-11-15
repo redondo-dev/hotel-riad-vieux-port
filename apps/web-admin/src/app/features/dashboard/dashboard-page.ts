@@ -58,26 +58,27 @@ const CHART_BASE = 160;
 const CHART_HEIGHT = 140;
 
 /**
- * The dashboard of the management (UI/UX specification, D-9), in its dark look (step T-1, on
- * this page only for now): tonight in four coloured tiles, the ring of the rooms sold, the
- * arrivals and departures done, and the month compared with the whole month before. The charts
- * are plain SVG, each with a text read by screen readers.
+ * The dashboard of the management (UI/UX specification, D-9), in its new look (step T-1) with
+ * the colours of the theme (step T-2): tonight in four coloured tiles, the ring of the rooms
+ * sold, the arrivals and departures done, and the month compared with the whole month before.
+ * The charts are plain SVG, each with a text read by screen readers.
  */
 @Component({
   selector: 'adm-dashboard-page',
   imports: [RouterLink, LucideBed, LucideCircleAlert, LucideLogIn, LucideLogOut, LucideWrench],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
+    /* The colours of the theme (step T-2): dark or light; the tiles keep theirs. */
     .dash {
-      --dash-bg: #1b1a2e;
-      --dash-card: #25243d;
-      --dash-line: #37365a;
-      --dash-muted: #b4b2d4;
+      --dash-bg: var(--color-mist);
+      --dash-card: var(--color-surface);
+      --dash-line: var(--color-line);
+      --dash-muted: var(--color-muted);
       --dash-blue: #4f8df7;
-      --dash-before: #7a78a8;
+      --dash-before: var(--color-field);
       border-radius: 1rem;
       background: var(--dash-bg);
-      color: #fff;
+      color: var(--color-ink);
     }
     .dash-card {
       border: 1px solid var(--dash-line);
@@ -229,7 +230,7 @@ const CHART_HEIGHT = 140;
                   x="70"
                   y="68"
                   text-anchor="middle"
-                  fill="#fff"
+                  style="fill: var(--color-ink)"
                   font-size="22"
                   font-weight="700"
                 >

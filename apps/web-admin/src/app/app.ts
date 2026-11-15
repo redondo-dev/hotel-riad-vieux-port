@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ThemeService } from './core/theme/theme.service';
 import { Notices } from './shared/ui/notices';
 
 @Component({
@@ -11,4 +12,9 @@ import { Notices } from './shared/ui/notices';
     <adm-notices />
   `,
 })
-export class App {}
+export class App {
+  constructor() {
+    // The theme chosen applies to every page, those of the login included.
+    inject(ThemeService);
+  }
+}

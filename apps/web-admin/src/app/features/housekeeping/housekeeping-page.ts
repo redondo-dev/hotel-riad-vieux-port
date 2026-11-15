@@ -65,7 +65,7 @@ import {
 
         <div class="flex flex-wrap items-end gap-3">
           <div
-            class="flex rounded-lg border border-field bg-white p-1"
+            class="flex rounded-lg border border-field bg-surface p-1"
             role="group"
             aria-label="Chambres affichées"
           >
@@ -73,7 +73,7 @@ import {
               type="button"
               class="h-9 rounded-md px-4 font-medium"
               [class.bg-port]="toDoOnly()"
-              [class.text-white]="toDoOnly()"
+              [class.text-on-port]="toDoOnly()"
               [attr.aria-pressed]="toDoOnly()"
               (click)="toDoOnly.set(true)"
             >
@@ -83,7 +83,7 @@ import {
               type="button"
               class="h-9 rounded-md px-4 font-medium"
               [class.bg-port]="!toDoOnly()"
-              [class.text-white]="!toDoOnly()"
+              [class.text-on-port]="!toDoOnly()"
               [attr.aria-pressed]="!toDoOnly()"
               (click)="toDoOnly.set(false)"
             >

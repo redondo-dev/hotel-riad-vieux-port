@@ -1,6 +1,7 @@
 /*
  * Design system of the staff tool (UI/UX specification, sections 3 and 5): the same colours and
- * text font as the public site, denser, on a light grey background with a dark slate sidebar.
+ * text font as the public site, denser, on a light grey background with a dark slate sidebar;
+ * a dark theme with the same names (step T-2).
  */
 @import 'tailwindcss';
 
@@ -24,9 +25,13 @@
   --color-danger: #b3261e;
   --color-danger-pale: #f8e1df;
   --color-info-pale: #dce8f2;
+  /* Text on a port-blue background, and the background of the dangerous buttons */
+  --color-on-port: #fff;
+  --color-danger-strong: #b3261e;
 
   /* Staff tool */
   --color-mist: #f4f5f7;
+  --color-surface: #fff;
   --color-slate-nav: #1f2a36;
   --color-slate-nav-hover: #2b3846;
 
@@ -35,6 +40,40 @@
   --shadow-card: 0 1px 2px rgb(28 36 48 / 0.08);
   --shadow-pop: 0 4px 12px rgb(28 36 48 / 0.1);
   --shadow-dialog: 0 12px 32px rgb(28 36 48 / 0.16);
+}
+
+/*
+ * Dark theme (step T-2): the same names, other values, on <html data-theme="dark">. Every text
+ * colour meets WCAG AA contrast on the cards (#25243d) and on the page (#1b1a2e). The blue
+ * becomes light: the text on it becomes dark (--color-on-port).
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-port: #8cb8ff;
+  --color-port-dark: #6ea8ff;
+  --color-on-port: #10182b;
+  --color-clay: #e8956f;
+  --color-clay-dark: #d97b52;
+  --color-riad: #7cc2ab;
+  --color-ink: #eceaf7;
+  --color-muted: #b4b2d4;
+  --color-line: #37365a;
+  --color-field: #7a78a8;
+  --color-success: #6fd69b;
+  --color-success-pale: #173b2a;
+  --color-warning: #f4b740;
+  --color-warning-pale: #3d2e0e;
+  --color-danger: #ff8a80;
+  --color-danger-pale: #45201f;
+  --color-danger-strong: #b9372b;
+  --color-info-pale: #1f3557;
+  --color-mist: #1b1a2e;
+  --color-surface: #25243d;
+  --color-slate-nav: #141325;
+  --color-slate-nav-hover: #24233c;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-pop: 0 4px 12px rgb(0 0 0 / 0.45);
+  --shadow-dialog: 0 12px 32px rgb(0 0 0 / 0.6);
 }
 
 @layer base {
@@ -63,7 +102,7 @@
 
 @layer components {
   .skip-link {
-    @apply absolute top-3 left-3 z-50 -translate-y-24 rounded-lg bg-port px-4 py-3 font-semibold text-white focus:translate-y-0;
+    @apply absolute top-3 left-3 z-50 -translate-y-24 rounded-lg bg-port px-4 py-3 font-semibold text-on-port focus:translate-y-0;
   }
 
   .page-title {
@@ -71,20 +110,20 @@
   }
 
   .card {
-    @apply rounded-xl border border-line bg-white shadow-card;
+    @apply rounded-xl border border-line bg-surface shadow-card;
   }
 
   /* Buttons: 44 px minimum touch target */
   .btn-primary {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-port px-5 font-semibold text-white transition-colors hover:bg-port-dark disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-port px-5 font-semibold text-on-port transition-colors hover:bg-port-dark disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-secondary {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-port bg-white px-4 font-semibold text-port transition-colors hover:bg-info-pale disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-port bg-surface px-4 font-semibold text-port transition-colors hover:bg-info-pale disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-danger {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-danger px-5 font-semibold text-white transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-danger-strong px-5 font-semibold text-white transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-quiet {
@@ -92,7 +131,7 @@
   }
 
   .btn-icon {
-    @apply inline-flex size-11 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-black/5;
+    @apply inline-flex size-11 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-ink/10;
   }
 
   /* Form fields: visible label above, error linked to the field */
@@ -101,7 +140,7 @@
   }
 
   .field-control {
-    @apply h-11 w-full rounded-md border border-field bg-white px-3 text-base text-ink aria-invalid:border-2 aria-invalid:border-danger;
+    @apply h-11 w-full rounded-md border border-field bg-surface px-3 text-base text-ink aria-invalid:border-2 aria-invalid:border-danger;
   }
 
   .field-error {
@@ -163,16 +202,16 @@
 
   /* Dialogs: centred card */
   .dialog-panel {
-    @apply m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-white p-0 text-ink shadow-dialog;
+    @apply m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-surface p-0 text-ink shadow-dialog;
   }
 
   .dialog-panel::backdrop {
-    background: rgb(28 36 48 / 0.55);
+    background: rgb(10 10 20 / 0.6);
   }
 
   /* Side panel of the planning: 480 px on the right, the whole screen on a phone */
   .side-panel {
-    @apply fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-[480px] max-w-full overflow-y-auto bg-white p-0 text-ink shadow-dialog;
+    @apply fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-[480px] max-w-full overflow-y-auto bg-surface p-0 text-ink shadow-dialog;
   }
 
   .side-panel::backdrop {

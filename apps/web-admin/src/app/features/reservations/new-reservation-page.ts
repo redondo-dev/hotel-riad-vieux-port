@@ -248,7 +248,7 @@ function hotelDay(offset: number): string {
         <section class="card flex flex-col gap-4 p-5" aria-labelledby="titre-client">
           <h2 id="titre-client" class="text-lg font-semibold">2. Client</h2>
           <div
-            class="flex w-fit rounded-lg border border-field bg-white p-1"
+            class="flex w-fit rounded-lg border border-field bg-surface p-1"
             role="group"
             aria-label="Client"
           >
@@ -256,7 +256,7 @@ function hotelDay(offset: number): string {
               type="button"
               class="h-9 rounded-md px-4 font-medium"
               [class.bg-port]="customerMode() === 'existing'"
-              [class.text-white]="customerMode() === 'existing'"
+              [class.text-on-port]="customerMode() === 'existing'"
               [attr.aria-pressed]="customerMode() === 'existing'"
               (click)="customerMode.set('existing')"
             >
@@ -266,7 +266,7 @@ function hotelDay(offset: number): string {
               type="button"
               class="h-9 rounded-md px-4 font-medium"
               [class.bg-port]="customerMode() === 'new'"
-              [class.text-white]="customerMode() === 'new'"
+              [class.text-on-port]="customerMode() === 'new'"
               [attr.aria-pressed]="customerMode() === 'new'"
               (click)="customerMode.set('new')"
             >

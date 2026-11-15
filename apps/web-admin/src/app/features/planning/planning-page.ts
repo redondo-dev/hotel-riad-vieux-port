@@ -162,10 +162,12 @@ const TO_ASSIGN = 'À attribuer';
         <div class="card max-h-[calc(100dvh-12rem)] overflow-auto max-lg:hidden">
           <div class="min-w-[60rem]">
             <div
-              class="sticky top-0 z-30 grid border-b border-line bg-white"
+              class="sticky top-0 z-30 grid border-b border-line bg-surface"
               [style.grid-template-columns]="columns"
             >
-              <div class="sticky left-0 z-20 bg-white px-3 py-2 text-sm font-semibold">Chambre</div>
+              <div class="sticky left-0 z-20 bg-surface px-3 py-2 text-sm font-semibold">
+                Chambre
+              </div>
               @for (day of days(); track day) {
                 <div
                   class="border-l border-line py-1 text-center text-xs"
@@ -186,7 +188,7 @@ const TO_ASSIGN = 'À attribuer';
               @for (row of category.rows; track row.key) {
                 <div class="grid border-t border-line" [style.grid-template-columns]="columns">
                   <div
-                    class="sticky left-0 z-10 row-start-1 bg-white px-3 py-2 text-sm font-medium"
+                    class="sticky left-0 z-10 row-start-1 bg-surface px-3 py-2 text-sm font-medium"
                     [class.text-muted]="row.inactive"
                     [class.italic]="row.title === toAssign"
                     style="grid-column: 1"
