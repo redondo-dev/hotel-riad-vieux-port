@@ -17,6 +17,12 @@ export const CONFIRMATION_PATH = $localize`:@@route.bookingConfirmation:confirma
 /** `/fr/conditions-de-vente`: conditions of sale and cancellation. */
 export const TERMS_PATH = $localize`:@@route.terms:conditions-de-vente`;
 
+/** `/fr/mentions-legales`, `/en/legal-notice` (step L-1). */
+export const LEGAL_PATH = $localize`:@@route.legal:mentions-legales`;
+
+/** `/fr/confidentialite`, `/en/privacy`: privacy policy (step L-1). */
+export const PRIVACY_PATH = $localize`:@@route.privacy:confidentialite`;
+
 /**
  * `/fr/gerer-ma-reservation`, `/en/manage-my-booking`: « Gérer ma réservation » (step M). The
  * same as MANAGE_BOOKING_PATHS of packages/shared, written by the API in the e-mails.
