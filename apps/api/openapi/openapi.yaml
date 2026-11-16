@@ -1627,6 +1627,56 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}/guarantee-charge:
+    post:
+      operationId: chargeGuaranteeCard
+      summary: Débiter la carte de garantie
+      description: |
+        Direction seule (étape D-1). Débite, client absent, la carte enregistrée chez Stripe des
+        frais encore dus d'une réservation annulée ou non présentée : le montant vient de l'API
+        (`guaranteeChargeCents`), jamais de la requête. Une clé d'idempotence évite tout double
+        débit. Carte refusée ou validation 3-D Secure exigée : la tentative est enregistrée et
+        la réponse est 402 `CARD_CHARGE_FAILED`, avec la raison.
+      tags: [Réservations]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '201':
+          description: La réservation, avec le débit dans `payments`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '402': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+  /admin/reservations/{id}/payments/{paymentId}/refund:
+    post:
+      operationId: refundPayment
+      summary: Rembourser un paiement en ligne
+      description: |
+        Direction seule (étape D-1). Rembourse en totalité un paiement en ligne reçu et pas
+        encore remboursé (`refundable`), y compris un paiement arrivé après l'expiration de la
+        réservation. 409 `NOT_REFUNDABLE` sinon ; 409 `REFUND_FAILED` si Stripe le refuse.
+      tags: [Réservations]
+      security: [{ staffSession: [], csrfToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: paymentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '201':
+          description: La réservation, avec le remboursement dans `payments`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
   /admin/reservations/{id}/rooms/{lineId}/free-rooms:
     get:
       operationId: listFreeRooms
@@ -2520,6 +2570,8 @@ components:
         - customer
         - rooms
         - charges
+        - payments
+        - guaranteeChargeCents
       properties:
         id: { type: string, format: uuid }
         reference: { type: string }
@@ -2596,6 +2648,47 @@ components:
               unitPriceCents: { type: integer }
               vatRate: { type: number }
               totalCents: { type: integer }
+        payments:
+          type: array
+          description: Paiements et remboursements, du plus ancien au plus récent (étape D-1).
+          items: { $ref: '#/components/schemas/Payment' }
+        guaranteeChargeCents:
+          type: integer
+          description: |
+            Montant que la direction peut débiter maintenant sur la carte de garantie : frais
+            enregistrés moins ce que l'hôtel garde déjà. 0 si le débit est impossible.
+    Payment:
+      type: object
+      description: Jamais les identifiants Stripe.
+      required:
+        [
+          id,
+          kind,
+          method,
+          status,
+          amountCents,
+          refundedPaymentId,
+          receivedAt,
+          createdAt,
+          refundable,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [payment, refund] }
+        method:
+          type: string
+          enum: [card_online, card_terminal, cash, bank_transfer, holiday_voucher]
+        status: { type: string, enum: [pending, succeeded, failed, cancelled] }
+        amountCents: { type: integer, minimum: 1, description: Toujours positif. }
+        refundedPaymentId:
+          type: [string, 'null']
+          format: uuid
+          description: Le paiement que ce remboursement rend ; null pour un paiement.
+        receivedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        refundable:
+          type: boolean
+          description: Paiement en ligne reçu et pas encore remboursé (direction seule).
     CategoryAdmin:
       type: object
       required:

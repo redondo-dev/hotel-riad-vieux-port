@@ -286,6 +286,23 @@ Saisie par le personnel, liste et détail ; détail dans `openapi/openapi.yaml`.
 | Version      | Les trois actions exigent `If-Match` (428, 412), comme la modification                                     |
 | Droits       | Direction et réception ; journal `reservation.checked_in`, `checked_out`, `no_show`                        |
 
+### Débit de la carte de garantie et remboursements
+
+| Sujet        | Règle                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| Débit        | `POST …/guarantee-charge` : réservation annulée ou non présentée, carte enregistrée, frais encore dus |
+| Montant      | Calculé par l'API (`guaranteeChargeCents`) : frais enregistrés moins ce que l'hôtel garde déjà        |
+| Refus        | Carte refusée ou 3-D Secure exigé : tentative enregistrée, 402 `CARD_CHARGE_FAILED` avec la raison    |
+| Rembourser   | `POST …/payments/{paymentId}/refund` : paiement en ligne reçu, en totalité, une seule fois            |
+| Idempotence  | Clé comptée sur les tentatives : un double clic ou un nouvel essai ne débite jamais deux fois         |
+| Sans réponse | Stripe muet : rien d'enregistré, 503 `PAYMENT_UNAVAILABLE` ; sans clé Stripe : 503                    |
+| Droits       | Direction seule ; journal `guarantee_charged`, `guarantee_charge_failed`, `refunded`                  |
+
+Tests : `stripe-cards.spec.ts` lit les réponses de Stripe ; `guarantee-payments.spec.ts` utilise
+un faux service de paiement, Stripe n'est jamais appelé. Essai en mode test, carte enregistrée
+puis débitée : `4242 4242 4242 4242` (accepté), `4000 0000 0000 0341` (refusé au débit),
+`4000 0027 6000 3184` (3-D Secure exigé).
+
 ## Tableau de bord (`/api/v1/admin/dashboard`)
 
 | Sujet      | Règle                                                                                    |
