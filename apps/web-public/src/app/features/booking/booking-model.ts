@@ -42,3 +42,11 @@ export function choiceOf(
   }
   return { offer, rate: plan, totalCents: priceOf(offer, plan) };
 }
+
+/**
+ * The free cancellation of the flexible rate is already over when the stay is booked (arrival
+ * within the hours of the deadline): the first night is due at once if cancelled (step L-2).
+ */
+export function cancellationDeadlinePassed(deadline: string, now: Date): boolean {
+  return Date.parse(deadline) <= now.getTime();
+}

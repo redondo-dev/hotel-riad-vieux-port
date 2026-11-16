@@ -96,6 +96,8 @@ export class OfferCard {
   readonly roomCount = input.required<number>();
   /** End of the free cancellation, already written for the visitor; null if unknown. */
   readonly deadline = input<string | null>(null);
+  /** The deadline is already past: cancelling costs the first night (step L-2). */
+  readonly deadlinePassed = input(false);
   readonly discountPercent = input.required<number>();
   /** The search, as in the address, to carry on to the choice page. */
   readonly searchParams = input.required<Record<string, string>>();
@@ -139,10 +141,13 @@ export class OfferCard {
       ];
     }
     const deadline = this.deadline();
-    return [
-      deadline === null
+    const cancel = this.deadlinePassed()
+      ? $localize`:@@offer.flexible.firstNightDue:Annulation : la première nuit est due`
+      : deadline === null
         ? $localize`:@@offer.flexible.cancel:Annulation gratuite`
-        : $localize`:@@offer.flexible.cancelUntil:Annulation gratuite jusqu'au ${deadline}:date:`,
+        : $localize`:@@offer.flexible.cancelUntil:Annulation gratuite jusqu'au ${deadline}:date:`;
+    return [
+      cancel,
       $localize`:@@offer.flexible.guarantee:Rien à payer maintenant : carte demandée en garantie`,
     ];
   }

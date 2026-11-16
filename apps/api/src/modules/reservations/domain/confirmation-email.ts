@@ -70,6 +70,8 @@ const WORDS = {
     freeCancellation:
       'Annulation gratuite jusqu’au {date} (heure de Marseille). Au-delà, les conditions de ' +
       'vente s’appliquent.',
+    firstNightDue:
+      'Le délai d’annulation gratuite est passé : en cas d’annulation, la première nuit est due.',
     noCancellation: 'Ce tarif n’est ni annulable ni remboursable.',
     questions:
       'Pour toute question, appelez la réception au {phone} ou écrivez à {email}, en ' +
@@ -106,6 +108,8 @@ const WORDS = {
     freeCancellation:
       'Free cancellation until {date} (Marseille time). After that, the terms and conditions ' +
       'of sale apply.',
+    firstNightDue:
+      'The free cancellation deadline has passed: if you cancel, the first night is due.',
     noCancellation: 'This rate can be neither cancelled nor refunded.',
     questions:
       'For any question, call the reception on {phone} or write to {email}, giving your ' +
@@ -217,27 +221,35 @@ function summaryOf(data: ConfirmationEmailData, words: Words): [string, string][
   return lines;
 }
 
-/** The sentences after the summary: guarantee and cancellation. */
-function conditionsOf(data: ConfirmationEmailData, words: Words): string[] {
+/**
+ * The sentences after the summary: guarantee and cancellation. A stay booked within the hours of
+ * the deadline has no free cancellation left: the e-mail says so (step L-2).
+ */
+function conditionsOf(data: ConfirmationEmailData, words: Words, now: Date): string[] {
   const sentences: string[] = [];
   if (data.cardGuarantee) {
     sentences.push(words.guarantee);
   }
   if (data.ratePlan === 'flexible' && data.freeCancellationUntil !== null) {
-    const date = instantOf(data.freeCancellationUntil, words);
-    sentences.push(fill(words.freeCancellation, { date }));
+    if (data.freeCancellationUntil.getTime() <= now.getTime()) {
+      sentences.push(words.firstNightDue);
+    } else {
+      const date = instantOf(data.freeCancellationUntil, words);
+      sentences.push(fill(words.freeCancellation, { date }));
+    }
   } else if (data.ratePlan === 'non_refundable') {
     sentences.push(words.noCancellation);
   }
   return sentences;
 }
 
-export function confirmationEmail(data: ConfirmationEmailData): ConfirmationEmail {
+/** `now`: the instant of the sending, to tell whether the free cancellation is still open. */
+export function confirmationEmail(data: ConfirmationEmailData, now: Date): ConfirmationEmail {
   const words = WORDS[data.language];
   const subject = `${fill(words.subject, { reference: data.reference })} · ${data.hotel.name}`;
   const hello = fill(words.hello, { name: data.firstName });
   const summary = summaryOf(data, words);
-  const conditions = conditionsOf(data, words);
+  const conditions = conditionsOf(data, words, now);
   const questions = fill(words.questions, {
     phone: phoneOf(data.hotel.phone, data.language),
     email: data.hotel.email,

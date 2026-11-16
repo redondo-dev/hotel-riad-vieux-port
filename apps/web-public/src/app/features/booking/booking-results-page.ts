@@ -7,6 +7,7 @@ import { injectLocale } from '../../core/i18n/locale';
 import { SEARCH_ANCHOR } from '../../core/navigation';
 import { Notice } from '../../shared/ui/notice';
 import { StaySearch } from '../../shared/ui/stay-search/stay-search';
+import { cancellationDeadlinePassed } from './booking-model';
 import type { SearchPageData } from './booking-route';
 import { OfferCard } from './offer-card';
 import { SearchSummary } from './search-summary';
@@ -74,6 +75,7 @@ import { SearchSummary } from './search-summary';
                   [nights]="nights()"
                   [roomCount]="roomCount()"
                   [deadline]="deadline()"
+                  [deadlinePassed]="deadlinePassed()"
                   [discountPercent]="discountPercent"
                   [searchParams]="searchParams()"
                 />
@@ -147,6 +149,13 @@ export class BookingResultsPage {
   protected readonly searchParams = computed(() => {
     const criteria = this.search().criteria;
     return criteria === null ? {} : toSearchQueryParams(criteria);
+  });
+
+  /** Booked within the hours of the deadline: no free cancellation left (step L-2). */
+  protected readonly deadlinePassed = computed(() => {
+    const result = this.search().result;
+    const instant = result?.kind === 'found' ? result.availability.freeCancellationUntil : null;
+    return instant !== null && cancellationDeadlinePassed(instant, new Date());
   });
 
   /** « 10 mai à 15:00 », at the hotel's time. */
