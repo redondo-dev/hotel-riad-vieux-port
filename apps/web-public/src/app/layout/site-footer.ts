@@ -4,13 +4,13 @@ import { LucideAngularModule, Mail, MapPin, Phone } from 'lucide-angular';
 import { CatalogService } from '../core/data/catalog.service';
 import { formatTime } from '../core/i18n/format';
 import { injectLocale, OTHER_LANGUAGE } from '../core/i18n/locale';
-import { MANAGE_PATH, TERMS_PATH } from '../core/navigation';
+import { LEGAL_PATH, MANAGE_PATH, PRIVACY_PATH, TERMS_PATH } from '../core/navigation';
 import { Logo } from '../shared/ui/logo';
 import { ZelligeStar } from '../shared/ui/zellige-star';
 
 /**
- * Legal links (legal notice, terms of sale, privacy) will be added with their pages,
- * as for the navigation: no link to a page that does not exist yet.
+ * Contact, hours and the legal links: terms of sale, legal notice and privacy (step L-1),
+ * « Gérer ma réservation » and the other language.
  */
 @Component({
   selector: 'rvp-site-footer',
@@ -86,6 +86,20 @@ import { ZelligeStar } from '../shared/ui/zellige-star';
                 >Conditions de vente et d'annulation</a
               >
             </p>
+            <p class="flex flex-wrap gap-x-4">
+              <a
+                class="font-medium text-white hover:underline"
+                [routerLink]="legalLink"
+                i18n="@@footer.legal"
+                >Mentions légales</a
+              >
+              <a
+                class="font-medium text-white hover:underline"
+                [routerLink]="privacyLink"
+                i18n="@@footer.privacy"
+                >Confidentialité</a
+              >
+            </p>
             <p>
               <a
                 class="font-medium text-white hover:underline"
@@ -117,6 +131,8 @@ export class SiteFooter {
   protected readonly icons = { phone: Phone, mail: Mail, mapPin: MapPin };
   protected readonly termsLink = ['/', TERMS_PATH];
   protected readonly manageLink = ['/', MANAGE_PATH];
+  protected readonly legalLink = ['/', LEGAL_PATH];
+  protected readonly privacyLink = ['/', PRIVACY_PATH];
 
   protected readonly checkInText = $localize`:@@footer.checkIn:Arrivée à partir de ${formatTime(this.hotel.checkInFrom, this.locale)}:time:`;
   protected readonly checkOutText = $localize`:@@footer.checkOut:Départ avant ${formatTime(this.hotel.checkOutBefore, this.locale)}:time:`;

@@ -5,7 +5,9 @@ import {
   BOOKING_PATH,
   CHOICE_PATH,
   CONFIRMATION_PATH,
+  LEGAL_PATH,
   MANAGE_PATH,
+  PRIVACY_PATH,
   ROOMS_PATH,
   TERMS_PATH,
 } from './core/navigation';
@@ -64,6 +66,25 @@ export const routes: Routes = [
         $localize`:@@terms.metaDescription:Tarifs, annulation, non-présentation, paiement et taxe de séjour de l'Hôtel Riad Vieux-Port, à Marseille.`,
     },
     loadComponent: () => import('./features/legal/terms-page').then((m) => m.TermsPage),
+  },
+  {
+    path: LEGAL_PATH,
+    title: $localize`:@@title.legal:Mentions légales · Hôtel Riad Vieux-Port`,
+    resolve: {
+      [PAGE_DESCRIPTION]: () =>
+        $localize`:@@legal.metaDescription:Éditeur, auteur, hébergement et crédits photos du site de l'Hôtel Riad Vieux-Port, hôtel fictif à Marseille.`,
+    },
+    loadComponent: () =>
+      import('./features/legal/legal-notice-page').then((m) => m.LegalNoticePage),
+  },
+  {
+    path: PRIVACY_PATH,
+    title: $localize`:@@title.privacy:Politique de confidentialité · Hôtel Riad Vieux-Port`,
+    resolve: {
+      [PAGE_DESCRIPTION]: () =>
+        $localize`:@@privacy.metaDescription:Données personnelles des clients de l'Hôtel Riad Vieux-Port : ce qui est collecté, pourquoi, pour combien de temps, et vos droits.`,
+    },
+    loadComponent: () => import('./features/legal/privacy-page').then((m) => m.PrivacyPage),
   },
   {
     // Private page (secret link after the #, read in the browser only): no description, never
