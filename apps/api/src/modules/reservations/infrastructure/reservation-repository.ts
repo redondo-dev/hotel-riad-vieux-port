@@ -1,4 +1,11 @@
 import { QueryTypes, type Sequelize, type Transaction } from 'sequelize';
+import {
+  guaranteeChargeCents,
+  isRefundable,
+  type PaymentKind,
+  type PaymentMethod,
+  type PaymentRecordStatus,
+} from '../domain/guarantee-rules.ts';
 import type { PricedCategory } from '../domain/quote.ts';
 import type {
   PaymentStatus,
@@ -7,6 +14,7 @@ import type {
   ReservationSource,
   ReservationStatus,
 } from '../domain/reservation-rules.ts';
+import { readPayments } from './guarantee-repository.ts';
 
 /**
  * Reservations, their rooms, nights and charges, their customers and the idempotency keys of
@@ -126,6 +134,21 @@ export interface ChargeView {
   totalCents: number;
 }
 
+/** A payment or a refund, as the staff sees it; never the identifiers of Stripe (step D-1). */
+export interface PaymentView {
+  id: string;
+  kind: PaymentKind;
+  method: PaymentMethod;
+  status: PaymentRecordStatus;
+  amountCents: number;
+  /** The payment a refund gives back; null for a payment. */
+  refundedPaymentId: string | null;
+  receivedAt: Date | null;
+  createdAt: Date;
+  /** A payment made online, received and not refunded yet: the management may refund it. */
+  refundable: boolean;
+}
+
 export interface ReservationDetail {
   id: string;
   reference: string;
@@ -153,6 +176,10 @@ export interface ReservationDetail {
   customer: CustomerView;
   rooms: ReservationRoomView[];
   charges: ChargeView[];
+  /** Payments and refunds, the oldest first (step D-1). */
+  payments: PaymentView[];
+  /** What the saved card may be charged now, by the management; 0 when it may not (D-1). */
+  guaranteeChargeCents: number;
 }
 
 export interface ReservationSummary {
@@ -1048,6 +1075,7 @@ export class ReservationRepository {
       [id],
       transaction,
     );
+    const payments = await readPayments(this.#sequelize, id, transaction);
     return {
       id: row.id,
       reference: row.reference,
@@ -1108,6 +1136,23 @@ export class ReservationRepository {
         quantity: Number(charge.quantity),
         vatRate: Number(charge.vatRate),
       })),
+      payments: payments.map((payment) => ({
+        id: payment.id,
+        kind: payment.kind,
+        method: payment.method,
+        status: payment.status,
+        amountCents: payment.amountCents,
+        refundedPaymentId: payment.refundedPaymentId,
+        receivedAt: payment.receivedAt,
+        createdAt: payment.createdAt,
+        refundable: isRefundable(payment, payments),
+      })),
+      guaranteeChargeCents: guaranteeChargeCents({
+        status: row.status,
+        cardGuarantee: row.cardGuarantee,
+        feeCents: row.cancellationFeeCents,
+        payments,
+      }),
     };
   }
 

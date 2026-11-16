@@ -21,7 +21,9 @@ import { requireStaff } from './modules/identity/http/guards.ts';
 import { identityRouter } from './modules/identity/http/identity-routes.ts';
 import { UserRepository } from './modules/identity/infrastructure/user-repository.ts';
 import { AvailabilityService } from './modules/reservations/application/availability-service.ts';
+import type { CardGateway } from './modules/reservations/application/card-gateway.ts';
 import { FrontDesk } from './modules/reservations/application/front-desk.ts';
+import { GuaranteePayments } from './modules/reservations/application/guarantee-payments.ts';
 import { PlanningService } from './modules/reservations/application/planning-service.ts';
 import { ManageBooking } from './modules/reservations/application/manage-booking.ts';
 import type { ManageLinkRequests } from './modules/reservations/application/manage-link-requests.ts';
@@ -37,6 +39,7 @@ import { ReservationChanges } from './modules/reservations/application/reservati
 import { ReservationService } from './modules/reservations/application/reservation-service.ts';
 import { availabilityRouter } from './modules/reservations/http/availability-routes.ts';
 import { frontDeskRouter } from './modules/reservations/http/front-desk-routes.ts';
+import { guaranteePaymentRouter } from './modules/reservations/http/guarantee-payment-routes.ts';
 import { manageBookingRouter } from './modules/reservations/http/manage-booking-routes.ts';
 import { paymentWebhookRouter } from './modules/reservations/http/payment-webhook-routes.ts';
 import { planningRouter } from './modules/reservations/http/planning-routes.ts';
@@ -110,6 +113,11 @@ export interface AdminDependencies {
   today?: () => string;
   /** Current instant (cancellation deadlines); the tests fix it. Default: the real clock. */
   now?: () => Date;
+  /**
+   * Stripe for the management (step D-1), or a fake in the tests; without it, the charges of
+   * the saved card and the refunds answer 503.
+   */
+  cards?: CardGateway;
 }
 
 /**
@@ -150,6 +158,12 @@ function adminRouter(deps: AdminDependencies, logger: Logger): Router {
   const now = deps.now ?? (() => new Date());
   const changes = new ReservationChanges(deps.sequelize, today, now);
   router.use(reservationChangeRouter(changes, staff));
+  const guarantee = new GuaranteePayments({
+    sequelize: deps.sequelize,
+    cards: deps.cards,
+    log: paymentLogOf(logger),
+  });
+  router.use(guaranteePaymentRouter(guarantee, staff));
   router.use(planningRouter(new PlanningService(deps.sequelize), staff));
   router.use(frontDeskRouter(new FrontDesk(deps.sequelize, today), staff, today));
   router.use(dashboardRouter(new DashboardService(deps.sequelize, today), staff, today));

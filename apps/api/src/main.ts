@@ -11,12 +11,14 @@ import { createApp, paymentLogOf } from './app.ts';
 import { describeDatabase } from './config/database-url.ts';
 import { DEFAULT_ADMIN_APP_URL, DEFAULT_PUBLIC_SITE_URL, loadEnv } from './config/env.ts';
 import { OnlinePayments } from './modules/reservations/application/online-payments.ts';
+import type { CardGateway } from './modules/reservations/application/card-gateway.ts';
 import type { PaymentEventReader } from './modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from './modules/reservations/application/payment-gateway.ts';
 import { CancellationEmails } from './modules/reservations/application/cancellation-emails.ts';
 import { ConfirmationEmails } from './modules/reservations/application/confirmation-emails.ts';
 import { ManageLinkRequests } from './modules/reservations/application/manage-link-requests.ts';
 import { UnpaidExpiry } from './modules/reservations/application/unpaid-expiry.ts';
+import { stripeCards } from './modules/reservations/infrastructure/stripe-cards.ts';
 import { stripeEvents } from './modules/reservations/infrastructure/stripe-events.ts';
 import {
   stripeClient,
@@ -93,12 +95,20 @@ function createPayments(): { payments?: PaymentGateway; paymentEvents?: PaymentE
   };
 }
 
+/** Charges of the saved card and refunds, by the management (step D-1). */
+function createCards(): CardGateway | undefined {
+  return env.STRIPE_SECRET_KEY === undefined
+    ? undefined
+    : stripeCards(stripeClient(env.STRIPE_SECRET_KEY));
+}
+
 const sequelize = createSequelize(env.DATABASE_URL);
 // Required in production by the configuration check (loadEnv).
 const storage = localFileStorage(env.STORAGE_DIR ?? DEFAULT_STORAGE_DIR);
 const sessionPool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 5 });
 const mailer = createMailer();
 const paymentServices = createPayments();
+const cards = createCards();
 /** The public site, for the links « Gérer ma réservation » written in the e-mails (step M). */
 const site = {
   url: env.PUBLIC_SITE_URL ?? DEFAULT_PUBLIC_SITE_URL,
@@ -120,6 +130,7 @@ const app = createApp({
     mailer,
     storage,
     adminAppUrl: env.ADMIN_APP_URL ?? DEFAULT_ADMIN_APP_URL,
+    ...(cards === undefined ? {} : { cards }),
   },
   public: {
     sequelize,

@@ -7,6 +7,7 @@ import { QueryTypes, type Sequelize } from 'sequelize';
 import request from 'supertest';
 import { API_PREFIX, createApp } from '../../src/app.ts';
 import type { Role } from '../../src/modules/identity/domain/identity-rules.ts';
+import type { CardGateway } from '../../src/modules/reservations/application/card-gateway.ts';
 import type { ManageLinkRequests } from '../../src/modules/reservations/application/manage-link-requests.ts';
 import type { PaymentEventReader } from '../../src/modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from '../../src/modules/reservations/application/payment-gateway.ts';
@@ -38,6 +39,8 @@ export interface AppOptions {
   paymentEvents?: PaymentEventReader;
   /** « Lien perdu » of « Gérer ma réservation », with a fake sending service. */
   manageLinks?: ManageLinkRequests;
+  /** A fake payment service for the management (step D-1): charges and refunds. */
+  cards?: CardGateway;
 }
 
 export interface TestStaff {
@@ -86,6 +89,7 @@ export class IdentityHarness {
         storage: this.storage,
         ...(options.today === undefined ? {} : { today: options.today }),
         ...(options.now === undefined ? {} : { now: options.now }),
+        ...(options.cards === undefined ? {} : { cards: options.cards }),
       },
       public: {
         sequelize: this.sequelize,
