@@ -21,6 +21,8 @@ import {
   canAssignRoom,
   canCancel,
   canChangeStay,
+  canChargeGuarantee,
+  canRefund,
   type CancellationQuote,
   type ChangePreview,
   type Charge,
@@ -31,6 +33,7 @@ import {
   formatEuros,
   freeCancellationText,
   type FreeRoom,
+  GUARANTEE_CHARGEABLE_HELP,
   GUARANTEE_HELP,
   GUARANTEE_LIFTED_HELP,
   guaranteeStateOf,
@@ -38,7 +41,11 @@ import {
   isManagement,
   type Night,
   parseAges,
+  type Payment,
+  PAYMENT_RECORD_LABELS,
   paymentBadgesOf,
+  paymentLineOf,
+  paymentRecordBadge,
   RATE_PLAN_LABELS,
   type ReservationDetail,
   type ReservationRoom,
@@ -129,7 +136,7 @@ const CLOSED_STATUSES = new Set(['cancelled', 'expired', 'no_show']);
               <p class="text-sm text-muted">{{ guaranteeHelp }}</p>
             }
             @case ('lifted') {
-              <p class="text-sm text-muted">{{ guaranteeLiftedHelp }}</p>
+              <p class="text-sm text-muted">{{ liftedHelp() }}</p>
             }
           }
           @if (deskActions().length > 0) {
@@ -237,6 +244,39 @@ const CLOSED_STATUSES = new Set(['cancelled', 'expired', 'no_show']);
             </dd>
           </dl>
           <p class="text-sm text-muted">{{ cancellationText() }}</p>
+        </section>
+
+        <section class="card flex flex-col gap-3 p-5" aria-labelledby="titre-paiements">
+          <h3 id="titre-paiements" class="font-semibold">Paiements</h3>
+          @if (current.payments.length === 0) {
+            <p class="text-sm text-muted">Aucun paiement enregistré.</p>
+          } @else {
+            <ul class="flex flex-col divide-y divide-line text-sm">
+              @for (payment of current.payments; track payment.id) {
+                <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                  <span class="text-muted">{{ paymentDate(payment) }}</span>
+                  <span>{{ paymentLine(payment).label }}</span>
+                  <span [class]="paymentBadge(payment)">{{ paymentStatusLabel(payment) }}</span>
+                  <span class="ml-auto font-semibold">{{ paymentLine(payment).amount }}</span>
+                  @if (refundAllowed(payment)) {
+                    <button type="button" class="btn-quiet" (click)="askRefund(payment)">
+                      Rembourser
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+          @if (chargeAllowed()) {
+            <div class="flex flex-wrap items-center gap-3">
+              <button type="button" class="btn-primary" (click)="askCharge()">
+                Débiter la carte ({{ euros(current.guaranteeChargeCents) }})
+              </button>
+              <p class="text-sm text-muted">
+                Frais dus, débités sur la carte enregistrée en garantie, client absent.
+              </p>
+            </div>
+          }
         </section>
 
         <section class="card flex flex-col gap-3 p-5" aria-labelledby="titre-notes">
@@ -549,6 +589,44 @@ const CLOSED_STATUSES = new Set(['cancelled', 'expired', 'no_show']);
           </div>
         </form>
       </dialog>
+
+      <!-- Charge of the saved card, or refund: confirmed first (step D-2) -->
+      <dialog
+        #paymentDialog
+        class="dialog-panel"
+        aria-labelledby="titre-paiement"
+        (close)="paymentProblem.set(null)"
+      >
+        @if (paymentAction(); as action) {
+          <div class="flex flex-col gap-4 p-6">
+            <h2 id="titre-paiement" class="text-lg font-semibold">
+              {{ action.kind === 'charge' ? 'Débiter la carte ?' : 'Rembourser ce paiement ?' }}
+            </h2>
+            @if (paymentProblem(); as error) {
+              <div class="alert-error" role="alert">
+                <svg lucideCircleAlert class="mt-0.5 shrink-0 text-danger"></svg>
+                <p>
+                  <span class="font-semibold">{{ error.title }}.</span> {{ error.detail }}
+                </p>
+              </div>
+            }
+            <p>{{ paymentQuestion(action) }}</p>
+            <div class="flex flex-wrap justify-end gap-3">
+              <button type="button" class="btn-quiet" (click)="paymentDialog.close()">
+                Retour
+              </button>
+              <button
+                type="button"
+                class="btn-primary"
+                [disabled]="saving()"
+                (click)="confirmPayment(action)"
+              >
+                {{ action.kind === 'charge' ? 'Débiter' : 'Rembourser' }}
+              </button>
+            </div>
+          </div>
+        }
+      </dialog>
     } @else {
       <p class="text-muted" role="status">Chargement de la réservation…</p>
     }
@@ -561,6 +639,7 @@ export class ReservationPage implements OnInit {
   private readonly changeDialog = viewChild<ElementRef<HTMLDialogElement>>('changeDialog');
   private readonly roomDialog = viewChild<ElementRef<HTMLDialogElement>>('roomDialog');
   private readonly cancelDialog = viewChild<ElementRef<HTMLDialogElement>>('cancelDialog');
+  private readonly paymentDialog = viewChild<ElementRef<HTMLDialogElement>>('paymentDialog');
 
   /** From the address /reservations/:id. */
   readonly id = input.required<string>();
@@ -616,7 +695,12 @@ export class ReservationPage implements OnInit {
     return current === null ? [] : paymentBadgesOf(current);
   });
   protected readonly guaranteeHelp = GUARANTEE_HELP;
-  protected readonly guaranteeLiftedHelp = GUARANTEE_LIFTED_HELP;
+  /** Guarantee lifted: but fees still due may be charged on the card kept (step D-2). */
+  protected readonly liftedHelp = computed(() =>
+    (this.reservation()?.guaranteeChargeCents ?? 0) > 0
+      ? GUARANTEE_CHARGEABLE_HELP
+      : GUARANTEE_LIFTED_HELP,
+  );
   protected readonly guaranteeState = computed(() => {
     const current = this.reservation();
     return current === null ? 'none' : guaranteeStateOf(current);
@@ -993,4 +1077,86 @@ export class ReservationPage implements OnInit {
   protected deskLabel(action: FrontDeskAction): string {
     return ACTION_LABELS[action];
   }
+
+  // --- Payments (step D-2) ---
+
+  protected readonly paymentAction = signal<PaymentAction | null>(null);
+  protected readonly paymentProblem = signal<Problem | null>(null);
+  protected readonly chargeAllowed = computed(() => {
+    const current = this.reservation();
+    return current !== null && canChargeGuarantee(current, this.role());
+  });
+
+  protected refundAllowed(payment: Payment): boolean {
+    return canRefund(payment, this.role());
+  }
+
+  protected paymentLine(payment: Payment): { label: string; amount: string } {
+    return paymentLineOf(payment);
+  }
+
+  protected paymentBadge(payment: Payment): string {
+    return paymentRecordBadge(payment.status);
+  }
+
+  protected paymentStatusLabel(payment: Payment): string {
+    return PAYMENT_RECORD_LABELS[payment.status];
+  }
+
+  protected paymentDate(payment: Payment): string {
+    return formatDateTime(payment.receivedAt ?? payment.createdAt);
+  }
+
+  protected paymentQuestion(action: PaymentAction): string {
+    const current = this.reservation();
+    if (action.kind === 'refund') {
+      const amount = formatEuros(action.payment.amountCents);
+      return `${amount} seront rendus au client sur sa carte, en totalité. Ce n’est pas annulable.`;
+    }
+    const amount = formatEuros(current?.guaranteeChargeCents ?? 0);
+    return `${amount} seront débités maintenant sur la carte enregistrée en garantie.`;
+  }
+
+  protected askCharge(): void {
+    this.paymentAction.set({ kind: 'charge' });
+    this.paymentProblem.set(null);
+    this.paymentDialog()?.nativeElement.showModal();
+  }
+
+  protected askRefund(payment: Payment): void {
+    this.paymentAction.set({ kind: 'refund', payment });
+    this.paymentProblem.set(null);
+    this.paymentDialog()?.nativeElement.showModal();
+  }
+
+  /**
+   * A card refused is recorded by the API before its answer: the reservation is read again, so
+   * that the attempt refused shows in the list.
+   */
+  protected async confirmPayment(action: PaymentAction): Promise<void> {
+    const current = this.reservation();
+    if (current === null) {
+      return;
+    }
+    this.saving.set(true);
+    this.paymentProblem.set(null);
+    try {
+      const updated =
+        action.kind === 'charge'
+          ? await this.api.chargeGuarantee(current.id)
+          : await this.api.refundPayment(current.id, action.payment.id);
+      this.reservation.set(updated);
+      this.paymentDialog()?.nativeElement.close();
+      const done = action.kind === 'charge' ? 'carte débitée' : 'paiement remboursé';
+      this.notifier.success(`${updated.reference} : ${done}.`);
+    } catch (error) {
+      this.paymentProblem.set(toProblem(error));
+      await this.load();
+    } finally {
+      this.saving.set(false);
+    }
+  }
 }
+
+/** What the dialog of the payments confirms. */
+type PaymentAction = { kind: 'charge' } | { kind: 'refund'; payment: Payment };

@@ -145,6 +145,19 @@ export class ReservationApi {
     );
   }
 
+  /** Management only (step D-2): the amount comes from the API, never from the browser. */
+  chargeGuarantee(id: string): Promise<ReservationDetail> {
+    return firstValueFrom(
+      this.http.post<ReservationDetail>(`${this.base}/${id}/guarantee-charge`, {}),
+    );
+  }
+
+  /** Management only: the whole payment, made online, given back. */
+  refundPayment(id: string, paymentId: string): Promise<ReservationDetail> {
+    const url = `${this.base}/${id}/payments/${paymentId}/refund`;
+    return firstValueFrom(this.http.post<ReservationDetail>(url, {}));
+  }
+
   async freeRooms(id: string, lineId: string): Promise<FreeRoom[]> {
     const url = `${this.base}/${id}/rooms/${lineId}/free-rooms`;
     const result = await firstValueFrom(this.http.get<Items<FreeRoom>>(url));

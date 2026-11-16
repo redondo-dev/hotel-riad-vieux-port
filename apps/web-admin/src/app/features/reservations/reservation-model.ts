@@ -103,6 +103,28 @@ export interface ReservationDetail {
   };
   rooms: ReservationRoom[];
   charges: Charge[];
+  /** Payments and refunds, the oldest first (step D-2). */
+  payments: Payment[];
+  /** What the saved card may be charged now, by the management; 0 when it may not. */
+  guaranteeChargeCents: number;
+}
+
+export type PaymentMethod =
+  'card_online' | 'card_terminal' | 'cash' | 'bank_transfer' | 'holiday_voucher';
+export type PaymentRecordStatus = 'pending' | 'succeeded' | 'failed' | 'cancelled';
+
+/** A payment or a refund of the reservation; never the identifiers of Stripe. */
+export interface Payment {
+  id: string;
+  kind: 'payment' | 'refund';
+  method: PaymentMethod;
+  status: PaymentRecordStatus;
+  amountCents: number;
+  refundedPaymentId: string | null;
+  receivedAt: string | null;
+  createdAt: string;
+  /** Made online, received, not refunded yet: the management may refund it. */
+  refundable: boolean;
 }
 
 export interface ChangePreview {
@@ -144,6 +166,21 @@ export const PAYMENT_LABELS: Record<PaymentStatus, string> = {
   refunded: 'Remboursé',
 };
 
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  card_online: 'Carte en ligne',
+  card_terminal: 'Carte au terminal',
+  cash: 'Espèces',
+  bank_transfer: 'Virement',
+  holiday_voucher: 'Chèque-vacances',
+};
+
+export const PAYMENT_RECORD_LABELS: Record<PaymentRecordStatus, string> = {
+  pending: 'En attente',
+  succeeded: 'Réussi',
+  failed: 'Refusé',
+  cancelled: 'Annulé',
+};
+
 export const SOURCE_LABELS: Record<Source, string> = {
   website: 'Site',
   phone: 'Téléphone',
@@ -180,6 +217,8 @@ export const GUARANTEE_HELP =
   'Carte enregistrée chez Stripe : elle pourra être débitée en cas d’annulation tardive ou de ' +
   'non-présentation.';
 export const GUARANTEE_LIFTED_HELP = 'Carte enregistrée, garantie levée.';
+export const GUARANTEE_CHARGEABLE_HELP =
+  'Carte enregistrée : les frais dus peuvent y être débités par la direction.';
 
 /**
  * What the card saved at Stripe still guarantees (step G-2): « active » while the booking may
@@ -257,6 +296,46 @@ export function canAssignRoom(detail: ReservationDetail): boolean {
 /** Only the management waives a cancellation fee or touches a non-refundable stay (RM-18). */
 export function isManagement(role: Role | undefined): boolean {
   return role === 'direction';
+}
+
+// --- Payments (step D-2) ---
+
+/** The management charges the saved card with the fees still due (amount given by the API). */
+export function canChargeGuarantee(
+  detail: Pick<ReservationDetail, 'guaranteeChargeCents'>,
+  role: Role | undefined,
+): boolean {
+  return isManagement(role) && detail.guaranteeChargeCents > 0;
+}
+
+/** The management refunds in full a payment made online and not refunded yet. */
+export function canRefund(payment: Pick<Payment, 'refundable'>, role: Role | undefined): boolean {
+  return isManagement(role) && payment.refundable;
+}
+
+/** One line of the list: « Carte en ligne », « Remboursement · Carte en ligne », and its sign. */
+export function paymentLineOf(payment: Pick<Payment, 'kind' | 'method' | 'amountCents'>): {
+  label: string;
+  amount: string;
+} {
+  const method = PAYMENT_METHOD_LABELS[payment.method];
+  const amount = formatEuros(payment.amountCents);
+  return payment.kind === 'refund'
+    ? { label: `Remboursement · ${method}`, amount: `− ${amount}` }
+    : { label: method, amount };
+}
+
+export function paymentRecordBadge(status: PaymentRecordStatus): string {
+  switch (status) {
+    case 'succeeded':
+      return 'badge-ok';
+    case 'pending':
+      return 'badge-warning';
+    case 'failed':
+      return 'badge-off';
+    case 'cancelled':
+      return 'badge-neutral';
+  }
 }
 
 // --- Formatting ---

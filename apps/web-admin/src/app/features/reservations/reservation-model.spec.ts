@@ -3,12 +3,16 @@ import {
   canAssignRoom,
   canCancel,
   canChangeStay,
+  canChargeGuarantee,
+  canRefund,
   formatDifference,
   freeCancellationText,
   guaranteeStateOf,
   guestsText,
   parseAges,
   paymentBadgesOf,
+  paymentLineOf,
+  paymentRecordBadge,
   type ReservationDetail,
   roomText,
   stayText,
@@ -130,5 +134,30 @@ describe('parseAges', () => {
     expect(parseAges('18')).toBeNull();
     expect(parseAges('six')).toBeNull();
     expect(parseAges('1 2 3 4')).toBeNull();
+  });
+});
+
+describe('payments', () => {
+  it('lets only the management charge the card, when the API gives an amount', () => {
+    expect(canChargeGuarantee({ guaranteeChargeCents: 10_000 }, 'direction')).toBe(true);
+    expect(canChargeGuarantee({ guaranteeChargeCents: 10_000 }, 'reception')).toBe(false);
+    expect(canChargeGuarantee({ guaranteeChargeCents: 0 }, 'direction')).toBe(false);
+  });
+
+  it('lets only the management refund a payment the API says refundable', () => {
+    expect(canRefund({ refundable: true }, 'direction')).toBe(true);
+    expect(canRefund({ refundable: true }, 'reception')).toBe(false);
+    expect(canRefund({ refundable: false }, 'direction')).toBe(false);
+  });
+
+  it('writes a payment and a refund, with their state', () => {
+    const paid = paymentLineOf({ kind: 'payment', method: 'card_online', amountCents: 10_000 });
+    expect(paid.label).toBe('Carte en ligne');
+    expect(plain(paid.amount)).toBe('100,00 €');
+    const back = paymentLineOf({ kind: 'refund', method: 'card_online', amountCents: 10_000 });
+    expect(back.label).toBe('Remboursement · Carte en ligne');
+    expect(plain(back.amount)).toBe('− 100,00 €');
+    expect(paymentRecordBadge('failed')).toBe('badge-off');
+    expect(paymentRecordBadge('succeeded')).toBe('badge-ok');
   });
 });
