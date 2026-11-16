@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { choiceOf, perNightCents, priceOf, ratePlanOf } from './booking-model';
+import {
+  cancellationDeadlinePassed,
+  choiceOf,
+  perNightCents,
+  priceOf,
+  ratePlanOf,
+} from './booking-model';
 
 const OFFER = {
   code: 'double-standard',
@@ -39,5 +45,18 @@ describe('choiceOf', () => {
     expect(choiceOf(AVAILABILITY, 'suite', 'flexible')).toBeNull();
     expect(choiceOf(AVAILABILITY, 'double-standard', 'cheap')).toBeNull();
     expect(choiceOf(AVAILABILITY, null, null)).toBeNull();
+  });
+});
+
+describe('cancellationDeadlinePassed', () => {
+  const now = new Date('2026-11-16T14:00:00Z');
+
+  it('says the free cancellation is over when its deadline is past', () => {
+    expect(cancellationDeadlinePassed('2026-11-15T14:00:00Z', now)).toBe(true);
+    expect(cancellationDeadlinePassed('2026-11-16T14:00:00Z', now)).toBe(true);
+  });
+
+  it('keeps it free until its deadline', () => {
+    expect(cancellationDeadlinePassed('2026-11-21T14:00:00Z', now)).toBe(false);
   });
 });

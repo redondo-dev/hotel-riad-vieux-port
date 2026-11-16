@@ -15,6 +15,9 @@ const HOTEL = {
   checkOutTime: '12:00:00',
 };
 
+/** Sent before the deadline of the free cancellation (15 November at 15:00). */
+const SENT = new Date('2026-11-10T09:00:00Z');
+
 const FLEXIBLE: ConfirmationEmailData = {
   language: 'fr',
   firstName: 'Lina',
@@ -48,7 +51,7 @@ const NON_REFUNDABLE: ConfirmationEmailData = {
 
 describe('confirmation e-mail', () => {
   it('sums up a flexible stay in French: due at the hotel, guarantee, free cancellation', () => {
-    const email = confirmationEmail(FLEXIBLE);
+    const email = confirmationEmail(FLEXIBLE, SENT);
     const text = plain(email.text);
 
     expect(email.subject).toBe('Votre réservation K7M2QX9A est confirmée · Hôtel Riad Vieux-Port');
@@ -73,7 +76,7 @@ describe('confirmation e-mail', () => {
   });
 
   it('sums up a non-refundable stay in English: paid online, the tax left for the hotel', () => {
-    const email = confirmationEmail(NON_REFUNDABLE);
+    const email = confirmationEmail(NON_REFUNDABLE, SENT);
     const text = plain(email.text);
 
     expect(email.subject).toBe('Your booking K7M2QX9A is confirmed · Hôtel Riad Vieux-Port');
@@ -89,11 +92,18 @@ describe('confirmation e-mail', () => {
   });
 
   it('escapes in the HTML what the customer typed', () => {
-    const email = confirmationEmail({ ...FLEXIBLE, firstName: '<script>Lina</script>' });
+    const email = confirmationEmail({ ...FLEXIBLE, firstName: '<script>Lina</script>' }, SENT);
 
     expect(email.html).toContain('Bonjour &lt;script&gt;Lina&lt;/script&gt;,');
     expect(email.html).not.toContain('<script>');
     expect(email.html).toContain('<html lang="fr">');
     expect(plain(email.html)).toContain('645,00 €');
+  });
+
+  it('says the first night is due when the free cancellation was over at the booking', () => {
+    const late = confirmationEmail(FLEXIBLE, new Date('2026-11-16T13:00:00Z'));
+    const text = plain(late.text);
+    expect(text).toContain('Le délai d’annulation gratuite est passé');
+    expect(text).not.toContain('Annulation gratuite jusqu’au');
   });
 });

@@ -80,7 +80,7 @@ export class ConfirmationEmails {
             reference: booking.data.reference,
             token,
           });
-          const email = confirmationEmail({ ...booking.data, manageUrl });
+          const email = confirmationEmail({ ...booking.data, manageUrl }, this.#now());
           await this.#mailer.send({ to: booking.to, ...email });
           await this.#repository.markSent(id, this.#now(), transaction);
           return true;
