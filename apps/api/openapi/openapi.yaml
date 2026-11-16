@@ -2661,7 +2661,17 @@ components:
       type: object
       description: Jamais les identifiants Stripe.
       required:
-        [id, kind, method, status, amountCents, refundedPaymentId, receivedAt, createdAt, refundable]
+        [
+          id,
+          kind,
+          method,
+          status,
+          amountCents,
+          refundedPaymentId,
+          receivedAt,
+          createdAt,
+          refundable,
+        ]
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, enum: [payment, refund] }

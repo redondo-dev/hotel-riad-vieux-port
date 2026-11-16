@@ -74,7 +74,12 @@ export function refusedChargeOf(error: unknown): ChargeResult | undefined {
   if (typeof error !== 'object' || error === null) {
     return undefined;
   }
-  const { type, code, decline_code: declineCode, payment_intent: intent } = error as {
+  const {
+    type,
+    code,
+    decline_code: declineCode,
+    payment_intent: intent,
+  } = error as {
     type?: unknown;
     code?: unknown;
     decline_code?: unknown;

@@ -9,11 +9,7 @@
 
 /** Why a charge was refused, as the staff can act on it. */
 export type ChargeFailure =
-  | 'declined'
-  | 'insufficient_funds'
-  | 'expired_card'
-  | 'authentication_required'
-  | 'other';
+  'declined' | 'insufficient_funds' | 'expired_card' | 'authentication_required' | 'other';
 
 export interface GuaranteeCharge {
   reservationId: string;

@@ -9,11 +9,7 @@ import type { PaymentStatus, ReservationStatus } from './reservation-rules.ts';
 export type PaymentKind = 'payment' | 'refund';
 export type PaymentRecordStatus = 'pending' | 'succeeded' | 'failed' | 'cancelled';
 export type PaymentMethod =
-  | 'card_online'
-  | 'card_terminal'
-  | 'cash'
-  | 'bank_transfer'
-  | 'holiday_voucher';
+  'card_online' | 'card_terminal' | 'cash' | 'bank_transfer' | 'holiday_voucher';
 
 /** One line of the table « payments », as the rules need it. */
 export interface PaymentRecord {
@@ -45,8 +41,7 @@ function total(
 /** What the hotel keeps: the payments received, less the refunds made or on their way. */
 export function netPaidCents(payments: readonly PaymentRecord[]): number {
   return (
-    total(payments, 'payment', ['succeeded']) -
-    total(payments, 'refund', ['succeeded', 'pending'])
+    total(payments, 'payment', ['succeeded']) - total(payments, 'refund', ['succeeded', 'pending'])
   );
 }
 
