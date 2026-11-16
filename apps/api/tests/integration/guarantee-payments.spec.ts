@@ -293,6 +293,11 @@ describe.skipIf(!hasTestDatabase)('charges of the saved card and refunds', () =>
       ]);
       expect(body.payments[1]?.refundedPaymentId).toBe(payment?.id);
       expect(body.payments[0]?.refundable).toBe(false);
+      // Refunded: the fees are given up, the card is never charged again.
+      expect(body.guaranteeChargeCents).toBe(0);
+      const charge = await post(manager, `/${id}/guarantee-charge`);
+      expect(charge.status).toBe(409);
+      expect(charge.body.detail).toContain('remboursés');
       expect(refunds.at(-1)).toMatchObject({
         paymentIntentId: `pi_test_guarantee-${id}-1`,
         amountCents: 10_000,

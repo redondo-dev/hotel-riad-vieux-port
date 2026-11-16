@@ -42,7 +42,7 @@ describe('guarantee charge', () => {
     const settled = cancelled({ payments: [record({})] });
     expect(guaranteeChargeCents(settled)).toBe(0);
     expect(guaranteeChargeRefusal(settled)).toMatch(/déjà réglés/);
-    // A charge refused leaves the fees due; a refund makes them due again.
+    // A charge refused leaves the fees due.
     const refused = cancelled({ payments: [record({ status: 'failed' })] });
     expect(guaranteeChargeCents(refused)).toBe(10_000);
   });
@@ -54,6 +54,17 @@ describe('guarantee charge', () => {
     const pending = cancelled({ payments: [record({ status: 'pending' })] });
     expect(guaranteeChargeRefusal(pending)).toMatch(/en cours/);
     expect(guaranteeChargeCents(pending)).toBe(0);
+  });
+
+  it('never charges the card again once a payment was refunded', () => {
+    const paid = record({});
+    const back = record({ kind: 'refund', refundedPaymentId: paid.id });
+    const refunded = cancelled({ payments: [paid, back] });
+    expect(guaranteeChargeRefusal(refunded)).toMatch(/remboursés/);
+    expect(guaranteeChargeCents(refunded)).toBe(0);
+    // A refund refused by the payment service gives nothing back: nothing changes.
+    const refusedBack = record({ kind: 'refund', refundedPaymentId: paid.id, status: 'failed' });
+    expect(guaranteeChargeRefusal(cancelled({ payments: [paid, refusedBack] }))).toMatch(/réglés/);
   });
 });
 

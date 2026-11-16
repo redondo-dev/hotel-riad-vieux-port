@@ -89,6 +89,15 @@ export function guaranteeChargeRefusal(state: GuaranteeState): string | null {
   if (pending) {
     return 'Un débit est déjà en cours de traitement : attendez sa confirmation.';
   }
+  // A refund means the hotel gave the fees up: the card is never charged again after it
+  // (decision « a » of step D-2), another means of payment is needed.
+  const refunded = state.payments.some(
+    (payment) =>
+      payment.kind === 'refund' && (payment.status === 'succeeded' || payment.status === 'pending'),
+  );
+  if (refunded) {
+    return 'Les frais ont été remboursés : aucun nouveau débit n’est proposé.';
+  }
   if (state.feeCents <= 0) {
     return 'Aucun frais n’est dû pour cette réservation.';
   }
