@@ -1,10 +1,12 @@
 import sharp from 'sharp';
 import { ValidationError } from '../../../shared/domain/errors.ts';
-import { ACCEPTED_FORMATS, PHOTO_WIDTHS, type PhotoWidth } from '../domain/photo-rules.ts';
+import { formatFromSignature, PHOTO_WIDTHS, type PhotoWidth } from '../domain/photo-rules.ts';
 
 /**
  * Reads a photo sent by the staff and makes its stored versions, with sharp:
- *  - the format is read from the content of the file (a text renamed « .jpg » is refused);
+ *  - the format is read from the first bytes of the file, before sharp decodes anything: only
+ *    JPEG, PNG and WebP reach the image libraries (a text renamed « .jpg » is refused); sharp
+ *    must then read the same format;
  *  - the photo is turned the way the camera says (EXIF orientation), then every metadata is
  *    dropped (GPS position, camera, date): sharp writes none unless asked;
  *  - three WebP versions, 400, 800 and 1600 pixels wide, never enlarged.
@@ -29,13 +31,17 @@ function notAPhoto(): ValidationError {
 
 export async function processPhoto(input: Buffer): Promise<ProcessedPhoto> {
   const options = { failOn: 'error' as const, limitInputPixels: MAX_INPUT_PIXELS };
+  const expected = formatFromSignature(input);
+  if (expected === null) {
+    throw notAPhoto();
+  }
   let format: string | undefined;
   try {
     format = (await sharp(input, options).metadata()).format;
   } catch {
     throw notAPhoto();
   }
-  if (!ACCEPTED_FORMATS.some((accepted) => accepted === format)) {
+  if (format !== expected) {
     throw notAPhoto();
   }
   const versions: ProcessedPhoto['versions'] = [];
