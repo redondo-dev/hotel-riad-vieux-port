@@ -6,19 +6,19 @@ import { safeReturnUrl } from '../../core/auth/return-url';
 import { landingFor } from '../../core/auth/roles';
 import { SessionService } from '../../core/auth/session.service';
 import { AuthCard } from '../../shared/ui/auth-card';
-import { loginPhotoUrl, pickLoginPhoto } from './login-photos';
+import { greetingAt, LOGIN_SUBTITLE } from './login-greeting';
 
 /**
  * Login (UI/UX specification, section 5.A). Wrong address, wrong password, deactivated or locked
  * account: the API gives one single message, shown as is, so that nobody can find out which
- * addresses have an account. Beside the form, on large screens, a photo drawn at each display.
+ * addresses have an account.
  */
 @Component({
   selector: 'adm-login-page',
   imports: [AuthCard, RouterLink, LucideEye, LucideEyeOff, LucideLogIn, LucideCircleAlert],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <adm-auth-card heading="Connexion à l’outil de gestion" [photoUrl]="photoUrl">
+    <adm-auth-card [heading]="greeting" [subtitle]="subtitle">
       @if (problem(); as error) {
         <div class="mb-5 alert-error" role="alert">
           <svg lucideCircleAlert class="mt-0.5 shrink-0 text-danger"></svg>
@@ -96,7 +96,8 @@ export class LoginPage {
   private readonly session = inject(SessionService);
   private readonly router = inject(Router);
 
-  protected readonly photoUrl = loginPhotoUrl(pickLoginPhoto());
+  protected readonly greeting = greetingAt(new Date());
+  protected readonly subtitle = LOGIN_SUBTITLE;
   protected readonly email = signal('');
   protected readonly password = signal('');
   protected readonly showPassword = signal(false);

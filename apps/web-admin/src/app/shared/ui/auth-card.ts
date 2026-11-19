@@ -1,69 +1,84 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { authPhotoUrl, pickAuthPhoto } from './auth-photos';
 import { ZelligeStar } from './zellige-star';
 
+/** From this width (tablet), the photo is loaded and shown. */
+const WIDE_SCREEN = '(min-width: 48rem)';
+
 /**
- * Frame of the pages without session (UI/UX specification, section 5.A): page centred on a
- * slate background, card with the logo and the title. With `photoUrl` (login page), the card
- * widens on large screens: the form on the left, a decorative photo on the right, hidden on
- * phones. If the photo does not load, the hotel colours and the zellige star stay in its place.
+ * Frame of the pages without session (UI/UX specification, section 5.A): frosted card, centred,
+ * with the logo and the title. On large screens a photo drawn at each display covers the whole
+ * page behind a slate veil: it fades in once loaded and zooms very slowly (not when the system
+ * asks for less motion). On phones it is never downloaded: the slate background with a zellige
+ * pattern stays, as when the photo does not load.
  */
 @Component({
   selector: 'adm-auth-card',
   imports: [ZelligeStar],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'flex min-h-dvh items-center justify-center bg-slate-nav px-4 py-10' },
+  host: { class: 'block' },
   template: `
-    <main [class]="frameClass()">
-      <div [class]="cardClass()">
-        <div [class]="formClass()">
+    <div
+      class="auth-pattern relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-slate-nav px-4 py-10"
+    >
+      @if (showPhoto()) {
+        <div class="absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+          @if (!photoFailed()) {
+            <img
+              class="auth-photo size-full object-cover"
+              [class.is-loaded]="photoLoaded()"
+              [src]="photoUrl"
+              alt=""
+              decoding="async"
+              referrerpolicy="no-referrer"
+              (load)="photoLoaded.set(true)"
+              (error)="photoFailed.set(true)"
+            />
+          }
+          <div class="absolute inset-0 bg-slate-nav/55"></div>
+        </div>
+      }
+      <main class="w-full max-w-md">
+        <div class="card bg-surface/90 p-6 shadow-dialog backdrop-blur-md sm:p-8">
           <div class="mb-6 flex items-center gap-2">
             <adm-zellige-star class="size-6 text-clay" />
             <span class="font-semibold tracking-wide text-port uppercase">Riad Vieux-Port</span>
           </div>
-          <h1 class="mb-6 text-xl font-semibold">{{ heading() }}</h1>
+          <h1 class="text-xl font-semibold" [class.mb-6]="!subtitle()">{{ heading() }}</h1>
+          @if (subtitle(); as text) {
+            <p class="mt-1 mb-6 text-muted">{{ text }}</p>
+          }
           <ng-content />
         </div>
-        @if (photoUrl(); as url) {
-          <div
-            class="relative hidden min-h-[34rem] overflow-hidden rounded-lg bg-slate-nav md:block"
-            aria-hidden="true"
-          >
-            <adm-zellige-star
-              class="absolute top-1/2 left-1/2 size-24 -translate-x-1/2 -translate-y-1/2 text-clay"
-            />
-            @if (!photoFailed()) {
-              <img
-                class="absolute inset-0 size-full object-cover"
-                [src]="url"
-                alt=""
-                width="1000"
-                height="1400"
-                decoding="async"
-                referrerpolicy="no-referrer"
-                (error)="photoFailed.set(true)"
-              />
-            }
-          </div>
-        }
-      </div>
-      <ng-content select="[afterCard]" />
-    </main>
+        <ng-content select="[afterCard]" />
+      </main>
+    </div>
   `,
 })
 export class AuthCard {
   readonly heading = input.required<string>();
-  /** Decorative photo beside the form, large screens only. */
-  readonly photoUrl = input<string | null>(null);
+  /** Line under the title. */
+  readonly subtitle = input<string | null>(null);
 
+  protected readonly photoLoaded = signal(false);
   protected readonly photoFailed = signal(false);
+  private readonly wideScreen = signal(false);
 
-  protected readonly frameClass = computed(() =>
-    this.photoUrl() ? 'w-full max-w-md md:max-w-5xl' : 'w-full max-w-md',
-  );
-  protected readonly cardClass = computed(() =>
-    this.photoUrl() ? 'card p-6 sm:p-8 md:grid md:grid-cols-2 md:gap-6 md:p-3' : 'card p-6 sm:p-8',
-  );
-  protected readonly formClass = computed(() =>
-    this.photoUrl() ? 'md:self-center md:px-10 md:py-12' : '',
-  );
+  protected readonly photoUrl = authPhotoUrl(pickAuthPhoto());
+  protected readonly showPhoto = this.wideScreen.asReadonly();
+
+  constructor() {
+    const query = window.matchMedia(WIDE_SCREEN);
+    const update = (): void => this.wideScreen.set(query.matches);
+    update();
+    query.addEventListener('change', update);
+    inject(DestroyRef).onDestroy(() => query.removeEventListener('change', update));
+  }
 }
