@@ -22,7 +22,7 @@ export interface BookingRelayOptions {
   /** Address of the public API, for example http://localhost:3000/api/v1. */
   apiUrl: string;
   /** Secret shared with the API (RELAY_SECRET); left out in development. */
-  relaySecret?: string;
+  relaySecret?: string | undefined;
   /** Replaced in the tests. */
   fetch?: typeof fetch;
   /** Called when the API could not be read (logged, never shown to visitors). */
