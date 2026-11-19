@@ -110,9 +110,23 @@ compilation, pour ne jamais publier une page à moitié traduite.
   dans git. Une photo absente garde le bloc « Photo à venir ».
 
 - **Crédits** : toutes les photos viennent d'Unsplash (« Photos : Unsplash » dans le pied de
-  page). Les noms des photographes sont listés dans
-  `apps/web-public/src/app/core/data/photo-credits.ts`, en attendant la page des mentions
-  légales.
+  page et dans les mentions légales). Les noms des photographes, quand ils sont connus, se
+  listent dans `apps/web-public/src/app/core/data/photo-credits.ts` et s'affichent alors dans
+  les mentions légales.
+
+### Dépendances : alertes `npm audit` connues
+
+Revue du 19 novembre 2026. Ne jamais lancer `npm audit fix --force` : il propose des
+changements de version majeure, voire des retours en arrière (Sequelize 3).
+
+- **sharp** (traitement des photos par l'API) : passé en 0.35.5. En plus, l'API lit les
+  premiers octets du fichier et n'accepte que JPEG, PNG et WebP avant tout décodage : un SVG
+  ou un HEIC n'atteint jamais les bibliothèques d'images.
+- **uuid**, via Sequelize 6 : laissé tel quel. La faille ne concerne que les versions 3, 5
+  et 6 de uuid appelées avec un tampon ; Sequelize n'utilise que les versions 1 et 4.
+- **hono**, **glob**, **minimatch**, **typescript-eslint** : outils de développement seulement
+  (CLI Angular, lint), rien n'est livré en production. Corrigés par `npm audit fix` quand
+  c'est possible sans changement majeur, sinon lors du passage à Angular 22.
 
 ## Branches et contributions
 

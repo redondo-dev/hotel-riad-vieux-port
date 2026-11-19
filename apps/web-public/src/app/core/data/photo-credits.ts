@@ -1,7 +1,7 @@
 /**
  * Who took each photo of the site (fixed photos and photos of the rooms), all from Unsplash
- * (Unsplash License: free use, credit not required but given). The list will be displayed by
- * the legal notice page, when it exists; until then, the footer says « Photos : Unsplash ».
+ * (Unsplash License: free use, credit not required but given). The legal notice page lists
+ * them when the list is filled; until then it and the footer only say « Photos : Unsplash ».
  */
 
 export interface PhotoCredit {
