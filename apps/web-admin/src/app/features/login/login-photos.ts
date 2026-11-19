@@ -1,14 +1,14 @@
 /**
- * Photo of the login page: one of a short list of Picsum photos (sea, sky, landscapes, chosen
- * and checked by hand so that nothing odd appears), drawn at each display of the page. Picsum is
- * an outside service: the photo is only decoration, the login works without it.
+ * Photo behind the login page: one of a short list of Picsum photos (sea, sky, landscapes,
+ * checked by hand so that nothing odd appears), drawn at each display of the page. Picsum is an
+ * outside service: the photo is only decoration, the login works without it.
  */
 
 export const LOGIN_PHOTO_IDS = [1015, 1016, 1018, 1036, 1039, 1043, 1067, 15, 28, 29] as const;
 
-/** Portrait size, enough for the right half of a large screen. */
-const WIDTH = 1000;
-const HEIGHT = 1400;
+/** Landscape, the size of a large screen. */
+const WIDTH = 1920;
+const HEIGHT = 1080;
 
 /** One of the photos of the list, drawn with `random` (a number from 0 to 1, 1 excluded). */
 export function pickLoginPhoto(random: () => number = Math.random): number {

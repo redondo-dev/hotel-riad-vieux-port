@@ -116,12 +116,12 @@ compilation, pour ne jamais publier une page à moitié traduite.
 
 ### Outil de gestion : photo de la page de connexion
 
-Sur grand écran, la page de connexion affiche à droite une photo tirée au hasard dans une
-courte liste de photos Picsum (`apps/web-admin/src/app/features/login/login-photos.ts`),
-vérifiées une à une. Picsum est un service extérieur : la photo est demandée sans « referrer »,
-et si elle ne charge pas, les couleurs de l'hôtel et l'étoile zellige restent à sa place. Avant
-la mise en ligne, la politique de sécurité du contenu (CSP) devra autoriser `picsum.photos` et
-`fastly.picsum.photos` pour les images.
+Sur grand écran, la page de connexion affiche en fond plein écran une photo tirée au hasard
+dans une courte liste de photos Picsum (`apps/web-admin/src/app/features/login/login-photos.ts`),
+vérifiées une à une. Picsum est un service extérieur : la photo est demandée sans « referrer » ;
+si elle ne charge pas, le fond ardoise à motif zellige reste à sa place, et sur téléphone elle
+n'est jamais téléchargée. Avant la mise en ligne, la politique de sécurité du contenu (CSP)
+devra autoriser `picsum.photos` et `fastly.picsum.photos` pour les images.
 
 ### Dépendances : alertes `npm audit` connues
 

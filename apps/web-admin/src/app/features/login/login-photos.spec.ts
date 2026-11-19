@@ -11,7 +11,7 @@ describe('login photo', () => {
     }
   });
 
-  it('asks Picsum for that photo, in portrait', () => {
-    expect(loginPhotoUrl(1015)).toBe('https://picsum.photos/id/1015/1000/1400');
+  it('asks Picsum for that photo, the size of a large screen', () => {
+    expect(loginPhotoUrl(1015)).toBe('https://picsum.photos/id/1015/1920/1080');
   });
 });
