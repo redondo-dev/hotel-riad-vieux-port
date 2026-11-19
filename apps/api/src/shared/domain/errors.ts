@@ -68,6 +68,19 @@ export class TooManyRequestsError extends AppError {
   }
 }
 
+/** Online booking: the visitor already holds rooms waiting for their payment (step S-2). */
+export class TooManyPendingError extends AppError {
+  constructor() {
+    super({
+      status: 429,
+      code: 'TOO_MANY_PENDING',
+      title: 'Réservation déjà en attente',
+      detail:
+        'Une réservation attend déjà son paiement. Terminez-la, ou réessayez dans une demi-heure.',
+    });
+  }
+}
+
 export class ForbiddenOriginError extends AppError {
   constructor() {
     super({

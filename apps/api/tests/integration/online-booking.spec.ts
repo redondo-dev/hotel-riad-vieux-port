@@ -5,7 +5,12 @@ import type {
   CheckoutRequest,
   PaymentGateway,
 } from '../../src/modules/reservations/application/payment-gateway.ts';
-import { IdentityHarness, PUBLIC_SITE_URL } from '../support/identity-harness.ts';
+import { PENDING_LIMITS } from '../../src/modules/reservations/domain/online-booking-rules.ts';
+import {
+  IdentityHarness,
+  PUBLIC_SITE_URL,
+  TEST_RELAY_SECRET,
+} from '../support/identity-harness.ts';
 import { hasTestDatabase } from '../support/test-database.ts';
 
 /**
@@ -431,6 +436,102 @@ describe.skipIf(!hasTestDatabase)('online booking', () => {
       }
       const response = await post(app, bookingBody({ acceptTerms: false }));
       expect(response.status).toBe(429);
+    });
+  });
+  describe('what one visitor may hold without paying (step S-2)', () => {
+    /** A booking sent by the site for a visitor of `address`, as relayed by its server. */
+    function postFrom(
+      app: ReturnType<IdentityHarness['app']>,
+      address: string,
+      body: Record<string, unknown>,
+    ): request.Test {
+      return post(app, body)
+        .set('X-Riad-Relay-Secret', TEST_RELAY_SECRET)
+        .set('X-Riad-Visitor-Ip', address);
+    }
+
+    function stay(email: string, changes: Record<string, unknown> = {}): Record<string, unknown> {
+      return bookingBody({
+        checkIn: '2037-01-20',
+        checkOut: '2037-01-21',
+        customer: {
+          firstName: 'Lina',
+          lastName: 'Enligne',
+          email,
+          phone: '+33 6 12 34 56 78',
+          countryCode: 'FR',
+        },
+        ...changes,
+      });
+    }
+
+    /** The rooms are given back at the end of each test, for the next ones. */
+    async function expire(references: string[]): Promise<void> {
+      await harness.execute(
+        `UPDATE reservations SET status = 'expired' WHERE reference = ANY($1::text[])`,
+        [references],
+      );
+    }
+
+    it('holds 2 bookings per address at most, and frees the address once expired', async () => {
+      const app = harness.app({
+        now: () => NOW,
+        payments: fakePayments().gateway,
+        pendingLimits: PENDING_LIMITS,
+      });
+      const first = await postFrom(app, '203.0.113.21', stay('s2-a@test.example'));
+      const second = await postFrom(app, '203.0.113.21', stay('s2-b@test.example'));
+      expect([first.status, second.status]).toEqual([201, 201]);
+
+      const third = await postFrom(app, '203.0.113.21', stay('s2-c@test.example'));
+      expect(third.status).toBe(429);
+      expect(third.body.code).toBe('TOO_MANY_PENDING');
+      // Another visitor is not concerned.
+      const other = await postFrom(app, '203.0.113.22', stay('s2-d@test.example'));
+      expect(other.status).toBe(201);
+
+      await expire([first.body.reference]);
+      const again = await postFrom(app, '203.0.113.21', stay('s2-c@test.example'));
+      expect(again.status).toBe(201);
+      await expire([second.body.reference, other.body.reference, again.body.reference]);
+    });
+
+    it('accepts any first booking, then 40 room-nights per address', async () => {
+      const app = harness.app({
+        now: () => NOW,
+        payments: fakePayments().gateway,
+        pendingLimits: PENDING_LIMITS,
+      });
+      // 2 rooms × 15 nights = 30 room-nights, then 1 room × 15 nights more: 45 > 40.
+      const long = { checkIn: '2037-01-16', checkOut: '2037-01-31' };
+      const group = await postFrom(
+        app,
+        '203.0.113.23',
+        stay('s2-e@test.example', { ...long, guests: '2_2' }),
+      );
+      expect(group.status).toBe(201);
+      const more = await postFrom(app, '203.0.113.23', stay('s2-f@test.example', long));
+      expect(more.status).toBe(429);
+      expect(more.body.code).toBe('TOO_MANY_PENDING');
+      await expire([group.body.reference]);
+    });
+
+    it('gives back the earlier booking of the same e-mail address still waiting', async () => {
+      const fake = fakePayments();
+      const app = harness.app({
+        now: () => NOW,
+        payments: fake.gateway,
+        pendingLimits: PENDING_LIMITS,
+      });
+      const first = await postFrom(app, '203.0.113.24', stay('s2-g@test.example'));
+      expect(first.status).toBe(201);
+
+      const second = await postFrom(app, '203.0.113.25', stay('s2-g@test.example'));
+      expect(second.status).toBe(201);
+      expect((await reservationOf(first.body.reference))?.['status']).toBe('expired');
+      expect((await reservationOf(second.body.reference))?.['status']).toBe('pending_payment');
+      expect(fake.expired).toHaveLength(1);
+      await expire([second.body.reference]);
     });
   });
 });

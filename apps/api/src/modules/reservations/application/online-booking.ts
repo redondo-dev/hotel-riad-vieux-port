@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
-import type { Sequelize } from 'sequelize';
+import type { Sequelize, Transaction } from 'sequelize';
 import {
   AppError,
   ConflictError,
   NotFoundError,
+  TooManyPendingError,
   ValidationError,
 } from '../../../shared/domain/errors.ts';
 import { recordAudit } from '../../../shared/infrastructure/audit-log.ts';
@@ -13,10 +14,14 @@ import { CatalogRepository } from '../../catalog/infrastructure/catalog-reposito
 import {
   checkoutClosesAt,
   dueNowCents,
+  exceedsPendingLimits,
   holdUntil,
   isSiteAddress,
+  type PendingLimits,
+  type PendingLoad,
   type PublicBookingStatus,
   publicStatusOf,
+  roomNightsOf,
   stayDescription,
   withBookingReference,
 } from '../domain/online-booking-rules.ts';
@@ -155,6 +160,8 @@ function noLongerAvailable(): ConflictError {
  *  3. the Stripe page is opened; if Stripe fails, the rooms are given back at once and nothing
  *     stays booked.
  * The same Idempotency-Key sent again answers the same page: a double click books once.
+ * What one visitor may hold without paying is limited (step S-2, `pendingLimits`): an earlier
+ * booking of the same e-mail address still waiting is given back first, as by « ← Retour ».
  */
 export class OnlineBooking {
   readonly #sequelize: Sequelize;
@@ -166,6 +173,8 @@ export class OnlineBooking {
   readonly #siteUrl: string;
   readonly #now: () => Date;
   readonly #logError: (error: unknown) => void;
+  readonly #pendingLimits: PendingLimits | null;
+  readonly #logPendingRefused: (load: PendingLoad) => void;
 
   constructor(options: {
     sequelize: Sequelize;
@@ -179,6 +188,10 @@ export class OnlineBooking {
     now: () => Date;
     /** A failure of Stripe: written to the server log, never shown to the visitor. */
     logError?: (error: unknown) => void;
+    /** What one visitor may hold without paying (step S-2); null: no limit (some tests). */
+    pendingLimits: PendingLimits | null;
+    /** A booking refused for that reason: written to the server log, for the follow-up. */
+    logPendingRefused?: (load: PendingLoad) => void;
   }) {
     this.#sequelize = options.sequelize;
     this.#reservations = options.reservations;
@@ -189,6 +202,8 @@ export class OnlineBooking {
     this.#siteUrl = options.siteUrl;
     this.#now = options.now;
     this.#logError = options.logError ?? (() => undefined);
+    this.#pendingLimits = options.pendingLimits;
+    this.#logPendingRefused = options.logPendingRefused ?? (() => undefined);
   }
 
   async create(
@@ -212,6 +227,9 @@ export class OnlineBooking {
       return { replayed: true, answer: replay };
     }
 
+    if (this.#pendingLimits !== null) {
+      await this.#releaseEarlier(request.customer.email, origin);
+    }
     const now = this.#now();
     const paymentExpiresAt = holdUntil(now);
     const booked = await this.#hold(request, category.id, idempotencyKey, requestHash, origin, {
@@ -379,6 +397,9 @@ export class OnlineBooking {
           requestHash,
           transaction,
         );
+        if (this.#pendingLimits !== null) {
+          await this.#checkPending(request, origin, this.#pendingLimits, transaction);
+        }
         const { customer } = request;
         const booked = await this.#reservations.book(
           { kind: 'website' },
@@ -432,6 +453,42 @@ export class OnlineBooking {
         );
       }
       throw error;
+    }
+  }
+
+  /**
+   * The bookings of this e-mail address still waiting for their payment are given back, as by
+   * « ← Retour »: a visitor who closed the payment page can start again at once. One that
+   * cannot be given back (Stripe out of order, payment in progress) stays, and is counted.
+   */
+  async #releaseEarlier(email: string, origin: ActionOrigin): Promise<void> {
+    for (const reference of await this.#repository.pendingReferencesOf(email)) {
+      try {
+        await this.abandon(reference, origin);
+      } catch (error) {
+        this.#logError(error);
+      }
+    }
+  }
+
+  /** Refuses the booking when the visitor already holds too much without paying (step S-2). */
+  async #checkPending(
+    request: OnlineBookingRequest,
+    origin: ActionOrigin,
+    limits: PendingLimits,
+    transaction: Transaction,
+  ): Promise<void> {
+    const email = request.customer.email.toLowerCase();
+    const address = origin.ip ?? null;
+    await this.#repository.lockPendingScope(
+      [`pending:email:${email}`, ...(address === null ? [] : [`pending:address:${address}`])],
+      transaction,
+    );
+    const load = await this.#repository.pendingLoad({ address, email }, this.#now(), transaction);
+    const wanted = roomNightsOf(request.rooms.length, request.checkIn, request.checkOut);
+    if (exceedsPendingLimits(load, wanted, limits)) {
+      this.#logPendingRefused(load);
+      throw new TooManyPendingError();
     }
   }
 

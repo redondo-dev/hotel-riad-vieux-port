@@ -226,6 +226,7 @@
     "choice.invalid": "Please check the highlighted fields.",
     "choice.taken": "This room has just been booked for these dates. Go back to the results to choose another one.",
     "choice.busy": "Too many attempts in a short time. Please try again in a few minutes.",
+    "choice.pending": "A booking is already waiting for its payment. Complete it, or try again in half an hour.",
     "choice.unavailable": "Payment temporarily unavailable. Nothing was booked: please try again in a few minutes or call the reception on {$phone}.",
     "confirmation.title": "Thank you, your booking is recorded",
     "confirmation.confirmedTitle": "Thank you, your booking is confirmed",
