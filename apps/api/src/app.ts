@@ -37,6 +37,10 @@ import type { PaymentGateway } from './modules/reservations/application/payment-
 import { PublicAvailability } from './modules/reservations/application/public-availability.ts';
 import { ReservationChanges } from './modules/reservations/application/reservation-changes.ts';
 import { ReservationService } from './modules/reservations/application/reservation-service.ts';
+import {
+  PENDING_LIMITS,
+  type PendingLimits,
+} from './modules/reservations/domain/online-booking-rules.ts';
 import { availabilityRouter } from './modules/reservations/http/availability-routes.ts';
 import { frontDeskRouter } from './modules/reservations/http/front-desk-routes.ts';
 import { guaranteePaymentRouter } from './modules/reservations/http/guarantee-payment-routes.ts';
@@ -103,6 +107,11 @@ export interface PublicDependencies {
   paymentEvents?: PaymentEventReader;
   /** « Lien perdu » of « Gérer ma réservation » (step M); without it, the route does not exist. */
   manageLinks?: ManageLinkRequests;
+  /**
+   * What one visitor may hold without paying (step S-2): PENDING_LIMITS when left out; null
+   * turns the limits off (the tests that book many times from the same address).
+   */
+  pendingLimits?: PendingLimits | null;
 }
 
 export interface AdminDependencies {
@@ -220,6 +229,10 @@ function publicRouter(
     now,
     logError: (error) => {
       logger.error({ err: error }, 'Stripe : ouverture de la page de paiement impossible');
+    },
+    pendingLimits: deps.pendingLimits === undefined ? PENDING_LIMITS : deps.pendingLimits,
+    logPendingRefused: (load) => {
+      logger.warn({ load }, 'réservation en ligne refusée : trop de réservations en attente');
     },
   });
   router.use(

@@ -47,6 +47,9 @@ describe('bookingAnswerOf', () => {
       'busy',
     );
     expect(bookingAnswerOf({ status: 429, body: {} }).kind).toBe('busy');
+    expect(bookingAnswerOf({ status: 429, body: { code: 'TOO_MANY_PENDING' } }).kind).toBe(
+      'pending',
+    );
     expect(bookingAnswerOf({ status: 503, body: {} }).kind).toBe('unavailable');
     expect(bookingAnswerOf({ status: 502, body: null }).kind).toBe('unavailable');
   });

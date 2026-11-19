@@ -498,6 +498,11 @@ export class BookingChoicePage implements OnInit {
           $localize`:@@choice.busy:Trop de tentatives en peu de temps. Réessayez dans quelques minutes.`,
         );
         break;
+      case 'pending':
+        this.problem.set(
+          $localize`:@@choice.pending:Une réservation attend déjà son paiement. Terminez-la, ou réessayez dans une demi-heure.`,
+        );
+        break;
       default:
         this.problem.set(
           $localize`:@@choice.unavailable:Paiement momentanément indisponible. Rien n'a été réservé : réessayez dans quelques minutes ou appelez la réception au ${phone}:phone:.`,

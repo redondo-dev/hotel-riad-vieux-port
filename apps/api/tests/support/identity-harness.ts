@@ -11,6 +11,7 @@ import type { CardGateway } from '../../src/modules/reservations/application/car
 import type { ManageLinkRequests } from '../../src/modules/reservations/application/manage-link-requests.ts';
 import type { PaymentEventReader } from '../../src/modules/reservations/application/payment-events.ts';
 import type { PaymentGateway } from '../../src/modules/reservations/application/payment-gateway.ts';
+import type { PendingLimits } from '../../src/modules/reservations/domain/online-booking-rules.ts';
 import { hashPassword } from '../../src/modules/identity/infrastructure/password-hasher.ts';
 import { createSessionStore } from '../../src/shared/http/session.ts';
 import { createSequelize } from '../../src/shared/infrastructure/database.ts';
@@ -30,6 +31,9 @@ export const STRONG_PASSWORD = 'Vieux-Port-2026!';
 
 export const PUBLIC_SITE_URL = 'http://localhost:4200';
 
+/** Secret of the relay of the site (step S-1): with it, a test chooses the visitor's address. */
+export const TEST_RELAY_SECRET = 'secret-du-relais-reserve-aux-tests-automatises';
+
 export interface AppOptions {
   today?: () => string;
   now?: () => Date;
@@ -41,6 +45,8 @@ export interface AppOptions {
   manageLinks?: ManageLinkRequests;
   /** A fake payment service for the management (step D-1): charges and refunds. */
   cards?: CardGateway;
+  /** What one visitor may hold without paying (step S-2); by default no limit. */
+  pendingLimits?: PendingLimits;
 }
 
 export interface TestStaff {
@@ -74,6 +80,7 @@ export class IdentityHarness {
       logger,
       allowedOrigins: [],
       trustProxy: 0,
+      relay: { secret: TEST_RELAY_SECRET, required: false },
       checkDatabase: async () => undefined,
       admin: {
         sequelize: this.sequelize,
@@ -99,6 +106,7 @@ export class IdentityHarness {
         ...(options.payments === undefined ? {} : { payments: options.payments }),
         ...(options.paymentEvents === undefined ? {} : { paymentEvents: options.paymentEvents }),
         ...(options.manageLinks === undefined ? {} : { manageLinks: options.manageLinks }),
+        pendingLimits: options.pendingLimits ?? null,
         publicSiteUrl: PUBLIC_SITE_URL,
       },
     });

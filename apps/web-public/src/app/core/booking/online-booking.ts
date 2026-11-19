@@ -15,6 +15,8 @@ export type BookingAnswer =
   | { kind: 'invalid'; fields: Record<string, string> }
   /** Too many bookings from this visitor (429), or the same booking still in progress. */
   | { kind: 'busy' }
+  /** The visitor already holds a booking waiting for its payment (step S-2). */
+  | { kind: 'pending' }
   /** API or payment service unavailable, or an unexpected answer. */
   | { kind: 'unavailable' };
 
@@ -52,6 +54,9 @@ export function bookingAnswerOf(answer: { status: number; body: unknown }): Book
   const code = isFields(body) ? body['code'] : undefined;
   if (status === 409 && code === 'NO_LONGER_AVAILABLE') {
     return { kind: 'gone' };
+  }
+  if (status === 429 && code === 'TOO_MANY_PENDING') {
+    return { kind: 'pending' };
   }
   if (status === 409 || status === 429) {
     return { kind: 'busy' };

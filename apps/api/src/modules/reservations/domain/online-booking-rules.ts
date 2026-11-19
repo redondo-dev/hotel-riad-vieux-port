@@ -23,6 +23,46 @@ export function checkoutClosesAt(now: Date): Date {
 }
 
 /**
+ * What the visitors of one address may hold at the same time without paying (step S-2,
+ * security review R-1 « M-1 »), beside the 5 bookings per 10 minutes: without it, a robot
+ * booking again every 10 minutes would keep whole months full. A first booking always goes
+ * through, however large (a group); one e-mail address holds one booking at a time.
+ */
+export interface PendingLimits {
+  bookingsPerAddress: number;
+  roomNightsPerAddress: number;
+}
+
+export const PENDING_LIMITS: PendingLimits = { bookingsPerAddress: 2, roomNightsPerAddress: 40 };
+
+/** Bookings waiting for their payment: of the visitor's address, and of the e-mail address. */
+export interface PendingLoad {
+  addressBookings: number;
+  addressRoomNights: number;
+  emailBookings: number;
+}
+
+/** Rooms × nights of a stay. */
+export function roomNightsOf(rooms: number, checkIn: string, checkOut: string): number {
+  return rooms * Math.round((Date.parse(checkOut) - Date.parse(checkIn)) / 86_400_000);
+}
+
+/** True when the new booking would hold more than one visitor may without paying. */
+export function exceedsPendingLimits(
+  load: PendingLoad,
+  wantedRoomNights: number,
+  limits: PendingLimits,
+): boolean {
+  if (load.emailBookings > 0 || load.addressBookings >= limits.bookingsPerAddress) {
+    return true;
+  }
+  return (
+    load.addressBookings > 0 &&
+    load.addressRoomNights + wantedRoomNights > limits.roomNightsPerAddress
+  );
+}
+
+/**
  * What is paid online: at the non-refundable rate, the stay at once, the tourist tax being
  * paid at the hotel as on the booking sites; at the flexible rate, nothing (card saved as a
  * guarantee, everything paid at the hotel).

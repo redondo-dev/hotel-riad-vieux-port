@@ -6,6 +6,7 @@ import {
   type PaymentMethod,
   type PaymentRecordStatus,
 } from '../domain/guarantee-rules.ts';
+import type { PendingLoad } from '../domain/online-booking-rules.ts';
 import type { PricedCategory } from '../domain/quote.ts';
 import type {
   PaymentStatus,
@@ -500,6 +501,61 @@ export class ReservationRepository {
       transaction,
     );
     return rows[0];
+  }
+
+  /**
+   * Serializes the bookings of one visitor (step S-2) until the end of the transaction: two
+   * requests sent together cannot both pass the limits. Always in the same order.
+   */
+  async lockPendingScope(keys: readonly string[], transaction: Transaction): Promise<void> {
+    for (const key of [...keys].sort()) {
+      await this.#execute('SELECT pg_advisory_xact_lock(hashtext($1))', [key], transaction);
+    }
+  }
+
+  /**
+   * What is held without payment (step S-2): by the address the booking was made from (written
+   * in the audit log with it) and by the e-mail address of its customer.
+   */
+  async pendingLoad(
+    by: { address: string | null; email: string },
+    now: Date,
+    transaction: Transaction,
+  ): Promise<PendingLoad> {
+    const rows = await this.#select<PendingLoad>(
+      `SELECT count(*) FILTER (WHERE a.ip_address = $1::inet)::int AS "addressBookings",
+              coalesce(sum(n.room_nights) FILTER (WHERE a.ip_address = $1::inet), 0)::int
+                AS "addressRoomNights",
+              count(*) FILTER (WHERE c.email = $2)::int AS "emailBookings"
+         FROM reservations r
+         JOIN customers c ON c.id = r.customer_id
+         LEFT JOIN LATERAL (
+           SELECT al.ip_address FROM audit_logs al
+            WHERE al.entity_type = 'reservation' AND al.entity_id = r.id
+              AND al.action = 'reservation.created'
+            LIMIT 1) a ON true
+        CROSS JOIN LATERAL (
+           SELECT coalesce(sum(upper(rr.stay) - lower(rr.stay)), 0) AS room_nights
+             FROM reservation_rooms rr
+            WHERE rr.reservation_id = r.id AND rr.is_active) n
+        WHERE r.source = 'website' AND r.status = 'pending_payment'
+          AND r.payment_expires_at > $3`,
+      [by.address, by.email, now],
+      transaction,
+    );
+    return rows[0] ?? { addressBookings: 0, addressRoomNights: 0, emailBookings: 0 };
+  }
+
+  /** References of the bookings of this e-mail address still waiting for their payment. */
+  async pendingReferencesOf(email: string): Promise<string[]> {
+    const rows = await this.#select<{ reference: string }>(
+      `SELECT r.reference
+         FROM reservations r JOIN customers c ON c.id = r.customer_id
+        WHERE r.source = 'website' AND r.status = 'pending_payment' AND c.email = $1
+        ORDER BY r.created_at`,
+      [email],
+    );
+    return rows.map((row) => row.reference);
   }
 
   /** Gives the rooms back at once: the payment page could not be opened. */

@@ -1,11 +1,16 @@
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { API_PREFIX } from '../../src/app.ts';
 import type {
   CheckoutRequest,
   PaymentGateway,
 } from '../../src/modules/reservations/application/payment-gateway.ts';
-import { IdentityHarness, PUBLIC_SITE_URL } from '../support/identity-harness.ts';
+import { PENDING_LIMITS } from '../../src/modules/reservations/domain/online-booking-rules.ts';
+import {
+  IdentityHarness,
+  PUBLIC_SITE_URL,
+  TEST_RELAY_SECRET,
+} from '../support/identity-harness.ts';
 import { hasTestDatabase } from '../support/test-database.ts';
 
 /**
@@ -431,6 +436,103 @@ describe.skipIf(!hasTestDatabase)('online booking', () => {
       }
       const response = await post(app, bookingBody({ acceptTerms: false }));
       expect(response.status).toBe(429);
+    });
+  });
+  describe('what one visitor may hold without paying (step S-2)', () => {
+    /** Bookings made here, given back after each test whatever happens, for the next ones. */
+    const held: string[] = [];
+
+    afterEach(async () => {
+      await harness.execute(
+        `UPDATE reservations SET status = 'expired' WHERE reference = ANY($1::text[])`,
+        [held.splice(0)],
+      );
+    });
+
+    /** A booking sent by the site for a visitor of `address`, as relayed by its server. */
+    async function postFrom(
+      app: ReturnType<IdentityHarness['app']>,
+      address: string,
+      body: Record<string, unknown>,
+    ): Promise<request.Response> {
+      const response = await post(app, body)
+        .set('X-Riad-Relay-Secret', TEST_RELAY_SECRET)
+        .set('X-Riad-Visitor-Ip', address);
+      if (typeof response.body?.reference === 'string') {
+        held.push(response.body.reference);
+      }
+      return response;
+    }
+
+    /** One night early in January, when the 3 doubles are free. */
+    function stay(email: string, changes: Record<string, unknown> = {}): Record<string, unknown> {
+      return bookingBody({
+        checkIn: '2037-01-02',
+        checkOut: '2037-01-03',
+        customer: {
+          firstName: 'Lina',
+          lastName: 'Enligne',
+          email,
+          phone: '+33 6 12 34 56 78',
+          countryCode: 'FR',
+        },
+        ...changes,
+      });
+    }
+
+    function limitedApp(fake = fakePayments()): ReturnType<IdentityHarness['app']> {
+      return harness.app({ now: () => NOW, payments: fake.gateway, pendingLimits: PENDING_LIMITS });
+    }
+
+    it('holds 2 bookings per address at most, and frees the address once expired', async () => {
+      const app = limitedApp();
+      const first = await postFrom(app, '203.0.113.21', stay('s2-a@test.example'));
+      const second = await postFrom(app, '203.0.113.21', stay('s2-b@test.example'));
+      expect([first.status, second.status]).toEqual([201, 201]);
+
+      const third = await postFrom(app, '203.0.113.21', stay('s2-c@test.example'));
+      expect(third.status).toBe(429);
+      expect(third.body.code).toBe('TOO_MANY_PENDING');
+      // Another visitor is not concerned.
+      const other = await postFrom(app, '203.0.113.22', stay('s2-d@test.example'));
+      expect(other.status).toBe(201);
+
+      await harness.execute(`UPDATE reservations SET status = 'expired' WHERE reference = $1`, [
+        first.body.reference,
+      ]);
+      const again = await postFrom(app, '203.0.113.21', stay('s2-c@test.example'));
+      expect(again.status).toBe(201);
+    });
+
+    it('accepts any first booking, then 40 room-nights per address', async () => {
+      const app = limitedApp();
+      // 3 rooms × 10 nights = 30 room-nights, then 1 room × 11 nights more: 41 > 40.
+      const group = await postFrom(
+        app,
+        '203.0.113.23',
+        stay('s2-e@test.example', { checkOut: '2037-01-12', guests: '2_2_2' }),
+      );
+      expect(group.status).toBe(201);
+      const more = await postFrom(
+        app,
+        '203.0.113.23',
+        stay('s2-f@test.example', { checkIn: '2037-01-01', checkOut: '2037-01-12' }),
+      );
+      expect(more.status).toBe(429);
+      expect(more.body.code).toBe('TOO_MANY_PENDING');
+    });
+
+    it('gives back the earlier booking of the same e-mail address still waiting', async () => {
+      const fake = fakePayments();
+      const app = limitedApp(fake);
+      const first = await postFrom(app, '203.0.113.24', stay('s2-g@test.example'));
+      expect(first.status).toBe(201);
+
+      const second = await postFrom(app, '203.0.113.25', stay('s2-g@test.example'));
+      expect(second.status).toBe(201);
+      expect((await reservationOf(first.body.reference))?.['status']).toBe('expired');
+      expect((await reservationOf(second.body.reference))?.['status']).toBe('pending_payment');
+      expect(fake.expired).toHaveLength(1);
     });
   });
 });

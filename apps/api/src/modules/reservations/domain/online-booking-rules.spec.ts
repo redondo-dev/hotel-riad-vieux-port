@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   checkoutClosesAt,
   dueNowCents,
+  exceedsPendingLimits,
   holdUntil,
   isSiteAddress,
   paymentStatusAfterOnlinePayment,
+  PENDING_LIMITS,
   publicStatusOf,
+  roomNightsOf,
   stayDescription,
   withBookingReference,
 } from './online-booking-rules.ts';
@@ -54,5 +57,24 @@ describe('online booking rules', () => {
     expect(isSiteAddress('https://riad.example.evil.example/', site)).toBe(false);
     expect(isSiteAddress('https://user:pass@riad.example/', site)).toBe(false);
     expect(isSiteAddress('/fr/reserver', site)).toBe(false);
+  });
+});
+
+describe('what one visitor may hold without paying (step S-2)', () => {
+  const none = { addressBookings: 0, addressRoomNights: 0, emailBookings: 0 };
+
+  it('counts rooms × nights', () => {
+    expect(roomNightsOf(2, '2037-01-16', '2037-01-31')).toBe(30);
+    expect(roomNightsOf(1, '2037-03-28', '2037-03-30')).toBe(2);
+  });
+
+  it('accepts any first booking, then 2 bookings and 40 room-nights per address', () => {
+    expect(exceedsPendingLimits(none, 150, PENDING_LIMITS)).toBe(false);
+    const one = { ...none, addressBookings: 1, addressRoomNights: 30 };
+    expect(exceedsPendingLimits(one, 10, PENDING_LIMITS)).toBe(false);
+    expect(exceedsPendingLimits(one, 11, PENDING_LIMITS)).toBe(true);
+    const two = { ...none, addressBookings: 2, addressRoomNights: 2 };
+    expect(exceedsPendingLimits(two, 1, PENDING_LIMITS)).toBe(true);
+    expect(exceedsPendingLimits({ ...none, emailBookings: 1 }, 1, PENDING_LIMITS)).toBe(true);
   });
 });
