@@ -89,6 +89,25 @@ describe.skipIf(!hasTestDatabase)('public catalogue', () => {
     );
   }
 
+  it('is kept to the public site when the relay is required (production, step S-1)', async () => {
+    const secret = 's'.repeat(40);
+    const closed = createApp({
+      logger: createLogger({ level: 'silent', pretty: false }),
+      allowedOrigins: [],
+      trustProxy: 0,
+      checkDatabase: async () => undefined,
+      relay: { secret, required: true },
+      public: { sequelize, today: () => TODAY },
+    });
+    const refused = await request(closed).get(`${PUBLIC}/hotel`);
+    expect(refused.status).toBe(403);
+    expect(refused.body.code).toBe('RELAY_REQUIRED');
+    const forged = await request(closed).get(`${PUBLIC}/hotel`).set('X-Riad-Relay-Secret', 'x');
+    expect(forged.status).toBe(403);
+    const relayed = await request(closed).get(`${PUBLIC}/hotel`).set('X-Riad-Relay-Secret', secret);
+    expect(relayed.status).not.toBe(403);
+  });
+
   describe('while the hotel is not configured', () => {
     it('answers 503 with a stable code, and nothing is cached', async () => {
       for (const path of ['/hotel', '/room-categories']) {

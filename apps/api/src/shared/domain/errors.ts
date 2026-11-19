@@ -96,6 +96,18 @@ export class AuthenticationRequiredError extends AppError {
   }
 }
 
+/** Public route called by someone else than the public site's server (step S-1). */
+export class RelayRequiredError extends AppError {
+  constructor() {
+    super({
+      status: 403,
+      code: 'RELAY_REQUIRED',
+      title: 'Accès refusé',
+      detail: 'Cette adresse n’est ouverte qu’au site de l’hôtel.',
+    });
+  }
+}
+
 export class ForbiddenError extends AppError {
   constructor() {
     super({

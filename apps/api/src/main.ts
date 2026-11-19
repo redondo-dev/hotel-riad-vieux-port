@@ -118,7 +118,11 @@ const site = {
 const app = createApp({
   logger,
   allowedOrigins: env.API_ALLOWED_ORIGINS,
-  trustProxy: env.TRUST_PROXY,
+  trustProxy: env.TRUST_PROXY ?? 0,
+  // Required in production by the configuration check (loadEnv).
+  ...(env.RELAY_SECRET === undefined
+    ? {}
+    : { relay: { secret: env.RELAY_SECRET, required: env.NODE_ENV === 'production' } }),
   checkDatabase: async () => {
     await sequelize.authenticate({ logging: false });
   },

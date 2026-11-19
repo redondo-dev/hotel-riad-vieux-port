@@ -3,9 +3,11 @@
  * browser only talks to the site; the server of the site calls the API, which stays internal.
  *
  * Only what is expected is passed on: three parameters of a fixed shape, never any other. The
- * visitor's address goes with the call (X-Forwarded-For), so that the limit of 30 searches per
- * minute of the API counts each visitor rather than the site (the API needs TRUST_PROXY=1).
+ * visitor's address goes with the call, with the secret shared with the API (relay-headers.ts),
+ * so that the limits of the API count each visitor rather than the site.
  */
+
+import { relayHeaders } from './relay-headers';
 
 /** Addresses of the relay on the site, for the visitor's browser. */
 export const AVAILABILITY_RELAY_PATH = '/reservation-api/availability';
@@ -19,6 +21,8 @@ export const BOOKING_RELAY_PATH = '/reservation-api/bookings';
 export interface BookingRelayOptions {
   /** Address of the public API, for example http://localhost:3000/api/v1. */
   apiUrl: string;
+  /** Secret shared with the API (RELAY_SECRET); left out in development. */
+  relaySecret?: string;
   /** Replaced in the tests. */
   fetch?: typeof fetch;
   /** Called when the API could not be read (logged, never shown to visitors). */
@@ -112,12 +116,14 @@ export function availabilityQueryOf(read: (name: string) => unknown): Availabili
 
 export class BookingRelay {
   readonly #apiUrl: string;
+  readonly #relaySecret: string | undefined;
   readonly #fetch: typeof fetch;
   readonly #onError: (error: unknown) => void;
   readonly #timeoutMs: number;
 
   constructor(options: BookingRelayOptions) {
     this.#apiUrl = options.apiUrl.replace(/\/+$/, '');
+    this.#relaySecret = options.relaySecret;
     // Wrapped: the global fetch must not be called as a method of another object.
     this.#fetch = options.fetch ?? ((input, init) => fetch(input, init));
     this.#onError = options.onError ?? (() => undefined);
@@ -135,7 +141,7 @@ export class BookingRelay {
         ...init,
         headers: {
           ...init.headers,
-          ...(visitorIp === undefined ? {} : { 'X-Forwarded-For': visitorIp }),
+          ...relayHeaders(this.#relaySecret, visitorIp),
         },
         signal: AbortSignal.timeout(this.#timeoutMs),
       });

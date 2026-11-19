@@ -21,9 +21,10 @@ export function securityHeaders(): RequestHandler {
 }
 
 /**
- * CORS: only the public site and the staff tool may call the API from a browser
- * (API_ALLOWED_ORIGINS). Any other site gets a 403. Requests without an Origin header (the
- * hosting's health checks, server-side rendering, command-line tools) are not concerned by CORS.
+ * CORS: only the staff tool may call the API from a browser (API_ALLOWED_ORIGINS); the public
+ * site goes through its own server (step S-1). Any other site gets a 403. Requests without an
+ * Origin header (the hosting's health checks, server-side rendering, command-line tools) are not
+ * concerned by CORS.
  *
  * `credentials: true` lets the staff tool send its session cookie (module 3).
  */
