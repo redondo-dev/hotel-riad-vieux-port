@@ -58,6 +58,8 @@ const originList = z
 /** Variables without a default in production: the API refuses to start without them. */
 const REQUIRED_IN_PRODUCTION = [
   'API_ALLOWED_ORIGINS',
+  'TRUST_PROXY',
+  'RELAY_SECRET',
   'SESSION_SECRET',
   'ADMIN_APP_URL',
   'STORAGE_DIR',
@@ -88,19 +90,34 @@ const EnvSchema = z
       .min(1, 'doit être un port entre 1 et 65535')
       .max(65535, 'doit être un port entre 1 et 65535')
       .default(3000),
-    /** Origins allowed by CORS: the public site and the staff tool, nothing else. */
+    /**
+     * Origins allowed by CORS: the staff tool only. The visitors' browsers never call the API
+     * (the public site relays), so the public site is refused there in production.
+     */
     API_ALLOWED_ORIGINS: originList,
     /**
      * Number of reverse proxies in front of the API (0 = none). Express then reads the visitor's
      * IP address from X-Forwarded-For. A wrong value lets visitors forge their IP address and
-     * bypass the rate limits: set it only once the hosting is known.
+     * bypass the rate limits: set it only once the hosting is known. 0 when not set, but it
+     * must be written in production. Only the staff tool depends on it: the visitors of the
+     * public site are known through RELAY_SECRET.
      */
-    TRUST_PROXY: z.coerce
-      .number()
-      .int()
-      .min(0, 'doit être un entier entre 0 et 5')
-      .max(5, 'doit être un entier entre 0 et 5')
-      .default(0),
+    TRUST_PROXY: emptyAsMissing(
+      z.coerce
+        .number()
+        .int()
+        .min(0, 'doit être un entier entre 0 et 5')
+        .max(5, 'doit être un entier entre 0 et 5')
+        .optional(),
+    ),
+    /**
+     * Shared with the server of the public site (step S-1): it proves that a call comes from
+     * the site, which then sends the visitor's address. Random, at least 32 characters, the
+     * same value on both sides. Required in production; there, /public is closed without it.
+     */
+    RELAY_SECRET: emptyAsMissing(
+      z.string().min(32, 'doit contenir au moins 32 caractères').optional(),
+    ),
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
@@ -216,6 +233,17 @@ const EnvSchema = z
       if (value === undefined || (Array.isArray(value) && value.length === 0)) {
         ctx.addIssue({ code: 'custom', path: [name], message: 'est obligatoire en production' });
       }
+    }
+    if (
+      env.PUBLIC_SITE_URL !== undefined &&
+      URL.canParse(env.PUBLIC_SITE_URL) &&
+      env.API_ALLOWED_ORIGINS.includes(new URL(env.PUBLIC_SITE_URL).origin)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['API_ALLOWED_ORIGINS'],
+        message: 'ne doit pas contenir le site public : seul l’outil de gestion appelle l’API',
+      });
     }
     if (env.PUBLIC_SITE_URL?.startsWith('http:') === true) {
       ctx.addIssue({

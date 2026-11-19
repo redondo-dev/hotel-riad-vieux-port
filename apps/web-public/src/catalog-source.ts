@@ -1,4 +1,5 @@
 import { type CatalogSnapshot, parseCatalogSnapshot } from '@riad/shared';
+import { relayHeaders } from './relay-headers';
 
 /**
  * Catalogue of the public site, read from the API by the SERVER of the site (never by the
@@ -15,6 +16,8 @@ import { type CatalogSnapshot, parseCatalogSnapshot } from '@riad/shared';
 export interface CatalogSourceOptions {
   /** Address of the public API, for example http://localhost:3000/api/v1. */
   apiUrl: string;
+  /** Secret shared with the API (RELAY_SECRET); left out in development. */
+  relaySecret?: string | undefined;
   /** Replaced in the tests. */
   fetch?: typeof fetch;
   now?: () => number;
@@ -38,6 +41,7 @@ interface Entry {
 
 export class CatalogSource {
   readonly #apiUrl: string;
+  readonly #relaySecret: string | undefined;
   readonly #fetch: typeof fetch;
   readonly #now: () => number;
   readonly #onError: (error: unknown) => void;
@@ -51,6 +55,7 @@ export class CatalogSource {
 
   constructor(options: CatalogSourceOptions) {
     this.#apiUrl = options.apiUrl.replace(/\/+$/, '');
+    this.#relaySecret = options.relaySecret;
     // Wrapped: the global fetch must not be called as a method of another object.
     this.#fetch = options.fetch ?? ((input, init) => fetch(input, init));
     this.#now = options.now ?? Date.now;
@@ -94,7 +99,7 @@ export class CatalogSource {
 
   async #read(path: string): Promise<unknown> {
     const response = await this.#fetch(`${this.#apiUrl}${path}`, {
-      headers: { accept: 'application/json' },
+      headers: { accept: 'application/json', ...relayHeaders(this.#relaySecret) },
       signal: AbortSignal.timeout(this.#timeoutMs),
     });
     if (!response.ok) {

@@ -50,6 +50,7 @@ import { reservationRouter } from './modules/reservations/http/reservation-route
 import { errorHandler, notFoundHandler } from './shared/http/error-handler.ts';
 import { type DatabaseCheck, healthRouter } from './shared/http/health.ts';
 import { GLOBAL_RATE_LIMIT, type RateLimitRule, rateLimiter } from './shared/http/rate-limit.ts';
+import { relayIdentity, requireRelay } from './shared/http/relay.ts';
 import { requestContext } from './shared/http/request-context.ts';
 import { corsPolicy, jsonBody, securityHeaders } from './shared/http/security.ts';
 import { type SessionStore, staffSessions } from './shared/http/session.ts';
@@ -66,6 +67,12 @@ export interface AppDependencies {
   allowedOrigins: readonly string[];
   /** Number of reverse proxies in front of the API (TRUST_PROXY). */
   trustProxy: number;
+  /**
+   * Secret shared with the public site's server (RELAY_SECRET, step S-1): with it, the visitor's
+   * address sent by the site counts for the limits. `required` (production): /public answers
+   * 403 to any other caller, the photos apart (the staff tool shows them too).
+   */
+  relay?: { secret: string; required: boolean };
   checkDatabase: DatabaseCheck;
   /** Overall request limit; the default is the 300 requests per minute decided for the API. */
   globalRateLimit?: RateLimitRule;
@@ -187,6 +194,7 @@ function publicRouter(
   deps: PublicDependencies,
   logger: Logger,
   settlement: OnlinePayments,
+  relayRequired: boolean,
 ): Router {
   const catalog = new PublicCatalog(
     new CatalogRepository(deps.sequelize),
@@ -194,6 +202,11 @@ function publicRouter(
     new PhotoRepository(deps.sequelize),
   );
   const router = Router();
+  // The photos first: the staff tool shows them too, without the secret of the site.
+  if (deps.storage !== undefined) {
+    router.use(mediaRouter(deps.storage));
+  }
+  router.use(requireRelay(relayRequired));
   router.use(publicCatalogRouter(catalog));
   const now = deps.now ?? (() => new Date());
   router.use(publicSearchRouter(new PublicAvailability(deps.sequelize, now)));
@@ -213,9 +226,6 @@ function publicRouter(
     manageBookingRouter(new ManageBooking({ sequelize: deps.sequelize, now }), deps.manageLinks),
   );
   router.use(publicBookingRouter(booking));
-  if (deps.storage !== undefined) {
-    router.use(mediaRouter(deps.storage));
-  }
   return router;
 }
 
@@ -233,6 +243,7 @@ export function createApp(deps: AppDependencies): Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', deps.trustProxy);
+  app.use(relayIdentity(deps.relay?.secret));
 
   app.use(requestContext(deps.logger));
   app.use(securityHeaders());
@@ -254,7 +265,10 @@ export function createApp(deps: AppDependencies): Express {
     api.use('/admin', adminRouter(deps.admin, deps.logger));
   }
   if (deps.public !== undefined && settlement !== undefined) {
-    api.use('/public', publicRouter(deps.public, deps.logger, settlement));
+    api.use(
+      '/public',
+      publicRouter(deps.public, deps.logger, settlement, deps.relay?.required ?? false),
+    );
   }
   deps.mountRoutes?.(api);
   app.use(API_PREFIX, api);

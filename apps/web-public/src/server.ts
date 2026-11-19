@@ -49,9 +49,12 @@ const allowedHosts = (process.env['ALLOWED_HOSTS'] ?? '')
 
 // An empty value (copied from .env.example) means « not set ».
 const apiUrl = process.env['API_INTERNAL_URL'] || 'http://localhost:3000/api/v1';
+// Shared with the API (step S-1): proves the calls come from this server. Required in production.
+const relaySecret = process.env['RELAY_SECRET'] || undefined;
 
 const catalog = new CatalogSource({
   apiUrl,
+  relaySecret,
   onError: (error) => {
     // eslint-disable-next-line no-console -- the SSR server has no logger yet
     console.error('Catalogue : lecture de l’API impossible.', error);
@@ -68,6 +71,7 @@ const media = new MediaRelay({
 
 const booking = new BookingRelay({
   apiUrl,
+  relaySecret,
   onError: (error) => {
     // eslint-disable-next-line no-console -- the SSR server has no logger yet
     console.error('Réservation : lecture de l’API impossible.', error);
@@ -206,6 +210,11 @@ if (isMainModule(import.meta.url)) {
   if (process.env['NODE_ENV'] === 'production' && allowedHosts.length === 0) {
     // eslint-disable-next-line no-console -- the server refuses to start, nothing to log into yet
     console.error('ALLOWED_HOSTS est obligatoire en production (noms de domaine du site).');
+    process.exit(1);
+  }
+  if (process.env['NODE_ENV'] === 'production' && (relaySecret?.length ?? 0) < 32) {
+    // eslint-disable-next-line no-console -- the server refuses to start, nothing to log into yet
+    console.error('RELAY_SECRET est obligatoire en production (32 caractères au moins).');
     process.exit(1);
   }
   const port = process.env['PORT'] ?? 4000;

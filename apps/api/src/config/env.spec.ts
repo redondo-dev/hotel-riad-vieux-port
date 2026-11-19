@@ -16,7 +16,7 @@ describe('loadEnv', () => {
   it('applies safe defaults for the HTTP server', () => {
     const env = loadEnv(base);
     expect(env.API_PORT).toBe(3000);
-    expect(env.TRUST_PROXY).toBe(0);
+    expect(env.TRUST_PROXY).toBe(undefined);
     expect(env.LOG_LEVEL).toBe('info');
     expect(env.API_ALLOWED_ORIGINS).toEqual([]);
   });
@@ -79,6 +79,26 @@ describe('loadEnv', () => {
     expect(loadEnv({ ...base, SESSION_SECRET: 'x'.repeat(32) }).SESSION_SECRET).toBe(
       'x'.repeat(32),
     );
+  });
+
+  it('requires the proxy count and the secret of the site in production (step S-1)', () => {
+    const message = errorOf({ ...base, NODE_ENV: 'production' });
+    expect(message.includes('TRUST_PROXY est obligatoire en production')).toBe(true);
+    expect(message.includes('RELAY_SECRET est obligatoire en production')).toBe(true);
+    expect(errorOf({ ...base, RELAY_SECRET: 'trop-court' }).includes('RELAY_SECRET')).toBe(true);
+    const env = loadEnv({ ...base, TRUST_PROXY: '1', RELAY_SECRET: 's'.repeat(32) });
+    expect(env.TRUST_PROXY).toBe(1);
+    expect(env.RELAY_SECRET).toBe('s'.repeat(32));
+  });
+
+  it('refuses the public site among the allowed origins in production', () => {
+    const message = errorOf({
+      ...base,
+      NODE_ENV: 'production',
+      PUBLIC_SITE_URL: 'https://hotel.example/fr/',
+      API_ALLOWED_ORIGINS: 'https://hotel.example,https://gestion.hotel.example',
+    });
+    expect(message.includes('API_ALLOWED_ORIGINS ne doit pas contenir le site public')).toBe(true);
   });
 
   it('requires Stripe and the public site in production, and refuses a live key elsewhere', () => {

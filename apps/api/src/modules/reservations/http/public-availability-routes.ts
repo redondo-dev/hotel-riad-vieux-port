@@ -11,7 +11,7 @@ import { parseGuests } from '../domain/stay-rules.ts';
  *   GET /availability?checkIn=2026-05-12&checkOut=2026-05-15&guests=2-6_2
  *
  * Called by the server of the public site, which passes on the visitor's address: the limit
- * of 30 searches per minute counts each visitor, not the site (TRUST_PROXY).
+ * of 30 searches per minute counts each visitor, not the site (RELAY_SECRET, step S-1).
  */
 
 /** Against robots that would read the stock night after night. */

@@ -21,7 +21,8 @@ export interface RateLimitRule {
  * between several instances. Enough for one instance; a shared store (PostgreSQL) will be
  * needed if the API ever runs on several machines.
  *
- * The visitor's IP address is only reliable if TRUST_PROXY matches the hosting.
+ * The IP address is reliable only if TRUST_PROXY matches the hosting (staff tool) and, for the
+ * visitors of the public site, with RELAY_SECRET (shared/http/relay.ts).
  */
 export function rateLimiter(rule: RateLimitRule): RequestHandler {
   return rateLimit({

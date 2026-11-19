@@ -55,10 +55,31 @@ describe('BookingRelay', () => {
     expect(calls).toEqual([
       {
         url: 'http://api.test/api/v1/public/availability?checkIn=2027-05-12&checkOut=2027-05-15&guests=2-6_2',
-        headers: { 'X-Forwarded-For': '203.0.113.7' },
+        headers: { 'X-Riad-Visitor-Ip': '203.0.113.7' },
       },
     ]);
     expect(answer).toEqual({ status: 200, body: { status: 200 } });
+  });
+
+  it('proves the call comes from the site, never through X-Forwarded-For', async () => {
+    const calls: Call[] = [];
+    const fakeFetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(input), headers: init?.headers });
+      return new Response('{}', { status: 200 });
+    }) as typeof fetch;
+    const secret = 's'.repeat(40);
+    const relay = new BookingRelay({
+      apiUrl: 'http://api.test/api/v1',
+      fetch: fakeFetch,
+      relaySecret: secret,
+    });
+
+    await relay.availability(QUERY, '203.0.113.7');
+
+    expect(calls[0]?.headers).toEqual({
+      'X-Riad-Relay-Secret': secret,
+      'X-Riad-Visitor-Ip': '203.0.113.7',
+    });
   });
 
   it('passes on the refusals of the API, and refuses a bad query without calling it', async () => {
@@ -96,7 +117,7 @@ describe('BookingRelay, bookings', () => {
       headers: {
         'Content-Type': 'application/json',
         'Idempotency-Key': KEY,
-        'X-Forwarded-For': '203.0.113.7',
+        'X-Riad-Visitor-Ip': '203.0.113.7',
       },
     });
   });
