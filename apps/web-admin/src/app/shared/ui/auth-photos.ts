@@ -5,7 +5,9 @@
  * decoration, the pages work without it.
  */
 
-export const AUTH_PHOTO_IDS = [1015, 1016, 1018, 1036, 1039, 1043, 1067, 15, 28, 29] as const;
+export const AUTH_PHOTO_IDS = [
+  1015, 1016, 1018, 1036, 1039, 1043, 1067, 15, 28, 29, 41, 43, 49, 218, 293,
+] as const;
 
 /** Landscape, the size of a large screen. */
 const WIDTH = 1920;
